@@ -12,6 +12,7 @@ class CentralWeekly(BaseGazette):
         self.baseurl  = 'http://egazette.nic.in'
         self.hostname = 'egazette.nic.in'
         self.gztype   = 'Weekly'
+        self.parser   = 'lxml'
 
     def find_search_form(self, d):
         search_form = None
@@ -69,7 +70,7 @@ class CentralWeekly(BaseGazette):
             self.logger.warn('Unable to download the starting search page for day: %s', dateobj)
             return None 
 
-        d = utils.parse_webpage(webpage)
+        d = utils.parse_webpage(webpage, self.parser)
         if d == None:
             self.logger.warn('Unable to parse the search page for day: %s', dateobj)
             return None
@@ -129,7 +130,7 @@ class CentralWeekly(BaseGazette):
 
     def parse_search_results(self, webpage, dateobj):
         metainfos = []
-        d = utils.parse_webpage(webpage)
+        d = utils.parse_webpage(webpage, self.parser)
         if not d:
             self.logger.warn('Unable to parse search result page for %s', dateobj)
             return metainfos

@@ -4,7 +4,9 @@ import types
 import codecs
 import datetime
 import logging
+import glob
 
+import utils
 def mk_dir(dirname):
     if not os.path.exists(dirname):
         os.mkdir(dirname)
@@ -93,11 +95,9 @@ class FileManager:
     def save_metainfo(self, court, relurl, metainfo):
         self.create_dirs(self.metadir, relurl)
 
-        metapath = os.path.join(self.metadir, relurl)
-        rawpath  = os.path.join(self.rawdir, relurl)
+        metapath = os.path.join(self.metadir, '%s.xml' % relurl)
 
-        if metainfo and (self.updateMeta or not os.path.exists(metapath)) and \
-                os.path.exists(rawpath):
+        if metainfo and (self.updateMeta or not os.path.exists(metapath)):
             print_tag_file(metapath, metainfo)
             return True
         return False 
@@ -112,13 +112,18 @@ class FileManager:
 
     def should_download_raw(self, relurl, judge_url, validurl = True):
         rawpath  = os.path.join(self.rawdir, relurl)
-        return self.updateRaw or not os.path.exists(rawpath)
-        
+        return self.updateRaw or not glob.glob('%s.*' % rawpath)
+
+    def get_file_extension(self, doc):
+        mtype = utils.get_buffer_type(doc)
+        return utils.get_file_extension(mtype)
+
     def save_rawdoc(self, court, relurl, encoding, doc):
         self.create_dirs(self.rawdir, relurl)
         rawpath  = os.path.join(self.rawdir, relurl)
 
-        if doc and (self.updateRaw or not os.path.exists(rawpath)):
-            self.save_binary_file(rawpath, doc)
+        if doc and (self.updateRaw or not glob.glob('%s.*' % rawpath)):
+            extension = self.get_file_extension(doc)
+            self.save_binary_file('%s.%s' % (rawpath, extension), doc)
             return True
         return False 

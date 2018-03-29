@@ -1,8 +1,8 @@
 import multiprocessing
-import magic
 import urllib2
 import time
 import logging
+import re
 
 import proxylist
 
@@ -83,22 +83,4 @@ def parallel_download(gazetteobjs, agghosts, fromdate, todate, max_wait, all_dls
                 t.join()
 
   
-def get_file_type(filepath):
-    m = magic.open(magic.MAGIC_MIME)
-    #m = magic.open(magic.MIME_TYPE)
-    m.load()
-    mtype = m.file(filepath)
-    m.close()
-
-    return mtype
-
-def get_buffer_type(buff):
-    m = magic.open(magic.MAGIC_MIME)
-    #m = magic.open(magic.MIME_TYPE)
-    m.load()
-    mtype = m.buffer(buff)
-    m.close()
-
-    return mtype
-
 

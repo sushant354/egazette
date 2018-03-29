@@ -3,6 +3,7 @@ import re
 import types
 import urlparse
 import calendar
+import magic
 
 from xml.parsers.expat import ExpatError
 from xml.dom import minidom, Node
@@ -55,9 +56,9 @@ def check_next_page(tr, pagenum):
 
     return pageblock, nextlink
 
-def parse_webpage(webpage):
+def parse_webpage(webpage, parser):
     try:
-        d = BeautifulSoup(webpage, 'html.parser')
+        d = BeautifulSoup(webpage, parser)
         return d
     except:
         return None
@@ -230,4 +231,32 @@ def stats_to_message(stats):
     return u'\n'.join(messagelist)
 
 
+def get_file_type(filepath):
+    m = magic.open(magic.MAGIC_MIME)
+    #m = magic.open(magic.MIME_TYPE)
+    m.load()
+    mtype = m.file(filepath)
+    m.close()
 
+    return mtype
+
+def get_buffer_type(buff):
+    m = magic.open(magic.MAGIC_MIME)
+    #m = magic.open(magic.MIME_TYPE)
+    m.load()
+    mtype = m.buffer(buff)
+    m.close()
+
+    return mtype
+
+
+def get_file_extension(mtype):
+    if re.match('text/html', mtype):
+        return 'html'
+    elif re.match('application/postscript', mtype):
+        return 'ps'
+    elif re.match('application/pdf', mtype):
+        return 'pdf'
+    elif re.match('text/plain', mtype):
+        return 'txt'
+    return 'unkwn'
