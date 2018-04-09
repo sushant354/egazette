@@ -9,17 +9,19 @@ from basegazette import BaseGazette
 class CentralWeekly(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl  = 'http://egazette.nic.in'
-        self.hostname = 'egazette.nic.in'
-        self.gztype   = 'Weekly'
-        self.parser   = 'lxml'
+        self.baseurl     = 'http://egazette.nic.in'
+        self.hostname    = 'egazette.nic.in'
+        self.gztype      = 'Weekly'
+        self.parser      = 'lxml'
+        self.search_endp = 'Search1.aspx'
+        self.result_table= 'ContentPlaceHolder1_dgGeneralUser'
 
     def find_search_form(self, d):
         search_form = None
         forms = d.find_all('form')
         for form in forms:
             action = form.get('action')
-            if action == './Search1.aspx':
+            if action == './%s' % self.search_endp:
                 search_form = form
                 break
 
@@ -135,7 +137,7 @@ class CentralWeekly(BaseGazette):
             self.logger.warn('Unable to parse search result page for %s', dateobj)
             return metainfos
 
-        tables = d.find_all('table', {'id': 'ContentPlaceHolder1_dgGeneralUser'})
+        tables = d.find_all('table', {'id': self.result_table})
 
         if len(tables) != 1:
             self.logger.warn('Could not find the result table for %s', dateobj)
@@ -217,7 +219,7 @@ class CentralWeekly(BaseGazette):
         cookiejar  = CookieJar()
         response = self.download_url(self.baseurl, savecookies = cookiejar)
         curr_url = response.response_url
-        search_url = urllib.basejoin(curr_url, 'Search1.aspx')
+        search_url = urllib.basejoin(curr_url, self.search_endp)
 
         response = self.get_search_results(search_url, dateobj, cookiejar)
         if response == None or response.webpage == None:
