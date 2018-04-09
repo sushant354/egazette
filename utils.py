@@ -232,20 +232,12 @@ def stats_to_message(stats):
 
 
 def get_file_type(filepath):
-    m = magic.open(magic.MAGIC_MIME)
-    #m = magic.open(magic.MIME_TYPE)
-    m.load()
-    mtype = m.file(filepath)
-    m.close()
+    mtype = magic.from_file(filepath)
 
     return mtype
 
 def get_buffer_type(buff):
-    m = magic.open(magic.MAGIC_MIME)
-    #m = magic.open(magic.MIME_TYPE)
-    m.load()
-    mtype = m.buffer(buff)
-    m.close()
+    mtype = magic.from_buffer(buff)
 
     return mtype
 
