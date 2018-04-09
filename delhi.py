@@ -1,3 +1,5 @@
+import datetime
+
 from central import CentralWeekly
 import utils
 
@@ -7,6 +9,7 @@ class DelhiWeekly(CentralWeekly):
         self.baseurl     = 'http://www.egazette.nic.in/SG_DL_Search.aspx'
         self.search_endp = 'SG_DL_Search.aspx'
         self.result_table = 'dgGeneralUser'
+        self.start_date   = datetime.datetime(2016, 5, 1)
 
     def get_post_data(self, tags, dateobj):
         datestr  = utils.get_egz_date(dateobj)
