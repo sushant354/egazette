@@ -1,5 +1,6 @@
 # egazette
 Install BeautifulSoup 4: https://www.crummy.com/software/BeautifulSoup/
+pip install python-magic
 
 Usage:python sync.py   [-l level(critical, error, warn, info, debug)]
                        [-a (all_downloads)]
