@@ -250,7 +250,6 @@ def get_buffer_type(buff):
 
 
 def get_file_extension(mtype):
-    print mtype
     if re.match('text/html', mtype):
         return 'html'
     elif re.match('application/postscript', mtype):
