@@ -147,6 +147,7 @@ TITLE      = 'title'
 DATE       = 'date'
 MINISTRY   = 'ministry'
 SUBJECT    = 'subject'
+GZTYPE     = 'gztype'
 
 _illegal_xml_chars_RE = re.compile(u'[\x00-\x08\x0b\x0c\x0e-\x1F\uD800-\uDFFF\uFFFE\uFFFF]')
 
@@ -193,6 +194,9 @@ class MetaInfo(dict):
     def set_ministry(self, value):
         self.set_field(MINISTRY, value)
 
+    def set_gztype(self, value):
+        self.set_field(GZTYPE, value)
+
     def get_url(self):
         return self.get_field(URL)
 
@@ -210,6 +214,9 @@ class MetaInfo(dict):
 
     def get_subject(self):
         return self.get_field(SUBJECT)
+
+    def get_gztype(self, value):
+        return self.get_field(GZTYPE)
 
 def stats_to_message(stats):
     rawstats  = stats[0]
@@ -232,17 +239,18 @@ def stats_to_message(stats):
 
 
 def get_file_type(filepath):
-    mtype = magic.from_file(filepath)
+    mtype = magic.from_file(filepath, mime = True)
 
     return mtype
 
 def get_buffer_type(buff):
-    mtype = magic.from_buffer(buff)
+    mtype = magic.from_buffer(buff, mime=True)
 
     return mtype
 
 
 def get_file_extension(mtype):
+    print mtype
     if re.match('text/html', mtype):
         return 'html'
     elif re.match('application/postscript', mtype):

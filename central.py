@@ -149,7 +149,8 @@ class CentralWeekly(BaseGazette):
                 order = self.get_column_order(tr)
                 continue
 
-            if tr.find('input') == None:
+
+            if tr.find('input') == None and tr.find('a') == None:
                 continue
 
             metainfo = utils.MetaInfo()
@@ -168,12 +169,19 @@ class CentralWeekly(BaseGazette):
                         metainfo.set_ministry(txt)
                     elif col == 'subject':
                         metainfo.set_subject(txt)
+                    elif col == 'gztype':
+                        metainfo.set_gztype(txt)    
                     elif col == 'download':
                         inp = td.find('input')
                         if inp:
                             name = inp.get('name')
                             if name:
                                 metainfo[col] = name
+                        else:
+                            link = td.find('a')
+                            if link:
+                                metainfo[col] = link 
+                                            
                     elif col in ['office', 'department', 'partnum', 'refnum']:
                         metainfo[col] = txt
                 i += 1
@@ -224,11 +232,16 @@ class CentralWeekly(BaseGazette):
         response = self.get_search_results(search_url, dateobj, cookiejar)
         if response == None or response.webpage == None:
             return dls
-
         metainfos = self.parse_search_results(response.webpage, dateobj)
 
         postdata = self.get_form_data(response.webpage, dateobj)
 
+        return self.download_metainfos(relpath, metainfos, search_url, \
+                                       postdata, cookiejar)
+
+    def download_metainfos(self, relpath, metainfos, search_url, \
+                           postdata, cookiejar):
+        dls = []
         for metainfo in metainfos:
             if 'download' in metainfo:
                 newpost = postdata[:]
@@ -238,7 +251,6 @@ class CentralWeekly(BaseGazette):
                 relurl = self.download_gazette(relpath, search_url, newpost, metainfo, cookiejar)
                 if relurl:
                     dls.append(relurl)
-
         return dls
 
 class CentralExtraordinary(CentralWeekly):
