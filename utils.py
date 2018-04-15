@@ -4,6 +4,7 @@ import types
 import urlparse
 import calendar
 import magic
+import datetime
 
 from xml.parsers.expat import ExpatError
 from xml.dom import minidom, Node
@@ -55,6 +56,31 @@ def check_next_page(tr, pagenum):
             break
 
     return pageblock, nextlink
+
+def get_month_num(month):
+    i = 0
+    month = month.lower()
+    for m in calendar.month_abbr:
+        if m.lower() == month:
+            return i
+        i += 1
+    return -1
+            
+def parse_datestr(datestr):
+    reobj = re.search('(?P<day>\d+)\s*(?P<month>\w+)\s*(?P<year>\d+)', datestr)
+    if reobj:
+        groupdict = reobj.groupdict()
+        month_num = get_month_num(groupdict['month'])
+        if month_num <= 0:
+            return None
+        try:
+            year = int(groupdict['year'])
+            day  = int(groupdict['day'])    
+        except:
+            return None    
+        return datetime.datetime(year, month_num, day)
+
+    return None         
 
 def parse_webpage(webpage, parser):
     try:

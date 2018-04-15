@@ -95,29 +95,10 @@ class Bihar(CentralWeekly):
                 newpost.append(t)   
             gznum = gznum.strip()
             relurl = os.path.join(relpath, gznum)
-            if not self.storage_manager.should_download_raw(relurl, None, validurl=False):
-                self.logger.info('Doc already exists: %s', relurl)
-                continue
-
-            response = self.download_url(search_url, savecookies = cookiejar, \
-                                   loadcookies = cookiejar, postdata = newpost) 
-            doc = response.webpage
-            if not doc:
-                self.logger.warn('Not able to download: %s', relurl)
-                continue
-
-            updated = False
-            if self.storage_manager.save_rawdoc(self.name, relurl, response.srvresponse, doc):
-                updated = True
-                self.logger.info(u'Saved rawfile %s' % relurl)
-            else:
-                self.logger.info(u'not able to save the doc %s' % relurl)
-            metainfo.pop('download')                
-            if self.storage_manager.save_metainfo(self.name, relurl, metainfo):
-                updated = True
-                self.logger.info(u'Saved metainfo %s' % relurl)
-
-            if updated:        
+            metainfo.pop('download')
+            if self.save_gazette(relurl, search_url, metainfo, \
+                                 postdata = newpost, cookiefile = cookiejar, \
+                                 validurl = False):
                 dls.append(relurl)
 
         return dls            

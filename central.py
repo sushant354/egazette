@@ -21,7 +21,7 @@ class CentralWeekly(BaseGazette):
         forms = d.find_all('form')
         for form in forms:
             action = form.get('action')
-            if action == './%s' % self.search_endp:
+            if action == './%s' % self.search_endp or action == self.search_endp:
                 search_form = form
                 break
 
@@ -153,44 +153,50 @@ class CentralWeekly(BaseGazette):
             if tr.find('input') == None and tr.find('a') == None:
                 continue
 
-            metainfo = utils.MetaInfo()
-            metainfos.append(metainfo)
-            metainfo.set_date(dateobj)
-
-            i = 0
-            for td in tr.find_all('td'):
-                if len(order) > i:
-                    col = order[i]
-                    txt = utils.get_tag_contents(td)
-                    if txt:
-                        txt = txt.strip()
-
-                    if col == 'ministry':
-                        metainfo.set_ministry(txt)
-                    elif col == 'subject':
-                        metainfo.set_subject(txt)
-                    elif col == 'gztype':
-                        metainfo.set_gztype(txt)    
-                    elif col == 'download':
-                        inp = td.find('input')
-                        if inp:
-                            name = inp.get('name')
-                            if name:
-                                metainfo[col] = name
-                        else:
-                            link = td.find('a')
-                            if link:
-                                metainfo[col] = link 
-                                            
-                    elif col in ['office', 'department', 'partnum', 'refnum']:
-                        metainfo[col] = txt
-                i += 1
+            self.process_result_row(tr, metainfos, dateobj, order)
 
         return metainfos
 
-    def download_gazette(self, relpath, search_url, postdata, metainfo, cookiejar):
+    def process_result_row(self, tr, metainfos, dateobj, order):
+        metainfo = utils.MetaInfo()
+        metainfos.append(metainfo)
+        metainfo.set_date(dateobj)
+
+        i = 0
+        for td in tr.find_all('td'):
+            if len(order) > i:
+                col = order[i]
+                txt = utils.get_tag_contents(td)
+                if txt:
+                    txt = txt.strip()
+
+                if col == 'ministry':
+                    metainfo.set_ministry(txt)
+                elif col == 'subject':
+                    metainfo.set_subject(txt)
+                elif col == 'gztype':
+                    metainfo.set_gztype(txt)    
+                elif col == 'download':
+                    inp = td.find('input')
+                    if inp:
+                        name = inp.get('name')
+                        if name:
+                            metainfo[col] = name
+                    else:
+                        link = td.find('a')
+                        if link:
+                            metainfo[col] = link 
+                                            
+                elif col in ['office', 'department', 'partnum', 'refnum']:
+                    metainfo[col] = txt
+            i += 1
+
+
+    def download_gazette(self, relpath, search_url, postdata, \
+                         metainfo, cookiejar):
         response = self.download_url(search_url, savecookies = cookiejar, \
-                                  loadcookies = cookiejar, postdata = postdata)
+                                     postdata = postdata, validurl = False, \
+                                     loacookies = cookiejar)
         doc    = response.webpage
         srvhdr = response.srvresponse
 
@@ -232,6 +238,7 @@ class CentralWeekly(BaseGazette):
         response = self.get_search_results(search_url, dateobj, cookiejar)
         if response == None or response.webpage == None:
             return dls
+
         metainfos = self.parse_search_results(response.webpage, dateobj)
 
         postdata = self.get_form_data(response.webpage, dateobj)

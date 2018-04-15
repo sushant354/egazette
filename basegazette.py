@@ -6,7 +6,6 @@ import urlparse
 import os
 import time
 
-
 class WebResponse:
    def __init__(self):
        self.srvresponse  = None
@@ -38,7 +37,7 @@ class Downloader:
     
         self.logger      = logging.getLogger(u'crawler.%s' % self.name)
 
-        self.useragent   = 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.0.10) Gecko/2009051719 Gentoo Firefox/3.0.10'
+        self.useragent   = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0'
 
     def all_downloads(self, event):
         assert self.start_date != None
@@ -93,7 +92,7 @@ class Downloader:
         if self.backoff > 0:
             time.sleep(self.backoff)
 
-        headers['User-Agent'] = self.useragent
+        headers['User-agent'] = self.useragent
 
         if referer:
             headers['Referer'] = referer
@@ -104,7 +103,6 @@ class Downloader:
                 encodedData = urllib.urlencode(postdata)
             else:
                 encodedData = postdata
-            self.logger.debug(u'postdata: %s', encodedData)    
 
         fixed_url = self.url_fix(url)        
         request = urllib2.Request(fixed_url, encodedData, headers)
@@ -113,8 +111,9 @@ class Downloader:
             loadcookies.add_cookie_header(request)
             if 'Cookie' in request.unredirected_hdrs:
                 request.headers['Cookie'] = request.unredirected_hdrs.pop('Cookie')
-        self.logger.debug(u'Request url: %s headers: %s', \
-                            request.get_full_url(), request.headers)
+        self.logger.debug(u'Request url: %s headers: %s data: %s', \
+                            request.get_full_url(), request.headers, \
+                            request.get_data())
         try:
             opener  = urllib2.urlopen(request, timeout = 400)
             response = opener.info()
@@ -168,17 +167,21 @@ class BaseGazette(Downloader):
     def is_valid_gazette(self, doc, min_size):
         return (min_size <= 0 or len(doc) > min_size)
 
-    def save_gazette(self, relurl, gurl, metainfo, referer = None, \
-                      cookiefile = None, validurl = True, min_size=0, count=0):
+    def save_gazette(self, relurl, gurl, metainfo, postdata = None, \
+                     referer = None, cookiefile = None, validurl = True, \
+                     min_size=0, count=0):
         updated = False
         if self.storage_manager.should_download_raw(relurl, gurl, \
                                                     validurl = validurl):
             if cookiefile:
                 response = self.download_url(gurl, referer = referer, \
-                                             loadcookies = cookiefile)
+                                 postdata = postdata, loadcookies = cookiefile)
             else:
                 response = self.download_url(gurl, referer = referer)
-            
+
+            if response == None:
+                return updated
+                 
             doc = response.webpage 
             if doc and self.is_valid_gazette(doc, min_size):  
                 if self.storage_manager.save_rawdoc(self.name, relurl, response.srvresponse, doc):
@@ -190,8 +193,8 @@ class BaseGazette(Downloader):
                 self.logger.info(u'doc not downloaded %s' % relurl)
         else:
             self.logger.info(u'rawdoc already exists %s' % relurl)
-
-        metainfo.set_url(self.url_fix(gurl))
+        if validurl:
+            metainfo.set_url(self.url_fix(gurl))
         if self.storage_manager.save_metainfo(self.name, relurl, metainfo): 
             updated = True
             self.logger.info(u'Saved metainfo %s' % relurl)

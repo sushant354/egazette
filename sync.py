@@ -19,7 +19,11 @@ def print_usage(progname):
                        [-f logfile]
                        [-t fromdate (DD-MM-YYYY)] [-T todate (DD-MM-YYYY)] 
                        [-D datadir]
-                       [-s central_weekly -s central_extraordinary -s central]
+                       [-s central_weekly -s central_extraordinary -s central
+                        -s states -s bihar -s chattisgarh
+                        -s cgweekly -s cgextraordinary 
+                        -s delhi -s delhi_weekly -s delhi_extraordinary
+                       ]
                        ''' % progname
 
     print 'The program will download gazettes from various egazette sites'
