@@ -69,6 +69,53 @@ class Bihar(CentralWeekly):
                 order.append('')
         return order
 
+    def find_next_page(self, tr, curr_page):
+        for tr in tr.find_all('tr'):
+            if tr.find('tr') != None:
+                continue
+
+            nextpage = None
+            for td in tr.find_all('td'):
+                txt = utils.get_tag_contents(td)
+                if not txt:
+                    continue
+                txt = txt.strip()
+                if not re.match('\d+$', txt):
+                    continue
+                v = int(txt)
+                if v == curr_page +1 and td.find('a') != None:
+                    nextpage = td.find('a')
+                    return nextpage
+        return None
+
+    def download_nextpage(self, nextpage, search_url, postdata, cookiejar):
+        href   = nextpage.get('href')
+        if href == None:
+            return None
+
+        reobj = re.search('javascript:__doPostBack\(\'(?P<event_target>[^\']+)\',\s*\'(?P<event_arg>[^\']+)\'', href)
+        if not reobj:
+            return None
+
+        groupdict    = reobj.groupdict()
+        event_target = groupdict['event_target']
+        event_arg    = groupdict['event_arg']
+
+        newpost = []
+        for t in postdata:
+            if t[0] == 'ctl00$ContentPlaceHolder1$BtnSearch':
+                continue
+            if t[0] == '__EVENTTARGET':
+                t = (t[0], event_target)
+            if t[0] == '__EVENTARGUMENT':
+                t = (t[0], event_arg)
+
+            newpost.append(t)
+
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                   loadcookies = cookiejar, postdata = newpost)
+        return response
+
     def download_metainfos(self, relpath, metainfos, search_url, \
                            postdata, cookiejar):
         dls = []
@@ -83,8 +130,12 @@ class Bihar(CentralWeekly):
             if not href or not gznum:
                 continue
 
-            reobj = re.search('javascript:__doPostBack\(\'(?P<event_target>[^\']+)\'', href)
-            event_target = reobj.groupdict()['event_target']
+            reobj = re.search('javascript:__doPostBack\(\'(?P<event_target>[^\']+)\',\s*\'(?P<event_arg>[^\']*)\'', href)
+            groupdict    = reobj.groupdict()
+            event_target = groupdict['event_target']
+            event_arg    = groupdict['event_arg']
+            if event_arg:
+                continue
 
             newpost = []
             for t in postdata:
@@ -92,7 +143,9 @@ class Bihar(CentralWeekly):
                     continue
                 if t[0] == '__EVENTTARGET':
                     t = (t[0], event_target)
+
                 newpost.append(t)   
+
             gznum = gznum.strip()
             relurl = os.path.join(relpath, gznum)
             metainfo.pop('download')

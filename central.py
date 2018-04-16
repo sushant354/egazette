@@ -130,18 +130,20 @@ class CentralWeekly(BaseGazette):
                 order.append('')
         return order
 
-    def parse_search_results(self, webpage, dateobj):
+    def parse_search_results(self, webpage, dateobj, curr_page):
         metainfos = []
+        nextpage  = None
+
         d = utils.parse_webpage(webpage, self.parser)
         if not d:
             self.logger.warn('Unable to parse search result page for %s', dateobj)
-            return metainfos
+            return metainfos, nextpage
 
         tables = d.find_all('table', {'id': self.result_table})
 
         if len(tables) != 1:
             self.logger.warn('Could not find the result table for %s', dateobj)
-            return metainfos
+            return metainfos, nextpage
         
         order = None
         for tr in tables[0].find_all('tr'):
@@ -149,20 +151,30 @@ class CentralWeekly(BaseGazette):
                 order = self.get_column_order(tr)
                 continue
 
+            if nextpage == None:
+                nextpage = self.find_next_page(tr, curr_page)
+                if nextpage != None:
+                    continue
 
             if tr.find('input') == None and tr.find('a') == None:
                 continue
 
             self.process_result_row(tr, metainfos, dateobj, order)
 
-        return metainfos
+        return metainfos, nextpage
+
+    def find_next_page(self, tr, curr_page):
+        return None
+
+    def download_nextpage(self, nextpage, search_url, postdata, cookiejar):
+        return None
 
     def process_result_row(self, tr, metainfos, dateobj, order):
         metainfo = utils.MetaInfo()
         metainfos.append(metainfo)
         metainfo.set_date(dateobj)
 
-        i = 0
+        i        = 0
         for td in tr.find_all('td'):
             if len(order) > i:
                 col = order[i]
@@ -195,8 +207,7 @@ class CentralWeekly(BaseGazette):
     def download_gazette(self, relpath, search_url, postdata, \
                          metainfo, cookiejar):
         response = self.download_url(search_url, savecookies = cookiejar, \
-                                     postdata = postdata, validurl = False, \
-                                     loacookies = cookiejar)
+                                   postdata = postdata, loadcookies = cookiejar)
         doc    = response.webpage
         srvhdr = response.srvresponse
 
@@ -234,17 +245,26 @@ class CentralWeekly(BaseGazette):
         response = self.download_url(self.baseurl, savecookies = cookiejar)
         curr_url = response.response_url
         search_url = urllib.basejoin(curr_url, self.search_endp)
-
         response = self.get_search_results(search_url, dateobj, cookiejar)
-        if response == None or response.webpage == None:
-            return dls
 
-        metainfos = self.parse_search_results(response.webpage, dateobj)
+        pagenum = 1
+        while response != None and response.webpage != None:
+            metainfos, nextpage = self.parse_search_results(response.webpage, \
+                                                            dateobj, pagenum)
 
-        postdata = self.get_form_data(response.webpage, dateobj)
+            postdata = self.get_form_data(response.webpage, dateobj)
 
-        return self.download_metainfos(relpath, metainfos, search_url, \
-                                       postdata, cookiejar)
+            relurls = self.download_metainfos(relpath, metainfos, search_url, \
+                                              postdata, cookiejar)
+            dls.extend(relurls)
+            if nextpage:
+                pagenum += 1
+                self.logger.info('Going to page %d for date %s', pagenum, dateobj)
+                response = self.download_nextpage(nextpage, search_url, postdata, cookiejar)
+            else:
+                break
+ 
+        return dls
 
     def download_metainfos(self, relpath, metainfos, search_url, \
                            postdata, cookiejar):

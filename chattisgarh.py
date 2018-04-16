@@ -114,7 +114,8 @@ class ChattisgarhWeekly(CentralWeekly):
         if response == None or response.webpage == None:
             return dls
 
-        metainfos = self.parse_search_results(response.webpage, dateobj)
+        metainfos, nextpage = self.parse_search_results(response.webpage, \
+                                                        dateobj, 1)
 
         postdata = self.get_form_data(response.webpage, dateobj)
         return self.download_metainfos(relpath, metainfos, self.baseurl, \
