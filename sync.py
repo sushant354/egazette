@@ -20,7 +20,7 @@ def print_usage(progname):
                        [-t fromdate (DD-MM-YYYY)] [-T todate (DD-MM-YYYY)] 
                        [-D datadir]
                        [-s central_weekly -s central_extraordinary -s central
-                        -s states -s bihar -s chattisgarh
+                        -s states -s andhra -s bihar -s chattisgarh
                         -s cgweekly -s cgextraordinary 
                         -s delhi -s delhi_weekly -s delhi_extraordinary
                        ]

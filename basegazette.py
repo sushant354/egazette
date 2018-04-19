@@ -163,6 +163,7 @@ class BaseGazette(Downloader):
         Downloader.__init__(self, name, storage_manager)
         self.hostname    = None
         self.start_date  = None
+        self.parser      = 'lxml'
 
     def is_valid_gazette(self, doc, min_size):
         return (min_size <= 0 or len(doc) > min_size)

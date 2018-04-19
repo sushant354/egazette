@@ -2,6 +2,7 @@ import central
 import delhi
 import bihar
 import chattisgarh
+import andhra
 
 srcdict = { \
 'central_weekly'       : central.CentralWeekly, \
@@ -11,13 +12,14 @@ srcdict = { \
 'delhi_extraordinary'  : delhi.DelhiExtraordinary, \
 'cgweekly'             : chattisgarh.ChattisgarhWeekly, \
 'cgextraordinary'      : chattisgarh.ChattisgarhExtraordinary, \
+'andhra'               : andhra.Andhra, \
 }
 
 srchierarchy = { \
 'central'    : ['central_weekly', 'central_extraordinary'], \
 'delhi'      : ['delhi_weekly', 'delhi_extraordinary'], \
 'chattisgarh': ['cgweekly', 'cgextraordinary'], \
-'states'     : ['delhi', 'bihar', 'chattisgarh'] \
+'states'     : ['delhi', 'bihar', 'chattisgarh', 'andhra'] \
 }
 
 def get_srcobjs(srclist, storage):
