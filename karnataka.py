@@ -2,6 +2,7 @@ import re
 import os
 from StringIO import StringIO
 import urllib
+import datetime
 
 import utils
 from basegazette import BaseGazette
@@ -10,14 +11,25 @@ class Karnataka(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
 
-        self.baseurl   = 'http://www.gazette.kar.nic.in/%s/'
-        self.hostname  = 'www.gazette.kar.nic.in'
+        self.baseurl    = 'http://www.gazette.kar.nic.in/%s/'
+        self.hostname   = 'www.gazette.kar.nic.in'
+        self.flip_date1 = datetime.date(2009, 03, 05)
+        self.flip_date2 = datetime.date(2013, 03, 07)
 
     def download_oneday(self, relpath, dateobj):
         dls = []
-        datestr = '%d-%d-%d' % (dateobj.day, dateobj.month, dateobj.year)
+        if dateobj >= self.flip_date1:
+            if dateobj >= self.flip_date2:
+                datestr = '%d-%d-%d' % (dateobj.day, dateobj.month, dateobj.year)
+            else:
+                datestr = '%s-%s-%d' % (utils.pad_zero(dateobj.day), utils.pad_zero(dateobj.month), dateobj.year)
+            mainhref = 'Contents-(%s).pdf' % datestr
+        else:
+            datestr = utils.dateobj_to_str(dateobj, '', reverse=True)    
+            mainhref = 'Contents(%s-%s-%s).pdf' % (utils.pad_zero(dateobj.day), utils.pad_zero(dateobj.month), utils.pad_zero(dateobj.year % 100))
+
         dateurl = self.baseurl % datestr
-        docurl  = urllib.basejoin(dateurl, 'Contents-(%s).pdf' % datestr)
+        docurl  = urllib.basejoin(dateurl, mainhref)
 
         metainfo = utils.MetaInfo()
         metainfo.set_date(dateobj)

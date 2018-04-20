@@ -290,7 +290,10 @@ def get_file_extension(mtype):
 
 def extract_links_from_pdf(fileobj):
     doc = PdfFileReader(fileobj)
-    annots = [page.get('/Annots', []).getObject() for page in doc.pages]
+    annots = [page.get('/Annots') for page in doc.pages]
+
+    annots = [note.getObject() for note in annots if note is not None]
+
     annots = reduce(lambda x, y: x + y, annots)
 
     links = []
