@@ -5,7 +5,9 @@ import urlparse
 import calendar
 import magic
 import datetime
+import sys
 
+from PyPDF2 import PdfFileReader
 from xml.parsers.expat import ExpatError
 from xml.dom import minidom, Node
 from bs4 import BeautifulSoup, NavigableString, Tag
@@ -285,3 +287,23 @@ def get_file_extension(mtype):
     elif re.match('text/plain', mtype):
         return 'txt'
     return 'unkwn'
+
+def extract_links_from_pdf(fileobj):
+    doc = PdfFileReader(fileobj)
+    annots = [page.get('/Annots', []).getObject() for page in doc.pages]
+    annots = reduce(lambda x, y: x + y, annots)
+
+    links = []
+    for note in annots:
+        link = note.getObject().get('/A')
+        if link:
+            launch = link.getObject().get('/F')
+            if launch:
+                href = launch.getObject().get('/F')
+                if href:
+                    links.append(href)
+    return links
+
+
+if __name__ == '__main__':
+    print extract_links_from_pdf(open(sys.argv[1], 'rb'))

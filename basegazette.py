@@ -6,6 +6,8 @@ import urlparse
 import os
 import time
 
+import utils
+
 class WebResponse:
    def __init__(self):
        self.srvresponse  = None
@@ -167,6 +169,10 @@ class BaseGazette(Downloader):
 
     def is_valid_gazette(self, doc, min_size):
         return (min_size <= 0 or len(doc) > min_size)
+
+    def get_file_extension(self, doc):
+        mtype = utils.get_buffer_type(doc)
+        return utils.get_file_extension(mtype)
 
     def save_gazette(self, relurl, gurl, metainfo, postdata = None, \
                      referer = None, cookiefile = None, validurl = True, \
