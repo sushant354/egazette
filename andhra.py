@@ -4,6 +4,7 @@ import os
 
 import utils
 from basegazette import BaseGazette
+from central import CentralWeekly
 
 class Andhra(BaseGazette):
     def __init__(self, name, storage):
@@ -165,3 +166,157 @@ class Andhra(BaseGazette):
                              postdata = postdata, validurl = False):
             return relurl
         return None    
+
+class AndhraArchive(CentralWeekly):
+    def __init__(self, name, storage):
+        CentralWeekly.__init__(self, name, storage)
+        self.baseurl      = 'http://gazettearchive.ap.gov.in/gt_PublicReport.aspx'
+        self.hostname     = 'gazettearchive.ap.gov.in'
+        self.search_endp  = 'gt_PublicReport.aspx'
+        self.result_table = 'FileMoveList2'
+
+    def get_search_results(self, search_url, dateobj, cookiejar):
+        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
+
+        postdata = self.get_form_data(response.webpage, dateobj)
+        if postdata == None:
+            return None
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                   loadcookies = cookiejar, postdata = postdata)
+        return response
+
+    def get_post_data(self, tags, dateobj):
+        datestr  = utils.dateobj_to_str(dateobj, '')
+        postdata = []
+
+        for tag in tags:
+            name  = None
+            value = None
+
+            if tag.name == 'input':
+                name  = tag.get('name')
+                value = tag.get('value')
+                t     = tag.get('type')
+                if t == 'image' or name == 'Button2' or name == 'Button1':
+                    continue
+
+
+                if name == 'txttodate' or name == 'txtfrmdate':
+                    value = datestr
+                elif name in ['jobno', 'txtGoNo', 'txtSearchText']:
+                    value = ''
+            elif tag.name == 'select':
+                name = tag.get('name')
+                if name == 'BtnSearch':
+                    value = 'search'
+                elif name == 'DDLDeptname':
+                    value = 'Select'
+                elif name == 'DDLGoType':
+                    value = 'Select'
+                elif name == 'DropDownList1':
+                    value = 'Select'
+
+            if name:
+                if value == None:
+                    value = u''
+                postdata.append((name, value))
+
+        return postdata
+
+    def get_column_order(self, tr):
+        order = []
+        for th in tr.find_all('th'):
+            txt = utils.get_tag_contents(th)
+            if txt and re.search('GazetteType', txt):
+                order.append('gztype')
+            elif txt and re.search('Abstract', txt):
+                order.append('subject')
+            elif txt and re.search('DepartmentName', txt):
+                order.append('department')
+            elif txt and re.search('Gazette\s+No', txt):
+                order.append('gznum')
+            elif txt and re.search('Issued\s+By', txt):
+                order.append('issued_by')
+            else:
+                order.append('')
+        return order
+
+    def process_result_row(self, tr, metainfos, dateobj, order):
+        download = None
+        for link in tr.find_all('a'):
+            txt = utils.get_tag_contents(link)
+            if txt and re.match('\s*select', txt, re.IGNORECASE):
+                download = link.get('href')
+                break
+ 
+        if not download:
+            return
+ 
+        metainfo = utils.MetaInfo()
+        metainfos.append(metainfo)
+        metainfo.set_date(dateobj)
+        metainfo['download'] = download
+
+        i = 0
+        for td in tr.find_all('td'):
+            if len(order) > i:
+                col = order[i]
+                txt = utils.get_tag_contents(td)
+                if txt:
+                    txt = txt.strip()
+                else:
+                    continue
+
+                if col == 'gztype':
+                    pos = txt.find('PART')
+                    if pos > 0:
+                        metainfo.set_gztype(txt[:pos])
+                        metainfo['partnum'] = txt[pos:]
+                    else:
+                        metainfo.set_gztype(txt)
+
+                elif col in ['subject', 'department', 'issued_by', 'gznum']:
+                    metainfo[col] = txt
+  
+            i += 1
+
+    def download_metainfos(self, relpath, metainfos, search_url, \
+                           postdata, cookiejar):
+        dls = []
+        for metainfo in metainfos:
+            if 'download' not in metainfo or 'gznum' not in metainfo:
+                self.logger.warn('Required fields not present. Ignoring- %s' % metainfo) 
+                continue
+
+            href = metainfo.pop('download')
+            reobj = re.search('javascript:__doPostBack\(\'(?P<event_target>[^\']+)\',\'(?P<event_arg>[^\']+)\'\)', href)
+            if not reobj:
+                self.logger.warn('No event_target or event_arg in the gazette link. Ignoring - %s' % metainfo)
+                continue 
+
+            groupdict    = reobj.groupdict()
+            event_target = groupdict['event_target']
+            event_arg    = groupdict['event_arg']
+
+            newpost = []
+            for t in postdata:
+                if t[0] == 'BtnSearch':
+                    continue
+                if t[0] == '__EVENTTARGET':
+                    t = (t[0], event_target)
+                if t[0] == '__EVENTARGUMENT':
+                    t = (t[0], event_arg)
+
+                newpost.append(t)
+                   
+            gznum = metainfo['gznum']
+            if 'partnum' in metainfo:
+                gznum = '%s_%s' % (gznum, metainfo['partnum'])
+            gznum, n = re.subn('[\s]+', '', gznum)
+            relurl = os.path.join(relpath, gznum)
+            if self.save_gazette(relurl, search_url, metainfo, \
+                                 postdata = newpost, cookiefile = cookiejar, \
+                                 validurl = False):
+                dls.append(relurl)
+
+        return dls
