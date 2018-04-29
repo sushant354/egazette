@@ -132,7 +132,8 @@ def get_tag_contents(node):
         if type(content) == NavigableString:
             retval.append(content)
         elif type(content) == Tag and content.name not in ['style', 'script']:
-            retval.append(' ')
+            if content.name not in ['span']:
+                retval.append(' ')
             retval.append(get_tag_contents(content))
 
     return u''.join(retval) 

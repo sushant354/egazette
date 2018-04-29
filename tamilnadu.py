@@ -9,7 +9,7 @@ import utils
 class TamilNadu(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.hostname = ''
+        self.hostname = 'www.stationeryprinting.tn.gov.in'
         self.baseurl  = 'http://www.stationeryprinting.tn.gov.in'
 
         self.ordinary_byyear = '/gazette/gazette_list%d.php'

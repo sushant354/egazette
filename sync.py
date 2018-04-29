@@ -26,7 +26,8 @@ def print_usage(progname):
                         -s chattisgarh -s cgweekly -s cgextraordinary 
                         -s delhi -s delhi_weekly -s delhi_extraordinary
                         -s karnataka
-                        -s karnataka
+                        -s maharashtra -s telangana -s tamilnadu
+                        -s jharkhand   -s odisha    -s madhyapradesh
                        ]
                        ''' % progname
 

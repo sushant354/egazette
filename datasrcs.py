@@ -4,9 +4,14 @@ import bihar
 import chattisgarh
 import andhra
 import karnataka
+
 import maharashtra
 import telangana
 import tamilnadu
+
+import odisha
+import jharkhand
+import madhyapradesh
 
 srcdict = { \
 'central_weekly'       : central.CentralWeekly, \
@@ -22,6 +27,9 @@ srcdict = { \
 'maharashtra'          : maharashtra.Maharashtra, \
 'telangana'            : telangana.Telangana, \
 'tamilnadu'            : tamilnadu.TamilNadu, \
+'odisha'               : odisha.Odisha, \
+'jharkhand'            : jharkhand.Jharkhand, \
+'madhyapradesh'        : madhyapradesh.MadhyaPradesh, \
 }
 
 srchierarchy = { \
@@ -29,7 +37,8 @@ srchierarchy = { \
 'delhi'      : ['delhi_weekly', 'delhi_extraordinary'], \
 'chattisgarh': ['cgweekly', 'cgextraordinary'], \
 'states'     : ['delhi', 'bihar', 'chattisgarh', 'andhra', 'karnataka', \
-                'andhraarchive', 'maharashtra', 'telangana', 'tamilnadu'] \
+                'andhraarchive', 'maharashtra', 'telangana', 'tamilnadu', \
+                'odisha', 'jharkhand', 'madhyapradesh'] \
 }
 
 def get_srcobjs(srclist, storage):

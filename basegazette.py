@@ -184,7 +184,8 @@ class BaseGazette(Downloader):
                 response = self.download_url(gurl, referer = referer, \
                                  postdata = postdata, loadcookies = cookiefile)
             else:
-                response = self.download_url(gurl, referer = referer)
+                response = self.download_url(gurl, postdata = postdata, \
+                                             referer = referer)
 
             if response == None:
                 return updated
