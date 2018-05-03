@@ -13,6 +13,10 @@ import odisha
 import jharkhand
 import madhyapradesh
 
+import punjab
+import uttarakhand
+import himachal
+
 srcdict = { \
 'central_weekly'       : central.CentralWeekly, \
 'central_extraordinary': central.CentralExtraordinary, \
@@ -30,6 +34,9 @@ srcdict = { \
 'odisha'               : odisha.Odisha, \
 'jharkhand'            : jharkhand.Jharkhand, \
 'madhyapradesh'        : madhyapradesh.MadhyaPradesh, \
+'punjab'               : punjab.Punjab, \
+'uttarakhand'          : uttarakhand.Uttarakhand, \
+'himachal'             : himachal.Himachal, \
 }
 
 srchierarchy = { \

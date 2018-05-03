@@ -23,10 +23,15 @@ Usage:python sync.py   [-l level(critical, error, warn, info, debug)]
 
 
                        [-s central_weekly -s central_extraordinary -s central
-                        -s states -s andhra -s bihar -s chattisgarh
-                        -s cgweekly -s cgextraordinary 
+                        -s states 
+                        -s andhra -s andhraarchive 
+                        -s bihar 
+                        -s chattisgarh -s cgweekly -s cgextraordinary 
                         -s delhi -s delhi_weekly -s delhi_extraordinary
                         -s karnataka
+                        -s maharashtra -s telangana   -s tamilnadu
+                        -s jharkhand   -s odisha      -s madhyapradesh
+                        -s punjab      -s uttarakhand -s himachal
                        ]
 
                        [-D datadir]
