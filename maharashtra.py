@@ -12,7 +12,7 @@ class Maharashtra(AndhraArchive):
         self.hostname     = 'egazzete.mahaonline.gov.in'
         self.search_endp  = 'GazetteSearch.aspx'
         self.result_table = 'CPH_GridView2'
-        self.start_date   = datetime.date(2010, 1, 1)
+        self.start_date   = datetime.datetime(2010, 1, 1)
 
     def get_post_data(self, tags, dateobj):
         datestr  = utils.dateobj_to_str(dateobj, '/')

@@ -14,7 +14,7 @@ class Uttarakhand(BaseGazette):
         self.search_endp  = 'searchgazette.aspx'
         self.searchurl    = urllib.basejoin(self.baseurl, self.search_endp)
         self.hostname     = 'gazettes.uk.gov.in'
-        self.start_date   = datetime.date(2013, 1, 1)
+        self.start_date   = datetime.datetime(2013, 1, 1)
 
     def find_search_form(self, d):
         search_form = None
@@ -110,7 +110,7 @@ class Uttarakhand(BaseGazette):
 
         postdata = self.get_form_data(response.webpage, dateobj)
         if postdata == None:
-            return None
+            return dls 
 
         response = self.download_url(self.searchurl, savecookies = cookiejar, \
                                    loadcookies = cookiejar, postdata = postdata)

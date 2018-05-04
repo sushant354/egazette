@@ -10,7 +10,7 @@ class Telangana(Andhra):
         self.baseurl      = 'http://tsgazette.cgg.gov.in/viewGazette.do'
         self.hostname     = 'tsgazette.cgg.gov.in'
         self.searchurl    = self.baseurl
-        self.start_date   = datetime.date(2014, 1, 1)
+        self.start_date   = datetime.datetime(2014, 1, 1)
 
     def get_field_order(self, tr):
         i = 0

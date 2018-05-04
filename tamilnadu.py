@@ -17,7 +17,7 @@ class TamilNadu(BaseGazette):
 
         self.ordinary_latest      = '/gazette/gazette_list.php'
         self.extraordinary_latest = '/extraordinary/extraord_list.php'
-        self.start_date           = datetime.date(2008, 1, 1)
+        self.start_date           = datetime.datetime(2008, 1, 1)
 
     def download_oneday(self, relpath, dateobj):
         dls = []
