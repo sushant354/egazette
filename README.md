@@ -7,6 +7,10 @@ Modules to be installed:
 
 3. pypdf2 https://github.com/mstamy2/PyPDF2
 
+4. Pillow  https://pypi.org/project/Pillow/2.2.1/
+
+5. tesseract https://github.com/tesseract-ocr/
+
 Usage:python sync.py   [-l level(critical, error, warn, info, debug)]
 
                        [-a (all_downloads)]

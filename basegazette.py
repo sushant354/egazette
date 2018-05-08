@@ -176,13 +176,14 @@ class BaseGazette(Downloader):
 
     def save_gazette(self, relurl, gurl, metainfo, postdata = None, \
                      referer = None, cookiefile = None, validurl = True, \
-                     min_size=0, count=0):
+                     min_size=0, count=0, hdrs = {}):
         updated = False
         if self.storage_manager.should_download_raw(relurl, gurl, \
                                                     validurl = validurl):
             if cookiefile:
                 response = self.download_url(gurl, referer = referer, \
-                                 postdata = postdata, loadcookies = cookiefile)
+                                 postdata = postdata, loadcookies = cookiefile,\
+                                 headers = hdrs)
             else:
                 response = self.download_url(gurl, postdata = postdata, \
                                              referer = referer)
