@@ -38,7 +38,8 @@ srcdict = { \
 'punjab'               : punjab.Punjab, \
 'uttarakhand'          : uttarakhand.Uttarakhand, \
 'himachal'             : himachal.Himachal, \
-'haryana'              : haryana. Haryana, \
+'haryana'              : haryana.Haryana, \
+'haryanaarchive'       : haryana.HaryanaArchive, \
 }
 
 srchierarchy = { \
@@ -48,7 +49,7 @@ srchierarchy = { \
 'states'     : ['delhi', 'bihar', 'chattisgarh', 'andhra', 'karnataka', \
                 'andhraarchive', 'maharashtra', 'telangana', 'tamilnadu', \
                 'odisha', 'jharkhand', 'madhyapradesh', 'punjab', \
-                'uttarakhand', 'haryana'] \
+                'uttarakhand', 'haryana', 'haryanaarchive'] \
 }
 
 def get_srcobjs(srclist, storage):

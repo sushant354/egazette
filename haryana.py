@@ -19,6 +19,7 @@ class Haryana(AndhraArchive):
         self.result_table = 'ContentPlaceHolder1_GridView1'
         self.captcha_url  = urllib.basejoin(self.baseurl, '/Handler.ashx')
         self.start_date   = datetime.datetime(2014, 1, 1)
+        self.gazette_js   = 'window.open\(\'(?P<href>Gazette[^\']+)'
 
     def get_post_data(self, tags, dateobj):
         datestr  = utils.dateobj_to_str(dateobj, '-', reverse = True)
@@ -82,7 +83,6 @@ class Haryana(AndhraArchive):
              
             if not response or not response.webpage:
                 break
-            
             d = utils.parse_webpage(response.webpage, self.parser)
             if d and not self.is_form_webpage(d):
                 break 
@@ -199,8 +199,8 @@ class Haryana(AndhraArchive):
             if not response or not response.webpage:
                 self.logger.warn('Could not get the page for %s' % metainfo)
                 continue
-
-            reobj = re.search('window.open\(\'(?P<href>Gazette[^\']+)', response.webpage)
+ 
+            reobj = re.search(self.gazette_js, response.webpage)
             if not reobj:
                 self.logger.warn('Could not get url link for %s' % metainfo)
                 continue
@@ -217,3 +217,168 @@ class Haryana(AndhraArchive):
                 dls.append(relurl)
 
         return dls
+
+class HaryanaArchive(Haryana):
+    def __init__(self, name, storage):
+        Haryana.__init__(self, name, storage)
+        self.baseurl      = 'http://www.egazetteharyana.gov.in/ArchiveNotifications.aspx'
+        self.hostname     = 'www.egazetteharyana.gov.in'
+        self.search_endp  = 'ArchiveNotifications.aspx'
+        self.gazette_js   = 'window.open\(\'(?P<href>ArchiveNotifications[^\']+)'
+        self.start_date   = datetime.datetime(1958, 1, 1)
+
+    def get_post_data(self, tags, dateobj, category):
+        datestr  = utils.dateobj_to_str(dateobj, '-', reverse = True)
+        postdata = []
+
+        radio_set = False
+        for tag in tags:
+            name  = None
+            value = None
+
+            if tag.name == 'input':
+                name  = tag.get('name')
+                value = tag.get('value')
+                t     = tag.get('type')
+                if t == 'image' or name == 'ctl00$ContentPlaceHolder1$archiveNotification':
+                    continue
+                if name == 'ctl00$ContentPlaceHolder1$RadioButtonList1' \
+                        and radio_set:
+                    continue
+         
+                if name == 'ctl00$ContentPlaceHolder1$txtstartdate' or \
+                        name == 'ctl00$ContentPlaceHolder1$txtenddate':
+                    value = datestr
+                elif name == 'ctl00$ContentPlaceHolder1$Button1':
+                    value = 'Submit'
+                elif name == 'ctl00$ContentPlaceHolder1$RadioButtonList1':
+                    value = '-1'
+                    radio_set = True
+            elif tag.name == 'select':
+                name = tag.get('name')
+                if name == 'BtnSearch':
+                    value = 'search'
+                elif name == 'ctl00$ContentPlaceHolder1$ddlGazetteCat':
+                    value = category['value']
+                elif name == 'ctl00$ContentPlaceHolder1$ddldepartment':
+                    value = '-1'
+
+            if name:
+                if value == None:
+                    value = u''
+                postdata.append((name, value))
+        return postdata
+
+    def find_categories(self, d):
+        cats = []
+        select = d.find('select', {'id': 'ContentPlaceHolder1_ddlGazetteCat'})
+        if not select:
+            return cats
+
+        for option in select.find_all('option'):
+            value = option.get('value')
+            if value == '-1':
+                continue
+
+            name = utils.get_tag_contents(option)
+            cats.append({'value': value, 'name': name})
+
+        return cats
+
+    def download_oneday(self, relpath, dateobj):
+        dls = []
+        response = self.download_url(self.baseurl)
+
+        if not response or not response.webpage:
+            self.logger.error('Unable to download the webpage for %s', dateobj)
+            return dls
+
+        d = utils.parse_webpage(response.webpage, self.parser)
+        if not d:
+            self.logger.error('Unable to parse the webpage for %s', dateobj)
+            return dls
+
+        categories = self.find_categories(d)
+        for category in categories:
+            dls.extend(self.download_onecat(relpath, dateobj, category))
+            break
+
+        return dls 
+
+    def download_onecat(self, relpath, dateobj, category):
+        dls = []
+        cookiejar  = CookieJar()
+        response = self.get_search_results(self.baseurl, dateobj, category, cookiejar)
+
+        pagenum = 1
+        while response != None and response.webpage != None:
+            metainfos, nextpage = self.parse_search_results(response.webpage, \
+                                                            dateobj, pagenum)
+
+            postdata = self.get_form_data(response.webpage, dateobj, category)
+
+            relurls = self.download_metainfos(relpath, metainfos, self.baseurl,\
+                                              postdata, cookiejar)
+            dls.extend(relurls)
+            if nextpage:
+                pagenum += 1
+                self.logger.info('Going to page %d for date %s', pagenum, dateobj)
+                response = self.download_nextpage(nextpage, search_url, postdata, cookiejar)
+            else:
+                break
+        return dls
+
+    def get_form_data(self, webpage, dateobj, category):
+        search_form = self.get_search_form(webpage, dateobj)
+        if search_form == None:
+            self.logger.warn('Unable to get the search form for day: %s', dateobj)
+            return None
+
+        reobj  = re.compile('^(input|select)$')
+        inputs = search_form.find_all(reobj)
+        postdata = self.get_post_data(inputs, dateobj, category)
+
+        return postdata
+
+    def get_search_results(self, search_url, dateobj, category, cookiejar):
+        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
+
+        while response and response.webpage: 
+            response = self.submit_captcha_form(search_url, response.webpage, \
+                                                cookiejar, dateobj, category)
+             
+            if not response or not response.webpage:
+                break
+            d = utils.parse_webpage(response.webpage, self.parser)
+            if d and not self.is_form_webpage(d):
+                break 
+            else:    
+                response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
+                
+        return response
+    
+        
+    def submit_captcha_form(self, search_url, webpage, cookiejar, \
+                            dateobj, category):        
+        captcha  = self.download_url(self.captcha_url, loadcookies=cookiejar)
+        if captcha == None or captcha.webpage == None:
+            self.logger.warn('Unable to download captcha')
+            return None
+
+        img = Image.open(io.BytesIO(captcha.webpage))
+                    
+        captcha_val = decode_captcha.haryana_captcha(img)
+
+        postdata = self.get_form_data(webpage, dateobj, category)
+        if postdata == None:
+            return None
+
+        newpost = []
+        for name, value in postdata:
+            if name == 'ctl00$ContentPlaceHolder1$txtcaptcha':
+                value = captcha_val
+            newpost.append((name, value))   
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                   loadcookies = cookiejar, postdata = newpost)
+        return response
+
