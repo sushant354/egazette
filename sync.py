@@ -29,7 +29,7 @@ def print_usage(progname):
                         -s maharashtra -s telangana   -s tamilnadu
                         -s jharkhand   -s odisha      -s madhyapradesh
                         -s punjab      -s uttarakhand -s himachal
-                        -s haryana
+                        -s haryana     -s kerala      -s haryanaarchive 
                        ]
                        ''' % progname
 

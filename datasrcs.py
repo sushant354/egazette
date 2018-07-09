@@ -15,8 +15,10 @@ import madhyapradesh
 
 import punjab
 import uttarakhand
-import himachal
 import haryana
+
+import kerala
+import himachal
 
 srcdict = { \
 'central_weekly'       : central.CentralWeekly, \
@@ -40,6 +42,7 @@ srcdict = { \
 'himachal'             : himachal.Himachal, \
 'haryana'              : haryana.Haryana, \
 'haryanaarchive'       : haryana.HaryanaArchive, \
+'kerala'               : kerala.Kerala, \
 }
 
 srchierarchy = { \

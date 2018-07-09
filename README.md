@@ -36,6 +36,7 @@ Usage:python sync.py   [-l level(critical, error, warn, info, debug)]
                         -s maharashtra -s telangana   -s tamilnadu
                         -s jharkhand   -s odisha      -s madhyapradesh
                         -s punjab      -s uttarakhand -s himachal
+                        -s haryana     -s kerala      -s haryanaarchive 
                        ]
 
                        [-D datadir]

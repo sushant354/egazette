@@ -28,6 +28,9 @@ def get_node_value(xmlNodes):
                 value.append(node.data)
     return u''.join(value)
 
+def remove_spaces(x):
+    x, n = re.subn('\s+', ' ', x)
+    return x.strip()
 
 def check_next_page(tr, pagenum):
     links    = tr.findAll('a')
@@ -59,10 +62,10 @@ def check_next_page(tr, pagenum):
 
     return pageblock, nextlink
 
-def get_month_num(month):
+def get_month_num(month, monthnames):
     i = 0
     month = month.lower()
-    for m in calendar.month_abbr:
+    for m in monthnames:
         if m.lower() == month:
             return i
         i += 1
@@ -72,7 +75,7 @@ def parse_datestr(datestr):
     reobj = re.search('(?P<day>\d+)\s*(?P<month>\w+)\s*(?P<year>\d+)', datestr)
     if reobj:
         groupdict = reobj.groupdict()
-        month_num = get_month_num(groupdict['month'])
+        month_num = get_month_num(groupdict['month'], calendar.month_abbr)
         if month_num <= 0:
             return None
         try:
@@ -138,6 +141,28 @@ def get_tag_contents(node):
 
     return u''.join(retval) 
 
+def get_date_from_title(title):
+    months =  '|'.join(calendar.month_name[1:]) 
+    reobj = re.search(r'(?P<day>\d+)\s*(st|nd|rd|th)\s*(?P<month>%s)\s*(?P<year>\d{4})\b' % months, title, re.IGNORECASE)
+    if not reobj:
+        return None
+
+    groupdict = reobj.groupdict()
+
+    day    = groupdict['day']
+    month  = groupdict['month']
+    year   = groupdict['year']
+
+    month_num = get_month_num(groupdict['month'], calendar.month_name)
+    if month_num <= 0:
+        return None
+
+    try:
+        dateobj = datetime.date(int(year), month_num, int (day))
+    except:    
+        dateobj = None    
+    return dateobj
+        
 def tag_contents_without_recurse(tag):
     contents = []
     for content in tag.contents:
