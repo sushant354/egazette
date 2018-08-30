@@ -20,6 +20,10 @@ class Haryana(AndhraArchive):
         self.captcha_url  = urllib.basejoin(self.baseurl, '/Handler.ashx')
         self.start_date   = datetime.datetime(2014, 1, 1)
         self.gazette_js   = 'window.open\(\'(?P<href>Gazette[^\']+)'
+        self.captcha_field = 'ctl00$ContentPlaceHolder1$txtcaptcha'
+        self.solve_captcha = decode_captcha.haryana_captcha
+        self.search_button = 'ctl00$ContentPlaceHolder1$Button1'
+        self.counter = 1
 
     def get_post_data(self, tags, dateobj):
         datestr  = utils.dateobj_to_str(dateobj, '-', reverse = True)
@@ -68,14 +72,15 @@ class Haryana(AndhraArchive):
         if table != None:
             return False 
 
-        submit = d.find('input', {'name': 'ctl00$ContentPlaceHolder1$Button1'})
+        submit = d.find('input', {'name': self.search_button})
         if submit == None:
             return False
 
         return True
 
     def get_search_results(self, search_url, dateobj, cookiejar):
-        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                     loadcookies=cookiejar)
 
         while response and response.webpage: 
             response = self.submit_captcha_form(search_url, response.webpage, \
@@ -86,8 +91,9 @@ class Haryana(AndhraArchive):
             d = utils.parse_webpage(response.webpage, self.parser)
             if d and not self.is_form_webpage(d):
                 break 
-            else:    
-                response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
+            else:   
+                self.logger.warn('Failed in solving captcha. Rerying.')
+                #response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
                 
         return response
     
@@ -110,16 +116,21 @@ class Haryana(AndhraArchive):
             else:
                 order.append('')
         return order
-         
-    def submit_captcha_form(self, search_url, webpage, cookiejar, dateobj):        
-        captcha  = self.download_url(self.captcha_url, loadcookies=cookiejar)
+
+    def download_captcha(self, search_url, webpage, cookiejar):
+        return self.download_url(self.captcha_url, loadcookies=cookiejar)
+             
+    def submit_captcha_form(self, search_url, webpage, cookiejar, dateobj): 
+        captcha = self.download_captcha(search_url, webpage, cookiejar)
         if captcha == None or captcha.webpage == None:
             self.logger.warn('Unable to download captcha')
             return None
 
         img = Image.open(io.BytesIO(captcha.webpage))
                     
-        captcha_val = decode_captcha.haryana_captcha(img)
+        #img.save('new_captchas/%d.jpeg' % self.counter)          
+        captcha_val = self.solve_captcha(img)
+        self.counter += 1
 
         postdata = self.get_form_data(webpage, dateobj)
         if postdata == None:
@@ -127,10 +138,12 @@ class Haryana(AndhraArchive):
 
         newpost = []
         for name, value in postdata:
-            if name == 'ctl00$ContentPlaceHolder1$txtcaptcha':
+            if name == self.captcha_field:
                 value = captcha_val
-            newpost.append((name, value))   
+            newpost.append((name, value)) 
         response = self.download_url(search_url, savecookies = cookiejar, \
+                                   referer = search_url, \
+                                   headers = {'Content-Type': 'application/x-www-form-urlencoded'}, \
                                    loadcookies = cookiejar, postdata = newpost)
         return response
 
@@ -193,7 +206,7 @@ class Haryana(AndhraArchive):
                 elif t[0] == 'ctl00$ContentPlaceHolder1$ctl03':
                     t = (t[0], '10')
                 newpost.append(t)
-                   
+        
             response = self.download_url(search_url, postdata = newpost, \
                                          loadcookies= cookiejar)
             if not response or not response.webpage:
@@ -314,7 +327,6 @@ class HaryanaArchive(Haryana):
         while response != None and response.webpage != None:
             metainfos, nextpage = self.parse_search_results(response.webpage, \
                                                             dateobj, pagenum)
-
             postdata = self.get_form_data(response.webpage, dateobj, category)
 
             relurls = self.download_metainfos(relpath, metainfos, self.baseurl,\

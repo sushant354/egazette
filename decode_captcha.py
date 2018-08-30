@@ -107,6 +107,119 @@ def ecourt(img, outfile = None):
         val = tesseract(img2.convert('L'))
     return val
 
+def remove_lines(img, chop):
+    data = img.load()
+    width, height = img.size
+     
+    # Iterate through the rows.
+    for y in range(height):
+        for x in range(width):
+
+            # Make sure we're on a dark pixel.
+            if data[x, y] > 128:
+                continue
+
+            # Keep a total of non-white contiguous pixels.
+            total = 0
+
+            # Check a sequence ranging from x to image.width.
+            for c in range(x, width):
+
+                # If the pixel is dark, add it to the total.
+                if data[c, y] < 128:
+                    total += 1
+
+                # If the pixel is light, stop the sequence.
+                else:
+                   break
+
+            # If the total is less than the chop, replace everything with white.
+            if total <= chop:
+                for c in range(total):
+                    data[x + c, y] = 255
+
+            # Skip this sequence we just altered.
+            x += total
+
+
+    # Iterate through the columns.
+    for x in range(width):
+        for y in range(height):
+
+            # Make sure we're on a dark pixel.
+            if data[x, y] > 128:
+                continue
+
+            # Keep a total of non-white contiguous pixels.
+            total = 0
+
+            # Check a sequence ranging from y to image.height.
+            for c in range(y, height):
+
+                # If the pixel is dark, add it to the total.
+                if data[x, c] < 128:
+                    total += 1
+
+                # If the pixel is light, stop the sequence.
+                else:
+                    break
+
+            # If the total is less than the chop, replace everything with white.
+            if total <= chop:
+                for c in range(total):
+                    data[x, y + c] = 255
+
+            # Skip this sequence we just altered.
+            y += total
+
+def nh_score(img, cycles, threshold):
+    data = img.load()
+    width, height = img.size
+    score = []
+    for x in xrange(width):
+        colscore = []
+        for y in xrange(height):
+            if data[x, y] < 128:
+                p = 1
+            else:
+                p = 0
+            colscore.append(p)
+        score.append(colscore)
+
+    for i in xrange(cycles):
+        for x in xrange(width):
+            colscore = score[x]
+            for y in xrange(height):
+                if colscore[y] > 0:
+                    if x > 0:
+                        colscore[y] += score[x-1][y]
+                    if x < width -1:
+                        colscore[y] += score[x+1][y]
+                    if y > 0:
+                        colscore[y] += colscore[y-1]
+                    if y < height -1:    
+                        colscore[y] += colscore[y+1]
+    for x in xrange(width):
+        colscore = []
+        for y in xrange(height):
+            if score[x][y] <=  threshold:
+                data[x, y] = 255
+                            
+
+
+def himachal(img, outfile = None):
+    m = 2 
+    #img = img.resize((int(img.size[0]*m), int(img.size[1]*m)))
+    img = img.convert('L') # convert image to single channel greyscale
+
+    nh_score(img, 10, 10000 * 1000 * 1000)
+    if outfile:
+        img.save(outfile)
+
+    #img = img.resize((int(img.size[0]*m), int(img.size[1]*m)))
+    val = tesseract(img)
+    return val.upper() 
+
 def allahabad(img, outfile = None):
     img = img.convert('RGBA')
     pixdata = img.load()
@@ -192,7 +305,7 @@ def tesseract(image):
 
     # perform OCR
     output_filename = input_file.name.replace('.tif', '.txt')
-    call_command('tesseract', '-psm', '7', input_file.name, output_filename.replace('.txt', ''))
+    call_command('tesseract', '--psm', '7', input_file.name, output_filename.replace('.txt', ''))
     
     # read in result from output file
     result = open(output_filename).read()
@@ -234,7 +347,7 @@ if __name__ == '__main__':
             else:
                 outfile = None
 
-            val = haryana_captcha(img) #ecourt(img, outfile = outfile)
+            val = himachal(img, outfile = outfile)
             print val
             if val:
                 expected = results[filename]
@@ -245,7 +358,6 @@ if __name__ == '__main__':
                     failed += 1
             else:
                 noresult += 1
-
     print 'Success: ', success, 'Failed: ', failed, 'No Result: ', noresult
 
 
