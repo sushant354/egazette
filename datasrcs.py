@@ -20,6 +20,8 @@ import haryana
 import kerala
 import himachal
 
+import stgeorge
+
 srcdict = { \
 'central_weekly'       : central.CentralWeekly, \
 'central_extraordinary': central.CentralExtraordinary, \
@@ -43,6 +45,7 @@ srcdict = { \
 'haryana'              : haryana.Haryana, \
 'haryanaarchive'       : haryana.HaryanaArchive, \
 'kerala'               : kerala.Kerala, \
+'stgeorge'             : stgeorge.StGeorge, \
 }
 
 srchierarchy = { \
@@ -52,7 +55,7 @@ srchierarchy = { \
 'states'     : ['delhi', 'bihar', 'chattisgarh', 'andhra', 'karnataka', \
                 'andhraarchive', 'maharashtra', 'telangana', 'tamilnadu', \
                 'odisha', 'jharkhand', 'madhyapradesh', 'punjab', \
-                'uttarakhand', 'haryana', 'haryanaarchive'] \
+                'uttarakhand', 'haryana', 'haryanaarchive', 'kerala', 'stgeorge'] \
 }
 
 def get_srcobjs(srclist, storage):

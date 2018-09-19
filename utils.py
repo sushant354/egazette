@@ -312,6 +312,8 @@ def get_file_extension(mtype):
         return 'pdf'
     elif re.match('text/plain', mtype):
         return 'txt'
+    elif re.match('image/png', mtype):
+        return 'png'
     return 'unkwn'
 
 def extract_links_from_pdf(fileobj):
