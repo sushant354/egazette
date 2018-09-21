@@ -16,6 +16,7 @@ class StGeorge(Kerala):
         self.parser     = 'html.parser'
         self.start_date   = datetime.datetime(1903, 1, 1)
         self.save_raw     = False 
+        self.gzurl_format = 'sitemedia/TG%s/%s/%s_Page_%s.png' 
 
     def get_post_data(self, year):        
         postdata = [('action', 'search_Gazette'), ('department', ''), \
@@ -177,7 +178,7 @@ class StGeorge(Kerala):
         month_num = utils.get_month_num(month, calendar.month_abbr)             
         d = datetime.date(int(gzyear), month_num, int(day))
 
-        gzurl = self.baseurl + 'sitemedia/TG%s/%s/%s_Page_%s.png' % (gzyear, accno, accno, pagenumber)
+        gzurl = self.baseurl +  self.gzurl_format % (gzyear, accno, accno, pagenumber)
 
         
         metainfo = utils.MetaInfo()
@@ -186,6 +187,11 @@ class StGeorge(Kerala):
         metainfo['relurl'] =  '%s_Page_%s' % (accno, pagenumber)
 
         txt = utils.get_tag_contents(link)
+        self.populate_link_metainfo(txt, metainfo)
+
+        return metainfo
+
+    def populate_link_metainfo(self, txt, metainfo):
         reobj = re.search('Issue\s+Number:\s*(?P<num>\d+)', txt)
         if reobj:
             metainfo['issue'] = reobj.groupdict()['num']
@@ -197,8 +203,6 @@ class StGeorge(Kerala):
         reobj = re.search('Gazette\s+Page:\s*(?P<num>\d+)', txt)
         if reobj:
             metainfo['gzpage'] = reobj.groupdict()['num']
-
-        return metainfo
 
     def next_page_post(self, onclick, year):
         reobj = re.search('recordPagination\("(?P<query>[^"]+)"\s*,\s*(?P<start>\d+)\s*,\s*(?P<page>\d+)', onclick)
@@ -213,3 +217,29 @@ class StGeorge(Kerala):
         else:
             postdata = None
         return postdata
+
+class KeralaLibrary(StGeorge):
+    def __init__(self, name, storage):
+        StGeorge.__init__(self, name, storage)
+        self.hostname = 'statelibrary.kerala.gov.in'
+        self.date_url = 'http://statelibrary.kerala.gov.in/gazette/gazette.php'
+        self.baseurl = 'http://statelibrary.kerala.gov.in/gazette/'
+        self.parser     = 'html.parser'
+        self.start_date   = datetime.datetime(1903, 1, 1)
+        self.save_raw     = False 
+        self.gzurl_format = 'sitemedia/%s/%s/%s_Page_%s.png'
+         
+    def populate_link_metainfo(self, txt, metainfo):
+        reobj = re.search('Issue\s+Number:\s*(?P<num>\d+)', txt)
+        if reobj:
+            metainfo['issue'] = reobj.groupdict()['num']
+            
+        reobj = re.search('Part:\s*(?P<num>.+),?\s*Gazette\s+Page:\s*(?P<gzpage>\w+),', txt)
+        if reobj:
+            metainfo['partnum'] = reobj.groupdict()['num']
+            metainfo['gzpage']  = reobj.groupdict()['gzpage']
+     
+        reobj = re.search('Volume:?\s*(?P<volume>\w*)\s*Number:\s*(?P<number>\d+)', txt)
+        if reobj:
+            metainfo['volume'] =  reobj.groupdict()['volume']
+            metainfo['number'] =  reobj.groupdict()['number']
