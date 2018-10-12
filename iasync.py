@@ -1,0 +1,277 @@
+import sys
+import getopt
+import datetime
+import logging
+import re
+
+from internetarchive import upload, get_session, get_item, modify_metadata
+from file_storage import FileManager
+
+import datasrcs 
+
+class GazetteIA:
+    def __init__(self, file_storage, access_key, secret_key, loglevel, logfile):
+        self.file_storage = file_storage
+        self.access_key   = access_key
+        self.secret_key   = secret_key
+
+        session_data = {'access': access_key, 'secret': secret_key}
+        if logfile:
+            logconfig    = {'logging': {'level': loglevel, 'file': logfile}}
+        else:    
+            logconfig    = {'logging': {'level': loglevel}}
+
+        self.session = get_session({'s3': session_data, 'logging': logconfig})
+   
+    def get_identifier(self, relurl):
+        return 'in.gazette.' +  relurl.replace('/', '.')
+
+    def upload(self, relurl):
+        identifier = self.get_identifier(relurl)
+        item = get_item(identifier, archive_session = self.session)
+        if item.exists:
+            self.logger.warn('Item already exists, Ignoring upload for %s' % \
+                             identifier)
+            return
+        metainfo = self.file_storage.get_metainfo(relurl)
+        if metainfo == None:
+            self.logger.warn('No metainfo, Ignoring upload for %s' % \
+                             identifier)
+
+        metadata = self.to_ia_metadata(relurl, metainfo)
+
+        rawfile  = self.file_storage.get_rawfile_path(relurl)
+        metafile = self.file_storage.get_metafile_path(relurl)
+        
+        r = upload(identifier, [rawfile, metafile], metadata = metadata, \
+                   access_key = self.access_key, secret_key = self.secret_key, \
+                   retries=100) 
+        return r
+  
+    def get_title(self, src, metainfo):
+        category = datasrcs.categories[src]
+        title = [category]
+
+        if 'date' in metainfo:
+            title.append(u'%s' % metainfo['date'])
+
+        if 'gztype' in metainfo:
+            title.append(metainfo['gztype'])
+
+        if 'partnum' in metainfo:
+            partnum = metainfo['partnum']
+            if re.search(r'\bPart\b', partnum):
+                title.append(partnum)
+            else:    
+                title.append(u'Part %s' %partnum)
+
+        if 'gznum' in metainfo:
+            title.append(u'Number %s' % metainfo['gznum'])
+
+        return u', '.join(title)
+
+    def to_ia_metadata(self, relurl, metainfo):
+       words    = relurl.split('/')
+       src      = words[0]
+
+       creator   = datasrcs.srcnames[src]
+       category  = datasrcs.categories[src]
+       languages = datasrcs.languages[src]
+
+       title   = self.get_title(src, metainfo)
+
+       metadata = { \
+           'collection' : 'gazetteofindia', 'mediatype' :'texts', \
+           'language'   : languages, 'title': title, 'creator': creator, \
+           'subject'    : category
+       } 
+       dateobj = metainfo.get_date()
+       if dateobj:
+           metadata['date'] = '%s' % dateobj
+       
+       metadata['description'] = self.get_description(metainfo)
+       return metadata
+
+    def get_description(self, metainfo):       
+       desc = []
+
+       keys = [ \
+         ('gztype',           'Gazette Type'),  \
+         ('gznum',            'Gazette Number'), \
+         ('date',             'Date'), \
+         ('ministry',         'Ministry'),   \
+         ('department',       'Department'), \
+         ('subject',          'Subject'),      \
+         ('office',           'Office'), \
+         ('notification_num', 'Notification Number'), \
+         ('partnum',          'Part Number'), \
+         ('refnum',           'Reference Number'), \
+       ]
+       for k, kdesc in keys:
+           if k in metainfo:
+               v = metainfo[k]
+               if k == 'date':
+                   v = '%s' % v
+               else:    
+                   v = metainfo[k].strip()
+
+               desc.append((kdesc, v))
+
+       known_keys = set([k for k, kdesc in keys])
+
+       for k, v in metainfo.iteritems():
+           if k not in known_keys:
+               desc.append((k.title(), v.strip()))
+
+
+       return '\n'.join(['<p>%s: %s</p>' % (d[0], d[1]) for d in desc]) 
+
+    def update_meta(self, relurl):
+        identifier = self.get_identifier(relurl)
+        item = get_item(identifier, archive_session = self.session)
+
+        if not item.exists:
+            return self.upload(relurl)
+        else:
+            metainfo = self.file_storage.get_metainfo(relurl)
+            if metainfo == None:
+                self.logger.warn('No metainfo, Ignoring upload for %s' % \
+                                identifier)
+                return False
+
+            metadata = self.to_ia_metadata(relurl, metainfo)
+ 
+            modify_metadata(identifier, metadata = metadata, \
+                            access_key = self.access_key, \
+                            secret_key = self.secret_key)
+
+def print_usage(progname):
+    print 'Usage: python %s [-l loglevel(critical, error, warn, info, debug)]' % progname + '''
+                        [-a access_key] [-k secret_key]
+                        [-f logfile]
+                        [-m (update_meta)]
+                        [-u (upload_to_ia)]
+                        [-r relurl]
+                        [-i (relurls_from_stdin)]
+                        [-d gazette_directory]
+                        [-t start_time (%Y-%m-%d %H:%M:%S)]
+                        [-T end_time (%Y-%m-%d %H:%M:%S)]
+                        [-s central_weekly -s central_extraordinary 
+                         -s andhra -s andhraarchive
+                         -s bihar  -s cgweekly -s cgextraordinary
+                         -s delhi_weekly -s delhi_extraordinary -s karnataka
+                         -s maharashtra -s telangana   -s tamilnadu
+                         -s jharkhand   -s odisha      -s madhyapradesh
+                         -s punjab      -s uttarakhand -s himachal
+                         -s haryana     -s kerala      -s haryanaarchive
+                         -s stgeorge    -s himachal    -s keralalibrary
+                        ] 
+    '''                     
+
+def handle_relurl(gazette_ia, relurl, to_upload, to_update):
+    if to_upload:
+        gazette_ia.upload(relurl)
+    elif to_update:
+        gazette_ia.update_meta(relurl)    
+
+if __name__ == '__main__':
+    progname  = sys.argv[0]
+    loglevel  = 'info'
+    filename  = None
+    datadir   = None
+    start_ts  = None
+    end_ts    = None
+    srcnames  = []
+    to_update = False
+    to_upload = False
+    access_key = None
+    secret_key = None
+    relurls    = []
+    from_stdin = False
+
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:f:l:s:t:T:mr:u')
+    for o, v in optlist:
+        if o == '-l':
+            loglevel = v
+        elif o == '-f':
+            filename = v
+        elif o == '-d':
+            datadir = v
+        elif o == '-t':
+            start_ts = datetime.datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
+        elif o == '-T':
+            end_ts = datetime.datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
+        elif o == '-s':
+            srcnames.append(v)    
+        elif o == '-m':
+            to_update = True    
+        elif o == '-u':
+            to_upload = True    
+        elif o == '-a':
+            access_key = v    
+        elif o == '-k':
+            secret_key = v    
+        elif o == '-r':
+            relurls.append(v)    
+        elif o == '-i':
+            from_stdin = True    
+
+
+    leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
+                 'warning': logging.WARNING,   'info': logging.INFO, \
+                 'debug': logging.DEBUG}
+
+    if loglevel not in leveldict:
+        print 'Unknown log level %s' % loglevel             
+        print_usage(progname)
+        sys.exit(0)
+
+    if not datadir:
+        print 'Directory not specified'
+        print_usage(progname)
+        sys.exit(0)
+
+    if not to_update and not to_upload:
+        print 'Please specify whether to upload or update to internetarchive'
+        print_usage(progname)
+        sys.exit(0)
+
+    if not access_key or not secret_key:
+        print 'Please specify access and secret keys to internetarchive'
+        print_usage(progname)
+        sys.exit(0)
+
+    logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
+    datefmt = '%Y-%m-%d %H:%M:%S'
+
+    if filename:
+        logging.basicConfig(\
+            level   = leveldict[loglevel], \
+            format  = logfmt, \
+            filename = filename, \
+            datefmt = datefmt \
+        )
+    else:
+        logging.basicConfig(\
+            level   = leveldict[loglevel], \
+            format  = logfmt, \
+            datefmt = datefmt \
+        )
+
+
+    storage = FileManager(datadir, False, False)
+    gazette_ia = GazetteIA(storage, access_key, secret_key, loglevel, filename)
+
+    if relurls:
+        for relurl in relurls:
+            handle_relurl(gazette_ia, relurl, to_upload, to_update)
+    elif from_stdin:
+        for line in sys.stdin:
+            relurl = line.strip()
+            handle_relurl(gazette_ia, relurl, to_upload, to_update)
+    else:        
+        for relurl in storage.find_matching_relurls(srcnames, start_ts, end_ts):
+            handle_relurl(gazette_ia, relurl, to_upload, to_update)
+
+
+    
