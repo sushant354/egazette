@@ -11,7 +11,7 @@ import download
 from file_storage import FileManager
 
 def print_usage(progname):
-    print '''Usage: %s [-l level(critical, error, warn, info, debug)]
+    print '''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
                        [-a (all_downloads)]
                        [-m (updateMeta)]
                        [-n (no aggregation of srcs by hostname)]
@@ -30,7 +30,7 @@ def print_usage(progname):
                         -s jharkhand   -s odisha      -s madhyapradesh
                         -s punjab      -s uttarakhand -s himachal
                         -s haryana     -s kerala      -s haryanaarchive
-                        -s stgeorge    -s himachal    -s keralalibrary`
+                        -s stgeorge    -s himachal    -s keralalibrary
                        ]
                        ''' % progname
 
