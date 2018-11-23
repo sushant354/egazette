@@ -19,7 +19,7 @@ def read_tag_file(filepath, relurl):
     filehandle = codecs.open(filepath, 'r', 'utf8')
 
     metastring = filehandle.read()
-    metainfo = xml_to_tagdict(relurl, metastring)
+    metainfo = xml_to_tagdict(relurl, metastring.encode('utf-8'))
 
     filehandle.close()
 

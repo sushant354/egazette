@@ -22,30 +22,68 @@ class GazetteIA:
             logconfig    = {'logging': {'level': loglevel}}
 
         self.session = get_session({'s3': session_data, 'logging': logconfig})
+        self.logger = logging.getLogger('iasync')
    
-    def get_identifier(self, relurl):
-        return 'in.gazette.' +  relurl.replace('/', '.')
+    def get_identifier(self, relurl, metainfo):
+        srcname = self.get_srcname(relurl)
+        identifier = None
+
+        dateobj = metainfo.get_date()
+
+        prefix    = 'in.gazette.' 
+        if srcname == 'central_extraordinary':
+            identifier = relurl.replace('/', '.')
+            identifier = re.sub('^central_extraordinary', 'central.e', identifier)
+        elif srcname == 'central_weekly':
+            identifier = relurl.replace('/', '.')
+            identifier = re.sub('^central_weekly', 'central.w', relurl)
+        elif srcname == 'bihar':
+            num = relurl.split('/')[-1]
+            identifier = 'bih.gazette.%d.%s' % (dateobj.year, num)
+            prefix    = 'in.gov.' 
+        elif srcname == 'delhi_weekly':    
+            identifier = relurl.replace('/', '.')
+            identifier = re.sub('^delhi_weekly', 'delhi.w', identifier)
+        elif srcname == 'delhi_extraordinary':    
+            identifier = relurl.replace('/', '.')
+            identifier = re.sub('^delhi_extraordinary', 'delhi.e', identifier)
+        elif srcname == 'cgweekly':    
+            identifier = relurl.replace('/', '.')
+            identifier = re.sub('^cgweekly', 'chhattisgarh.weekly', identifier)
+        elif srcname == 'cgextraordinary':    
+            identifier = relurl.replace('/', '.')
+            identifier = re.sub('^cgextraordinary', 'chhattisgarh.eo', identifier)
+
+        identifier = prefix + identifier 
+        return identifier    
 
     def upload(self, relurl):
-        identifier = self.get_identifier(relurl)
+        metainfo = self.file_storage.get_metainfo(relurl)
+        if metainfo == None:
+            self.logger.warn('No metainfo, Ignoring upload for %s' % relurl) 
+            return
+
+        identifier = self.get_identifier(relurl, metainfo)
+        if identifier == None:
+            self.logger.warn('Could not form IA identifier. Ignoring upload for %s' % relurl) 
+            return
+
         item = get_item(identifier, archive_session = self.session)
         if item.exists:
             self.logger.warn('Item already exists, Ignoring upload for %s' % \
                              identifier)
             return
-        metainfo = self.file_storage.get_metainfo(relurl)
-        if metainfo == None:
-            self.logger.warn('No metainfo, Ignoring upload for %s' % \
-                             identifier)
 
         metadata = self.to_ia_metadata(relurl, metainfo)
 
         rawfile  = self.file_storage.get_rawfile_path(relurl)
         metafile = self.file_storage.get_metafile_path(relurl)
-        
+        ''' 
         r = upload(identifier, [rawfile, metafile], metadata = metadata, \
                    access_key = self.access_key, secret_key = self.secret_key, \
                    retries=100) 
+        ''' 
+        r = None
         return r
   
     def get_title(self, src, metainfo):
@@ -70,9 +108,12 @@ class GazetteIA:
 
         return u', '.join(title)
 
-    def to_ia_metadata(self, relurl, metainfo):
+    def get_srcname(self, relurl):
        words    = relurl.split('/')
-       src      = words[0]
+       return words[0]
+
+    def to_ia_metadata(self, relurl, metainfo):
+       src      = self.get_srcname(relurl) 
 
        creator   = datasrcs.srcnames[src]
        category  = datasrcs.categories[src]
@@ -115,16 +156,20 @@ class GazetteIA:
                else:    
                    v = metainfo[k].strip()
 
-               desc.append((kdesc, v))
+               if v:
+                   desc.append((kdesc, v))
 
        known_keys = set([k for k, kdesc in keys])
 
        for k, v in metainfo.iteritems():
            if k not in known_keys:
-               desc.append((k.title(), v.strip()))
+               v = v.strip()
+               if v:
+                   desc.append((k.title(), v))
 
 
-       return '\n'.join(['<p>%s: %s</p>' % (d[0], d[1]) for d in desc]) 
+       desc_html = '<br/>\n'.join(['%s: %s' % (d[0], d[1]) for d in desc]) 
+       return '<p>' + desc_html + '</p>'
 
     def update_meta(self, relurl):
         identifier = self.get_identifier(relurl)
@@ -153,7 +198,7 @@ def print_usage(progname):
                         [-u (upload_to_ia)]
                         [-r relurl]
                         [-i (relurls_from_stdin)]
-                        [-d gazette_directory]
+                        [-D gazette_directory]
                         [-t start_time (%Y-%m-%d %H:%M:%S)]
                         [-T end_time (%Y-%m-%d %H:%M:%S)]
                         [-s central_weekly -s central_extraordinary 
@@ -189,13 +234,13 @@ if __name__ == '__main__':
     relurls    = []
     from_stdin = False
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:f:l:s:t:T:mr:u')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:D:f:l:s:t:T:mr:u')
     for o, v in optlist:
         if o == '-l':
             loglevel = v
         elif o == '-f':
             filename = v
-        elif o == '-d':
+        elif o == '-D':
             datadir = v
         elif o == '-t':
             start_ts = datetime.datetime.strptime(v, '%Y-%m-%d %H:%M:%S')

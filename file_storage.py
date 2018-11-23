@@ -133,5 +133,4 @@ class FileManager:
                 if end_ts != None and os.path.getmtime(rawpath) > end_ts \
                         and  os.path.getmtime(metapath) > end_ts:
                     continue 
-                print relurl     
                 yield relurl    
