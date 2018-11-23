@@ -11,17 +11,18 @@ from central import CentralWeekly
 class ChattisgarhWeekly(CentralWeekly):
     def __init__(self, name, storage):
         CentralWeekly.__init__(self, name, storage)
-        self.hostname     = 'revenue.cg.nic.in'
-        self.baseurl      = 'https://revenue.cg.nic.in/egazette/FileSearch.aspx'
+        self.hostname     = 'egazette.cg.nic.in'
+        self.baseurl      = 'http://egazette.cg.nic.in/FileSearch.aspx'
         self.search_endp  = 'FileSearch.aspx'
-        self.file_url     = 'https://revenue.cg.nic.in/egazette/FileCS1.ashx?Id=%s'
+        self.file_url     = 'http://egazette.cg.nic.in/FileCS1.ashx?Id=%s'
         self.result_table = 'ContentPlaceHolder2_GridView2'
         self.gztype       = '1'
         self.gznum_re     = re.compile(u'\u0930\u093e\u091c\u092a\u0924\u094d\u0930\s*\u0915\u094d\u0930\u092e\u093e\u0902\u0915')
         self.partnum_re   = re.compile(u'\s*\u092d\u093e\u0917\s+(?P<num>.+)')
         self.filenum_cookie = 'id'
         self.start_date   = datetime.datetime(2000, 11, 1)
-
+        self.gazette_type = 'Ordinary'
+        
     def get_post_data(self, tags, dateobj):
         datestr  = utils.dateobj_to_str(dateobj, '/')
         postdata = []
@@ -89,6 +90,8 @@ class ChattisgarhWeekly(CentralWeekly):
                     metainfo = utils.MetaInfo()
                     metainfos.append(metainfo)
                     metainfo.set_date(dateobj)
+                    metainfo.set_gztype(self.gazette_type)
+
                     if gznum:
                         metainfo['gznum'] = gznum
                     metainfo['partnum'] = partnum
@@ -124,11 +127,11 @@ class ChattisgarhWeekly(CentralWeekly):
                                        postdata, cookiejar)
 
     def post_for_gzid(self, postdata):
-        conn = httplib.HTTPSConnection(self.hostname, timeout = 300)
+        conn = httplib.HTTPConnection(self.hostname, timeout = 300)
         hdrs = {'User-Agent': self.useragent, \
                 'Content-Type': 'application/x-www-form-urlencoded'}
         postdata = urllib.urlencode(postdata)        
-        conn.request('POST', '/egazette/FileSearch.aspx', postdata, hdrs)
+        conn.request('POST', '/FileSearch.aspx', postdata, hdrs)
         response = conn.getresponse()
 
         conn.close()
@@ -194,7 +197,8 @@ class ChattisgarhExtraordinary(ChattisgarhWeekly):
         self.gztype         = '2'
         self.filenum_cookie ='id123'
         self.result_table   = 'ContentPlaceHolder2_GridView1'
-        self.file_url       = 'https://revenue.cg.nic.in/egazette/FileCS.ashx?Id=%s'
+        self.file_url       = 'http://egazette.cg.nic.in/FileCS.ashx?Id=%s'
+        self.gazette_type   = 'Extraordinary'
 
         self.notification_num_re=re.compile(u'\u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e\s+\u0915\u094d\u0930\u092e\u093e\u0902\u0915')
         self.notification_date_re = re.compile(u'\u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e\s+\u0926\u093f\u0928\u093e\u0902\u0915')
@@ -231,6 +235,7 @@ class ChattisgarhExtraordinary(ChattisgarhWeekly):
 
     def process_result_row(self, tr, metainfos, dateobj, order):
         metainfo = utils.MetaInfo()
+        metainfo.set_gztype(self.gazette_type)
         metainfos.append(metainfo)
         metainfo.set_date(dateobj)
         i     = 0
