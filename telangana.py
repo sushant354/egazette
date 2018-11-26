@@ -7,7 +7,7 @@ import utils
 class Telangana(Andhra):
     def __init__(self, name, storage):
         Andhra.__init__(self, name, storage)
-        self.baseurl      = 'http://tsgazette.cgg.gov.in/viewGazette.do'
+        self.baseurl      = 'https://tsgazette.cgg.gov.in/viewGazette.do'
         self.hostname     = 'tsgazette.cgg.gov.in'
         self.searchurl    = self.baseurl
         self.start_date   = datetime.datetime(2014, 1, 1)

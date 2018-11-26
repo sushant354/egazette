@@ -26,10 +26,11 @@ class TamilNadu(BaseGazette):
         ordinary_url      = None
         extraordinary_url = None
 
+        start_date = self.start_date.date()
         if today.year == dateobj.year:
             ordinary_url      = self.ordinary_latest
             extraordinary_url = self.extraordinary_latest
-        elif dateobj >= self.start_date:
+        elif dateobj >= start_date:
             ordinary_url      = self.ordinary_byyear % dateobj.year    
             extraordinary_url = self.extraordinary_byyear % dateobj.year    
         

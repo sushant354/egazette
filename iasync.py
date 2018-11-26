@@ -3,6 +3,7 @@ import getopt
 import datetime
 import logging
 import re
+import types
 
 from internetarchive import upload, get_session, get_item, modify_metadata
 from file_storage import FileManager
@@ -53,7 +54,39 @@ class GazetteIA:
         elif srcname == 'cgextraordinary':    
             identifier = relurl.replace('/', '.')
             identifier = re.sub('^cgextraordinary', 'chhattisgarh.eo', identifier)
-
+        elif srcname == 'andhra' or srcname == 'andhraarchive':    
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'maharashtra':
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'telangana':
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'tamilnadu':
+            relurl     = relurl.decode('ascii', 'ignore')
+            relurl, n  = re.subn('[()]', '', relurl)
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'odisha':
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'jharkhand':
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'madhyapradesh':
+            datestr = '%s' % metainfo['date']
+            gznum   = metainfo['gznum']
+            gztype  = metainfo['gztype']
+            identifier = 'madhya.%s.%s.%s'% (datestr, gznum, gztype)
+        elif srcname == 'punjab':
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'uttarakhand':
+            relurl     = relurl.decode('ascii', 'ignore')
+            relurl, n  = re.subn('[()]', '', relurl)
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'haryana':
+            identifier = relurl.replace('/', '.')
+        elif srcname == 'haryanaarchive':
+            identifier = relurl.replace('/', '.')
+            identifier = re.sub('^haryanaarchive', 'haryanaarch', identifier)
+        elif srcname == 'kerala':
+            identifier = relurl.replace('/', '.')
+         
         identifier = prefix + identifier 
         return identifier    
 
@@ -73,6 +106,8 @@ class GazetteIA:
             self.logger.warn('Item already exists, Ignoring upload for %s' % \
                              identifier)
             return
+        else:
+            print 'NOT FOUND', identifier    
 
         metadata = self.to_ia_metadata(relurl, metainfo)
 
@@ -163,7 +198,10 @@ class GazetteIA:
 
        for k, v in metainfo.iteritems():
            if k not in known_keys:
-               v = v.strip()
+               if type(v) in types.StringTypes:
+                   v = v.strip()
+               elif isinstance(v, list):
+                   v = '%s' % v    
                if v:
                    desc.append((k.title(), v))
 
