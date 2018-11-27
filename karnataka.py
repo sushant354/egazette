@@ -31,31 +31,28 @@ class Karnataka(BaseGazette):
         dateurl = self.baseurl % datestr
         docurl  = urllib.basejoin(dateurl, mainhref)
 
-        metainfo = utils.MetaInfo()
-        metainfo.set_date(dateobj)
+        mainmeta = utils.MetaInfo()
+        mainmeta.set_date(dateobj)
+        mainmeta.set_url(self.url_fix(docurl))
        
         response = self.download_url(docurl)
         if not response or not response.webpage or response.error:
             return dls
 
-        relurl = os.path.join(relpath, 'main')
+        mainrelurl = os.path.join(relpath, 'main')
         updated = False
-        if self.storage_manager.save_rawdoc(self.name, relurl, response.srvresponse, response.webpage):
-            self.logger.info(u'Saved rawfile %s' % relurl)
+        if self.storage_manager.save_rawdoc(self.name, mainrelurl, response.srvresponse, response.webpage):
+            self.logger.info(u'Saved rawfile %s' % mainrelurl)
             updated = True
 
-        if self.storage_manager.save_metainfo(self.name, relurl, metainfo):
-            updated = True
-            self.logger.info(u'Saved metainfo %s' % relurl)
-
-        if updated:    
-            dls.append(relurl)
 
         page_type = self.get_file_extension(response.webpage)
         if page_type != 'pdf':
             self.logger.warn('Got a non-pdf page and we can\'t handle it for datte %s', dateobj)
             return dls
 
+        links = []
+        linknames = []
         hrefs = utils.extract_links_from_pdf(StringIO(response.webpage))
         for href in hrefs:
             reobj = re.search('(?P<num>Part-\w+)', href)
@@ -71,8 +68,20 @@ class Karnataka(BaseGazette):
             metainfo.set_date(dateobj)
             metainfo['partnum'] = partnum
 
+            links.append(relurl)
+            linknames.append(partnum)
+
             if self.save_gazette(relurl, docurl, metainfo):
                 dls.append(relurl)
+
+        mainmeta['links']     = links
+        mainmeta['linknames'] = linknames
+        if self.storage_manager.save_metainfo(self.name, mainrelurl, mainmeta):
+            updated = True
+            self.logger.info(u'Saved metainfo %s' % mainrelurl)
+
+        if updated:    
+            dls.append(mainrelurl)
 
         return dls    
        

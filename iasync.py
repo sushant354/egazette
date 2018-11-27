@@ -4,6 +4,7 @@ import datetime
 import logging
 import re
 import types
+from requests.exceptions import HTTPError
 
 from internetarchive import upload, get_session, get_item, modify_metadata
 from file_storage import FileManager
@@ -86,6 +87,13 @@ class GazetteIA:
             identifier = re.sub('^haryanaarchive', 'haryanaarch', identifier)
         elif srcname == 'kerala':
             identifier = relurl.replace('/', '.')
+        elif srcname == 'karnataka':    
+            identifier = relurl.replace('/', '.')
+            if 'links' in metainfo and metainfo['links']:
+                linkids = []
+                for link in metainfo['links']:
+                    linkids.append(prefix + link.replace('/', '.'))
+                metainfo['linkids'] = linkids
          
         identifier = prefix + identifier 
         return identifier    
@@ -113,12 +121,13 @@ class GazetteIA:
 
         rawfile  = self.file_storage.get_rawfile_path(relurl)
         metafile = self.file_storage.get_metafile_path(relurl)
-        ''' 
-        r = upload(identifier, [rawfile, metafile], metadata = metadata, \
-                   access_key = self.access_key, secret_key = self.secret_key, \
-                   retries=100) 
-        ''' 
-        r = None
+        try: 
+            r = upload(identifier, [rawfile, metafile], metadata = metadata, \
+                       access_key = self.access_key, \
+                       secret_key = self.secret_key, \
+                       retries=100) 
+        except HTTPError as e:
+           self.logger.warn('Error in upload for %s: %s', identifier, e)
         return r
   
     def get_title(self, src, metainfo):
@@ -171,6 +180,7 @@ class GazetteIA:
     def get_description(self, metainfo):       
        desc = []
 
+       ignore_keys  = set(['linknames', 'links', 'linkids'])
        keys = [ \
          ('gztype',           'Gazette Type'),  \
          ('gznum',            'Gazette Number'), \
@@ -182,22 +192,36 @@ class GazetteIA:
          ('notification_num', 'Notification Number'), \
          ('partnum',          'Part Number'), \
          ('refnum',           'Reference Number'), \
+         ('linknames',        'Gazette Links'), \
+         ('url',              'Gazette Source'), \
        ]
        for k, kdesc in keys:
            if k in metainfo:
                v = metainfo[k]
                if k == 'date':
                    v = '%s' % v
+               elif k == 'linknames':
+                  linkids = metainfo['linkids']
+                  i = 0
+                  v = []
+                  for linkname in metainfo[k]:
+                      identifier = linkids[i]
+                      v.append('<a href="/details/%s">%s</a>' % \
+                              (identifier, linkname))
+                      i += 1
+                  v = '<br/>'.join(v)
+               elif k == 'url':
+                  v = '<a href="%s" target="_blank">URL</a>' % v
                else:    
                    v = metainfo[k].strip()
-
+                   
                if v:
                    desc.append((kdesc, v))
 
        known_keys = set([k for k, kdesc in keys])
 
        for k, v in metainfo.iteritems():
-           if k not in known_keys:
+           if k not in known_keys and k not in ignore_keys:
                if type(v) in types.StringTypes:
                    v = v.strip()
                elif isinstance(v, list):
@@ -206,21 +230,22 @@ class GazetteIA:
                    desc.append((k.title(), v))
 
 
-       desc_html = '<br/>\n'.join(['%s: %s' % (d[0], d[1]) for d in desc]) 
+       desc_html = '<br/>'.join(['%s: %s' % (d[0], d[1]) for d in desc])
        return '<p>' + desc_html + '</p>'
 
     def update_meta(self, relurl):
-        identifier = self.get_identifier(relurl)
+        metainfo = self.file_storage.get_metainfo(relurl)
+        if metainfo == None:
+            self.logger.warn('No metainfo, Ignoring upload for %s' % \
+                             identifier)
+            return False
+
+        identifier = self.get_identifier(relurl, metainfo)
         item = get_item(identifier, archive_session = self.session)
 
         if not item.exists:
             return self.upload(relurl)
         else:
-            metainfo = self.file_storage.get_metainfo(relurl)
-            if metainfo == None:
-                self.logger.warn('No metainfo, Ignoring upload for %s' % \
-                                identifier)
-                return False
 
             metadata = self.to_ia_metadata(relurl, metainfo)
  
@@ -272,7 +297,7 @@ if __name__ == '__main__':
     relurls    = []
     from_stdin = False
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:D:f:l:s:t:T:mr:u')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:D:f:hl:s:t:T:mr:u')
     for o, v in optlist:
         if o == '-l':
             loglevel = v
@@ -298,6 +323,12 @@ if __name__ == '__main__':
             relurls.append(v)    
         elif o == '-i':
             from_stdin = True    
+        elif o == '-h':
+            print_usage(progname)
+            sys.exit(0)
+        else:
+            print_usage(progname)
+            sys.exit(0)
 
 
     leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
