@@ -114,8 +114,6 @@ class GazetteIA:
             self.logger.warn('Item already exists, Ignoring upload for %s' % \
                              identifier)
             return
-        else:
-            print 'NOT FOUND', identifier    
 
         metadata = self.to_ia_metadata(relurl, metainfo)
 
@@ -194,6 +192,7 @@ class GazetteIA:
          ('refnum',           'Reference Number'), \
          ('linknames',        'Gazette Links'), \
          ('url',              'Gazette Source'), \
+         ('num',              'Number'), \
        ]
        for k, kdesc in keys:
            if k in metainfo:

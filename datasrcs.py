@@ -22,6 +22,7 @@ import himachal
 
 import stgeorge
 
+import goa
 srcdict = { \
 'central_weekly'       : central.CentralWeekly, \
 'central_extraordinary': central.CentralExtraordinary, \
@@ -47,6 +48,7 @@ srcdict = { \
 'kerala'               : kerala.Kerala, \
 'stgeorge'             : stgeorge.StGeorge, \
 'keralalibrary'        : stgeorge.KeralaLibrary, \
+'goa'                  : goa.Goa, \
 }
 
 srcnames = { \
@@ -74,6 +76,7 @@ srcnames = { \
 'kerala'               : 'Government of Kerala', \
 'stgeorge'             : 'Madras Presidency', \
 'keralalibrary'        : 'Government of Kerala', \
+'goa'                  : 'Government of Goa', \
 }
 
 categories = { \
@@ -101,6 +104,7 @@ categories = { \
 'kerala'               : 'Kerala Gazette', \
 'stgeorge'             : 'Fort St. George Gazette', \
 'keralalibrary'        : 'Kerala Gazette', \
+'goa'                  : 'Goa Gazette', \
 }
 
 languages = { \
@@ -128,6 +132,7 @@ languages = { \
 'kerala'               : ['eng', 'mal'], \
 'stgeorge'             : ['eng', 'mal'], \
 'keralalibrary'        : ['eng', 'mal'], \
+'goa'                  : ['eng', 'por'], \
 }
 
 srchierarchy = { \
@@ -138,7 +143,7 @@ srchierarchy = { \
                 'andhraarchive', 'maharashtra', 'telangana', 'tamilnadu', \
                 'odisha', 'jharkhand', 'madhyapradesh', 'punjab', \
                 'uttarakhand', 'haryana', 'haryanaarchive', 'kerala', \
-                'stgeorge', 'keralalibrary'] \
+                'stgeorge', 'keralalibrary', 'goa'] \
 }
 
 def get_srcobjs(srclist, storage):
