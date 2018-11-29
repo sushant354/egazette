@@ -47,7 +47,7 @@ class Goa(BaseGazette):
 
         if not href or not txt:
             return None
-        
+        txt = '.'.join(txt.split('.')[:-1])
         relurl = os.path.join(relpath, txt)
         gzurl  = urllib.basejoin(searchurl, href)
         if self.save_gazette(relurl, gzurl, metainfo):
@@ -76,6 +76,10 @@ class Goa(BaseGazette):
     def parse_results(self, d, dateobj):
         minfos = []
         result_table = d.find('table', {'class': 'gazettes'})
+
+        if result_table == None:
+            self.logger.warn('Did not get the result table for %s', dateobj)
+            return minfos
 
         order = None
         for tr in result_table.find_all('tr'):

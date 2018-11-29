@@ -4,12 +4,61 @@ import datetime
 import logging
 import re
 import types
+import shutil
+import os
+
 from requests.exceptions import HTTPError
 
-from internetarchive import upload, get_session, get_item, modify_metadata
+from internetarchive import upload, get_session, get_item, modify_metadata, get_files
 from file_storage import FileManager
-
+import reporting
 import datasrcs 
+
+class Stats:
+    def __init__(self):
+        self.uploads = {}
+        self.upload_success = {}
+
+        self.modify = {}
+        self.modify_success = {}
+
+    def update_upload(self, srcname, success):    
+        self.update(srcname, success, self.uploads, self.upload_success)
+
+    def update_modify(self, srcname, success):    
+        self.update(srcname, success, self.modify, self.modify_success)
+
+    def update(self, srcname, success, total, total_success):
+        if srcname not in total:
+            total[srcname]         = 0
+            total_success[srcname] = 0
+
+        total[srcname] += 1
+
+        if success:
+            total_success[srcname] += 1
+
+    def get_msg_by_srcs(self, msg, total, total_success):
+        msg.append('------------')
+        msg.append('Srcname\tTotal\tSuccess')
+        keys = total.keys()
+        keys.sort()
+        for srcname in keys:
+            msg.append('%s\t%d\t%d' % (srcname, total[srcname], total_success[srcname]))
+        msg.append('\n')                                   
+
+    def get_message(self):
+        msg = []
+        if self.uploads:
+            msg.append('Upload Stats')
+            self.get_msg_by_srcs(msg, self.uploads, self.upload_success)
+
+        if self.modify:    
+            msg.append('Modify Stats')
+            self.get_msg_by_srcs(msg, self.modify, self.modify_success)
+        
+        return '\n'.join(msg)
+
 
 class GazetteIA:
     def __init__(self, file_storage, access_key, secret_key, loglevel, logfile):
@@ -94,6 +143,11 @@ class GazetteIA:
                 for link in metainfo['links']:
                     linkids.append(prefix + link.replace('/', '.'))
                 metainfo['linkids'] = linkids
+        elif srcname == 'goa':    
+            prefix = 'in.goa.egaz.' 
+            gznum  = metainfo['gznum']
+            series = metainfo['series']
+            identifier = '%s.%s' % (gznum, series) 
          
         identifier = prefix + identifier 
         return identifier    
@@ -102,32 +156,67 @@ class GazetteIA:
         metainfo = self.file_storage.get_metainfo(relurl)
         if metainfo == None:
             self.logger.warn('No metainfo, Ignoring upload for %s' % relurl) 
-            return
+            return False
 
         identifier = self.get_identifier(relurl, metainfo)
         if identifier == None:
             self.logger.warn('Could not form IA identifier. Ignoring upload for %s' % relurl) 
-            return
-
-        item = get_item(identifier, archive_session = self.session)
-        if item.exists:
-            self.logger.warn('Item already exists, Ignoring upload for %s' % \
-                             identifier)
-            return
-
-        metadata = self.to_ia_metadata(relurl, metainfo)
+            return False
 
         rawfile  = self.file_storage.get_rawfile_path(relurl)
         metafile = self.file_storage.get_metafile_path(relurl)
+
+        files = [f.name for f in get_files(identifier, archive_session = self.session)]
+        filename = rawfile.split('/')[-1]
+        if filename in files:
+            self.logger.info('File already exists, Ignoring upload for %s' % \
+                             identifier)
+            return False
+
+        if files:
+            metadata  = None
+            to_upload = [rawfile]
+        else:   
+            metadata  = self.to_ia_metadata(relurl, metainfo)
+            to_upload = [rawfile, metafile]
+
+        success = False
         try: 
-            r = upload(identifier, [rawfile, metafile], metadata = metadata, \
-                       access_key = self.access_key, \
-                       secret_key = self.secret_key, \
-                       retries=100) 
+            if metadata:
+                r = upload(identifier, to_upload, metadata = metadata, \
+                           access_key = self.access_key, \
+                           secret_key = self.secret_key, \
+                           retries=100)
+            else:               
+                r = upload(identifier, to_upload, \
+                           access_key = self.access_key, \
+                           secret_key = self.secret_key, \
+                           retries=100)
+            if r:
+               success = True
         except HTTPError as e:
            self.logger.warn('Error in upload for %s: %s', identifier, e)
+           msg = '%s' % e
+           if re.search('Syntax error detected in pdf data', msg):
+              r = self.upload_bad_pdf(identifier, rawfile)
+              if r:
+                  success = True
+
+        if success:
+            self.logger.info('Successfully uploaded %s', identifier)
+        else:    
+            self.logger.warn('Error in uploading %s', identifier)
+        return success 
+ 
+    def upload_bad_pdf(self, identifier, rawfile):
+        name = '%s-' %rawfile.split('/')[-1]
+        tmpfile = '/tmp/%s' % name
+        shutil.copyfile(rawfile, tmpfile)
+        r = upload(identifier, [tmpfile], access_key = self.access_key, \
+                   secret_key = self.secret_key)
+        os.remove(tmpfile)
         return r
-  
+
     def get_title(self, src, metainfo):
         category = datasrcs.categories[src]
         title = [category]
@@ -210,7 +299,7 @@ class GazetteIA:
                       i += 1
                   v = '<br/>'.join(v)
                elif k == 'url':
-                  v = '<a href="%s" target="_blank">URL</a>' % v
+                  v = '<a href="%s">URL</a>' % v
                else:    
                    v = metainfo[k].strip()
                    
@@ -235,8 +324,7 @@ class GazetteIA:
     def update_meta(self, relurl):
         metainfo = self.file_storage.get_metainfo(relurl)
         if metainfo == None:
-            self.logger.warn('No metainfo, Ignoring upload for %s' % \
-                             identifier)
+            self.logger.warn('No metainfo, Ignoring upload for %s' % relurl)
             return False
 
         identifier = self.get_identifier(relurl, metainfo)
@@ -245,12 +333,12 @@ class GazetteIA:
         if not item.exists:
             return self.upload(relurl)
         else:
-
             metadata = self.to_ia_metadata(relurl, metainfo)
  
             modify_metadata(identifier, metadata = metadata, \
                             access_key = self.access_key, \
                             secret_key = self.secret_key)
+        return True
 
 def print_usage(progname):
     print 'Usage: python %s [-l loglevel(critical, error, warn, info, debug)]' % progname + '''
@@ -263,6 +351,9 @@ def print_usage(progname):
                         [-D gazette_directory]
                         [-t start_time (%Y-%m-%d %H:%M:%S)]
                         [-T end_time (%Y-%m-%d %H:%M:%S)]
+                        [-U gmail_user]
+                        [-P gmail_password]
+                        [-E email_to_report]
                         [-s central_weekly -s central_extraordinary 
                          -s andhra -s andhraarchive
                          -s bihar  -s cgweekly -s cgextraordinary
@@ -275,11 +366,15 @@ def print_usage(progname):
                         ] 
     '''                     
 
-def handle_relurl(gazette_ia, relurl, to_upload, to_update):
+def handle_relurl(gazette_ia, relurl, to_upload, to_update, stats):
+    srcname = gazette_ia.get_srcname(relurl)
+
     if to_upload:
-        gazette_ia.upload(relurl)
+        success = gazette_ia.upload(relurl)
+        stats.update_upload(srcname, success)
     elif to_update:
-        gazette_ia.update_meta(relurl)    
+        success = gazette_ia.update_meta(relurl)   
+        stats.update_modify(srcname, success)
 
 if __name__ == '__main__':
     progname  = sys.argv[0]
@@ -295,8 +390,11 @@ if __name__ == '__main__':
     secret_key = None
     relurls    = []
     from_stdin = False
+    gmail_user = None
+    gmail_pwd  = None
+    to_addrs   = []
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:D:f:hl:s:t:T:mr:u')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:D:f:hil:s:t:T:mr:uE:U:P:')
     for o, v in optlist:
         if o == '-l':
             loglevel = v
@@ -322,6 +420,12 @@ if __name__ == '__main__':
             relurls.append(v)    
         elif o == '-i':
             from_stdin = True    
+        elif o == '-E':
+            to_addrs.append(v)
+        elif o == '-U':
+            gmail_user = v
+        elif o == '-P':
+            gmail_pwd = v
         elif o == '-h':
             print_usage(progname)
             sys.exit(0)
@@ -354,6 +458,11 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
+    if to_addrs and (not gmail_user or not gmail_pwd):
+        print 'To report through email, please specify gmail username and password'
+        print_usage(progname)
+        sys.exit(0)
+
     logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
     datefmt = '%Y-%m-%d %H:%M:%S'
 
@@ -375,16 +484,21 @@ if __name__ == '__main__':
     storage = FileManager(datadir, False, False)
     gazette_ia = GazetteIA(storage, access_key, secret_key, loglevel, filename)
 
+    stats        = Stats()
     if relurls:
         for relurl in relurls:
-            handle_relurl(gazette_ia, relurl, to_upload, to_update)
+            handle_relurl(gazette_ia, relurl, to_upload, to_update, stats)
     elif from_stdin:
         for line in sys.stdin:
             relurl = line.strip()
-            handle_relurl(gazette_ia, relurl, to_upload, to_update)
+            handle_relurl(gazette_ia, relurl, to_upload, to_update, stats)
     else:        
         for relurl in storage.find_matching_relurls(srcnames, start_ts, end_ts):
-            handle_relurl(gazette_ia, relurl, to_upload, to_update)
+            handle_relurl(gazette_ia, relurl, to_upload, to_update, stats)
 
 
-    
+
+    if to_addrs:
+        msg = stats.get_message()
+        reporting.report(gmail_user, gmail_pwd, to_addrs, \
+                        'Stats for gazette on %s' % datetime.date.today(), msg)

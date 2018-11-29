@@ -10,7 +10,7 @@ class Andhra(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
 
-        self.baseurl   = 'http://apegazette.cgg.gov.in/eGazetteSearch.do'
+        self.baseurl   = 'https://apegazette.cgg.gov.in/eGazetteSearch.do'
         self.searchurl = self.baseurl
         self.hostname  = 'apegazette.cgg.gov.in'
 
@@ -170,7 +170,7 @@ class Andhra(BaseGazette):
 class AndhraArchive(CentralWeekly):
     def __init__(self, name, storage):
         CentralWeekly.__init__(self, name, storage)
-        self.baseurl      = 'http://gazettearchive.ap.gov.in/gt_PublicReport.aspx'
+        self.baseurl      = 'https://gazettearchive.ap.gov.in/gt_PublicReport.aspx'
         self.hostname     = 'gazettearchive.ap.gov.in'
         self.search_endp  = 'gt_PublicReport.aspx'
         self.result_table = 'FileMoveList2'
