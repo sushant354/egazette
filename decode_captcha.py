@@ -347,7 +347,7 @@ if __name__ == '__main__':
             else:
                 outfile = None
 
-            val = himachal(img, outfile = outfile)
+            val =   haryana_captcha(img)
             print val
             if val:
                 expected = results[filename]

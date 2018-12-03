@@ -93,7 +93,8 @@ class Haryana(AndhraArchive):
                 break 
             else:   
                 self.logger.warn('Failed in solving captcha. Rerying.')
-                #response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
+                cookiejar = CookieJar()
+                response = self.download_url(search_url, savecookies = cookiejar)
                 
         return response
     

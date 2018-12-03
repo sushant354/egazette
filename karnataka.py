@@ -59,7 +59,10 @@ class Karnataka(BaseGazette):
             if reobj:
                 partnum = reobj.groupdict()['num']
             else:
-                partnum = href
+                partnum = '%s' % href
+                reobj = re.search('.pdf$', partnum)
+                if partnum:
+                    partnum = partnum[:reobj.start()]
                  
             relurl = os.path.join(relpath, partnum)
             docurl = urllib.basejoin(dateurl, href) 

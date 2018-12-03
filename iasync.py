@@ -10,6 +10,7 @@ import os
 from requests.exceptions import HTTPError
 
 from internetarchive import upload, get_session, get_item, modify_metadata, get_files
+from requests.exceptions import ReadTimeout, RetryError
 from file_storage import FileManager
 import reporting
 import datasrcs 
@@ -76,7 +77,8 @@ class GazetteIA:
         self.logger = logging.getLogger('iasync')
    
     def get_identifier(self, relurl, metainfo):
-        srcname = self.get_srcname(relurl)
+        srcname    = self.get_srcname(relurl)
+        relurl     = relurl.decode('ascii', 'ignore')
         identifier = None
 
         dateobj = metainfo.get_date()
@@ -111,7 +113,6 @@ class GazetteIA:
         elif srcname == 'telangana':
             identifier = relurl.replace('/', '.')
         elif srcname == 'tamilnadu':
-            relurl     = relurl.decode('ascii', 'ignore')
             relurl, n  = re.subn('[()]', '', relurl)
             identifier = relurl.replace('/', '.')
         elif srcname == 'odisha':
@@ -126,7 +127,6 @@ class GazetteIA:
         elif srcname == 'punjab':
             identifier = relurl.replace('/', '.')
         elif srcname == 'uttarakhand':
-            relurl     = relurl.decode('ascii', 'ignore')
             relurl, n  = re.subn('[()]', '', relurl)
             identifier = relurl.replace('/', '.')
         elif srcname == 'haryana':
@@ -166,7 +166,13 @@ class GazetteIA:
         rawfile  = self.file_storage.get_rawfile_path(relurl)
         metafile = self.file_storage.get_metafile_path(relurl)
 
-        files = [f.name for f in get_files(identifier, archive_session = self.session)]
+        try:
+            filelist = get_files(identifier, archive_session = self.session)
+        except RetryError as e:
+            self.logger.warn('Could not get fileliist. Ignoring upload for %s' % identifier) 
+            return False
+
+        files = [f.name for f in filelist]
         filename = rawfile.split('/')[-1]
         if filename in files:
             self.logger.info('File already exists, Ignoring upload for %s' % \
@@ -198,9 +204,13 @@ class GazetteIA:
            self.logger.warn('Error in upload for %s: %s', identifier, e)
            msg = '%s' % e
            if re.search('Syntax error detected in pdf data', msg):
-              r = self.upload_bad_pdf(identifier, rawfile)
+              r = self.upload_bad_pdf(identifier, rawfile, files)
               if r:
                   success = True
+
+        except ReadTimeout as e:
+           self.logger.warn('Error in upload for %s: %s', identifier, e)
+           return self.upload(relurl)
 
         if success:
             self.logger.info('Successfully uploaded %s', identifier)
@@ -208,14 +218,16 @@ class GazetteIA:
             self.logger.warn('Error in uploading %s', identifier)
         return success 
  
-    def upload_bad_pdf(self, identifier, rawfile):
+    def upload_bad_pdf(self, identifier, rawfile, files):
         name = '%s-' %rawfile.split('/')[-1]
+        if name in files:
+            return False
         tmpfile = '/tmp/%s' % name
         shutil.copyfile(rawfile, tmpfile)
         r = upload(identifier, [tmpfile], access_key = self.access_key, \
                    secret_key = self.secret_key)
         os.remove(tmpfile)
-        return r
+        return True
 
     def get_title(self, src, metainfo):
         category = datasrcs.categories[src]
