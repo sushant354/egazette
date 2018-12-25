@@ -243,6 +243,9 @@ class CentralWeekly(BaseGazette):
         dls = []
         cookiejar  = CookieJar()
         response = self.download_url(self.baseurl, savecookies = cookiejar)
+        if not response:
+            self.logger.warn('Could not fetch %s for the day %s', self.baseurl, dateobj)
+            return dls
         curr_url = response.response_url
         search_url = urllib.basejoin(curr_url, self.search_endp)
         response = self.get_search_results(search_url, dateobj, cookiejar)

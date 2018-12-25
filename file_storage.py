@@ -96,6 +96,7 @@ class FileManager:
 
         if os.path.isdir(current_dir):
             filenames = os.listdir(current_dir)
+            filenames.sort()
             for filename in filenames:
                 tmprel = os.path.join(relurl, filename)
                 for rel1 in self.recursive_relurls(datadir, tmprel):
@@ -112,6 +113,7 @@ class FileManager:
             end_ts = time.mktime(end_ts.timetuple())
 
         srclist = os.listdir(self.rawdir)
+        srclist.sort()
         for src in srclist:
             if srcs and src not in srcs:
                 continue
@@ -123,7 +125,7 @@ class FileManager:
                 if not os.path.isfile(rawpath):
                     continue
 
-                if not os.path.isfile(metapath):
+                if not metapath or not os.path.isfile(metapath):
                     continue
 
                 if start_ts != None and os.path.getmtime(rawpath) < start_ts \

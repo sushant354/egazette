@@ -6,11 +6,12 @@ import re
 import types
 import shutil
 import os
+import time
 
 from requests.exceptions import HTTPError
 
-from internetarchive import upload, get_session, get_item, modify_metadata, get_files
-from requests.exceptions import ReadTimeout, RetryError
+from internetarchive import upload, get_session, get_item, modify_metadata
+from requests.exceptions import ReadTimeout, RetryError, ConnectionError
 from file_storage import FileManager
 import reporting
 import datasrcs 
@@ -89,7 +90,7 @@ class GazetteIA:
             identifier = re.sub('^central_extraordinary', 'central.e', identifier)
         elif srcname == 'central_weekly':
             identifier = relurl.replace('/', '.')
-            identifier = re.sub('^central_weekly', 'central.w', relurl)
+            identifier = re.sub('^central_weekly', 'central.w', identifier)
         elif srcname == 'bihar':
             num = relurl.split('/')[-1]
             identifier = 'bih.gazette.%d.%s' % (dateobj.year, num)
@@ -135,13 +136,17 @@ class GazetteIA:
             identifier = relurl.replace('/', '.')
             identifier = re.sub('^haryanaarchive', 'haryanaarch', identifier)
         elif srcname == 'kerala':
+            relurl, n  = re.subn("[',&:%\s;()]", '', relurl)
             identifier = relurl.replace('/', '.')
+            identifier = re.sub('^kerala', 'kerala_new', identifier)
+            identifier = identifier[:80]
         elif srcname == 'karnataka':    
-            identifier = relurl.replace('/', '.')
+            identifier = self.get_karnataka_identifier(relurl)
             if 'links' in metainfo and metainfo['links']:
                 linkids = []
                 for link in metainfo['links']:
-                    linkids.append(prefix + link.replace('/', '.'))
+                    linkids.append(prefix+self.get_karnataka_identifier(link))
+
                 metainfo['linkids'] = linkids
         elif srcname == 'goa':    
             prefix = 'in.goa.egaz.' 
@@ -151,6 +156,19 @@ class GazetteIA:
          
         identifier = prefix + identifier 
         return identifier    
+
+    def get_karnataka_identifier(self, relurl):
+        identifier = relurl.replace('/', '.')
+        identifier = re.sub('^karnataka', 'karnataka_new', identifier)
+        return identifier
+
+    def get_ia_item(self, identifier):
+        try:
+            item = get_item(identifier, archive_session = self.session)
+        except Exception as e:
+            self.logger.warn('Could not get item %s. Error %s' , identifier, e) 
+            item = None 
+        return item
 
     def upload(self, relurl):
         metainfo = self.file_storage.get_metainfo(relurl)
@@ -163,29 +181,59 @@ class GazetteIA:
             self.logger.warn('Could not form IA identifier. Ignoring upload for %s' % relurl) 
             return False
 
+        while 1:
+            item = self.get_ia_item(identifier)
+            if item:
+                break
+            time.sleep(300)
+
         rawfile  = self.file_storage.get_rawfile_path(relurl)
         metafile = self.file_storage.get_metafile_path(relurl)
 
-        try:
-            filelist = get_files(identifier, archive_session = self.session)
-        except RetryError as e:
-            self.logger.warn('Could not get fileliist. Ignoring upload for %s' % identifier) 
-            return False
+        if item.exists:    
+            filelist = item.get_files() 
 
-        files = [f.name for f in filelist]
-        filename = rawfile.split('/')[-1]
-        if filename in files:
-            self.logger.info('File already exists, Ignoring upload for %s' % \
-                             identifier)
-            return False
+            files = set([f.name for f in filelist])
+            rawname  = rawfile.split('/')[-1]
+            metaname = metafile.split('/')[-1]
 
-        if files:
-            metadata  = None
-            to_upload = [rawfile]
-        else:   
+            to_upload = []
+            if rawname in files:
+                self.logger.info('Rawfile already exists for %s. Ignoring.' % \
+                                 relurl)
+            else:
+                to_upload.append(rawfile)
+
+            if metaname in files:
+                self.logger.info('Metafile already exists for %s. Ignoring.' % \
+                                 relurl)
+            else:
+                to_upload.append(metafile)
+            metadata = None    
+        else: 
+            files = set([]) 
             metadata  = self.to_ia_metadata(relurl, metainfo)
             to_upload = [rawfile, metafile]
 
+        if not to_upload:
+            self.logger.info('No files need to be uploaded for %s', identifier)
+            return False
+
+        count = 5
+        while count > 0:
+           success = self.ia_upload(identifier, metadata, to_upload, files, rawfile)
+           if success:
+               break
+           count = count - 1 
+           time.sleep(300)    
+
+        if success:
+            self.logger.info('Successfully uploaded %s', identifier)
+        else:    
+            self.logger.warn('Error in uploading %s', identifier)
+        return success
+
+    def ia_upload(self, identifier, metadata, to_upload, files, rawfile):
         success = False
         try: 
             if metadata:
@@ -198,36 +246,43 @@ class GazetteIA:
                            access_key = self.access_key, \
                            secret_key = self.secret_key, \
                            retries=100)
-            if r:
-               success = True
+            success = True
         except HTTPError as e:
            self.logger.warn('Error in upload for %s: %s', identifier, e)
            msg = '%s' % e
-           if re.search('Syntax error detected in pdf data', msg):
+           if re.search('Syntax error detected in pdf data', msg) or \
+                  re.search('error checking pdf file', msg):
               r = self.upload_bad_pdf(identifier, rawfile, files)
-              if r:
-                  success = True
+              success = True
 
-        except ReadTimeout as e:
+        except Exception as e:
            self.logger.warn('Error in upload for %s: %s', identifier, e)
-           return self.upload(relurl)
+           success = False
+        return success   
 
-        if success:
-            self.logger.info('Successfully uploaded %s', identifier)
-        else:    
-            self.logger.warn('Error in uploading %s', identifier)
-        return success 
- 
     def upload_bad_pdf(self, identifier, rawfile, files):
         name = '%s-' %rawfile.split('/')[-1]
         if name in files:
             return False
         tmpfile = '/tmp/%s' % name
         shutil.copyfile(rawfile, tmpfile)
-        r = upload(identifier, [tmpfile], access_key = self.access_key, \
-                   secret_key = self.secret_key)
+        while 1:
+            if self.upload_file(identifier, tmpfile):
+                break
+            time.sleep(300)
+
+        self.logger.info('Successfully uploaded %s to %s', name, identifier)
         os.remove(tmpfile)
         return True
+
+    def upload_file(self, identifier, filepath):
+        try:
+            upload(identifier, [filepath], access_key = self.access_key, \
+                   secret_key = self.secret_key)
+        except Exception as e: 
+           self.logger.warn('Error in upload for %s: %s', filepath, e)
+           return False 
+        return True   
 
     def get_title(self, src, metainfo):
         category = datasrcs.categories[src]
@@ -340,17 +395,33 @@ class GazetteIA:
             return False
 
         identifier = self.get_identifier(relurl, metainfo)
-        item = get_item(identifier, archive_session = self.session)
+
+        while 1:
+            item = self.get_ia_item(identifier)
+            if item:
+                break
+            time.sleep(300)
 
         if not item.exists:
             return self.upload(relurl)
         else:
             metadata = self.to_ia_metadata(relurl, metainfo)
+            while 1:
+                if self.ia_modify_metadat(identifier, metadata):
+                    break
+                time.sleep(300)    
  
+        return True
+
+    def ia_modify_metadat(self, identifier, metadata):
+        try:
             modify_metadata(identifier, metadata = metadata, \
                             access_key = self.access_key, \
                             secret_key = self.secret_key)
-        return True
+        except Exception as e:
+            self.logger.warn('Could not  modify metadata %s. Error %s' , identifier, e)
+            return False
+        return True        
 
 def print_usage(progname):
     print 'Usage: python %s [-l loglevel(critical, error, warn, info, debug)]' % progname + '''
