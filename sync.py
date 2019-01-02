@@ -17,7 +17,8 @@ def print_usage(progname):
                        [-n (no aggregation of srcs by hostname)]
                        [-r (updateRaw)]
                        [-f logfile]
-                       [-t fromdate (DD-MM-YYYY)] [-T todate (DD-MM-YYYY)] 
+                       [-t fromdate (DD-MM-YYYY)] [-T todate (DD-MM-YYYY)]
+                       [-d last_n_days]
                        [-D datadir]
                        [-s central_weekly -s central_extraordinary -s central
                         -s states 
@@ -79,10 +80,14 @@ if __name__ == '__main__':
     max_wait   = None
     agghosts   = True
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'aD:l:mnf:p:t:T:hrs:W:')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'ad:D:l:mnf:p:t:T:hrs:W:')
     for o, v in optlist:
         if o == '-a':
             all_dls = True
+        elif o == '-d':   
+            num_days = int(v)
+            todate = datetime.datetime.today()
+            fromdate = todate - datetime.timedelta(days = num_days)
         elif o == '-D':
             datadir = v
         elif o == '-l':

@@ -11,10 +11,10 @@ import time
 from requests.exceptions import HTTPError
 
 from internetarchive import upload, get_session, get_item, modify_metadata
-from requests.exceptions import ReadTimeout, RetryError, ConnectionError
 from file_storage import FileManager
 import reporting
 import datasrcs 
+import utils
 
 class Stats:
     def __init__(self):
@@ -49,7 +49,7 @@ class Stats:
             msg.append('%s\t%d\t%d' % (srcname, total[srcname], total_success[srcname]))
         msg.append('\n')                                   
 
-    def get_message(self):
+    def get_message(self, srcnames):
         msg = []
         if self.uploads:
             msg.append('Upload Stats')
@@ -59,7 +59,14 @@ class Stats:
             msg.append('Modify Stats')
             self.get_msg_by_srcs(msg, self.modify, self.modify_success)
         
+        noupdate = []
+        for src in srcnames:
+            if src not in self.uploads and src not in self.modify:
+                noupdate.append(src)
+        if noupdate:
+             msg.append('No updates from %s' % ', '.join(noupdate))
         return '\n'.join(msg)
+
 
 
 class GazetteIA:
@@ -131,6 +138,7 @@ class GazetteIA:
             relurl, n  = re.subn('[()]', '', relurl)
             identifier = relurl.replace('/', '.')
         elif srcname == 'haryana':
+            relurl, n  = re.subn("[',&:%\s;()]", '', relurl)
             identifier = relurl.replace('/', '.')
         elif srcname == 'haryanaarchive':
             identifier = relurl.replace('/', '.')
@@ -431,6 +439,7 @@ def print_usage(progname):
                         [-u (upload_to_ia)]
                         [-r relurl]
                         [-i (relurls_from_stdin)]
+                        [-d days_to_sync]
                         [-D gazette_directory]
                         [-t start_time (%Y-%m-%d %H:%M:%S)]
                         [-T end_time (%Y-%m-%d %H:%M:%S)]
@@ -462,7 +471,7 @@ def handle_relurl(gazette_ia, relurl, to_upload, to_update, stats):
 if __name__ == '__main__':
     progname  = sys.argv[0]
     loglevel  = 'info'
-    filename  = None
+    logfile   = 'iasync-%s.txt' % datetime.date.today()
     datadir   = None
     start_ts  = None
     end_ts    = None
@@ -477,12 +486,19 @@ if __name__ == '__main__':
     gmail_pwd  = None
     to_addrs   = []
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:D:f:hil:s:t:T:mr:uE:U:P:')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:hil:s:t:T:mr:uE:U:P:')
     for o, v in optlist:
         if o == '-l':
             loglevel = v
         elif o == '-f':
-            filename = v
+            logfile = v
+        elif o == '-d':
+            num_days = int(v)
+            today    = datetime.date.today()
+            lastday  = today - datetime.timedelta(days = num_days)
+            start_ts = datetime.datetime(lastday.year, lastday.month, lastday.day, 5, 0, 0)
+            end_ts   = datetime.datetime(today.year, today.month, today.day, 5, 0, 0)
+            
         elif o == '-D':
             datadir = v
         elif o == '-t':
@@ -549,11 +565,16 @@ if __name__ == '__main__':
     logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
     datefmt = '%Y-%m-%d %H:%M:%S'
 
-    if filename:
+    if logfile:
+        statsdir = os.path.join(datadir, 'stats')
+        utils.mk_dir(statsdir)
+
+        logfile = os.path.join(statsdir, logfile)
+
         logging.basicConfig(\
             level   = leveldict[loglevel], \
             format  = logfmt, \
-            filename = filename, \
+            filename = logfile, \
             datefmt = datefmt \
         )
     else:
@@ -565,7 +586,7 @@ if __name__ == '__main__':
 
 
     storage = FileManager(datadir, False, False)
-    gazette_ia = GazetteIA(storage, access_key, secret_key, loglevel, filename)
+    gazette_ia = GazetteIA(storage, access_key, secret_key, loglevel, logfile)
 
     stats        = Stats()
     if relurls:
@@ -582,6 +603,6 @@ if __name__ == '__main__':
 
 
     if to_addrs:
-        msg = stats.get_message()
+        msg = stats.get_message(srcnames)
         reporting.report(gmail_user, gmail_pwd, to_addrs, \
                         'Stats for gazette on %s' % datetime.date.today(), msg)
