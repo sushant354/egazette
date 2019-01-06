@@ -2,9 +2,8 @@ import datetime
 import sys
 import os
 import logging
-import getopt
 import re
-
+import click
 import utils
 import datasrcs
 import download
@@ -61,63 +60,42 @@ def execute(storage, srclist, agghosts, fromdate, todate, max_wait, all_dls):
 
     download.parallel_download(srcobjs, agghosts, fromdate, todate, max_wait, all_dls)
 
-
-if __name__ == '__main__':
-    #initial values
-
-    fromdate = None
-    todate   = None
-    srclist  = []
-
-    debuglevel = 'info'
+@click.command()
+@click.option('-a', help='')
+@click.option('-d', help='')
+@click.option('-D', help='')
+@click.option('-l', help='')
+@click.option('-f', help='')
+@click.option('-m', help='')
+@click.option('-n', help='')
+@click.option('-t', help='')
+@click.option('-T', help='')
+@click.option('-r', help='')
+@click.option('-s', help='')
+@click.option('-W', help='')
+def main(a, d, D, l, f, m, n, t, T, r, s, W):
+    srclist = []
     progname = sys.argv[0]
-    filename = None
-    updateMeta = False
-    updateRaw  = False
-    datadir    = None
-    dbname     = None
-    all_dls    = False
-    max_wait   = None
-    agghosts   = True
-
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'ad:D:l:mnf:p:t:T:hrs:W:')
-    for o, v in optlist:
-        if o == '-a':
-            all_dls = True
-        elif o == '-d':   
-            num_days = int(v)
-            todate = datetime.datetime.today()
-            fromdate = todate - datetime.timedelta(days = num_days)
-        elif o == '-D':
-            datadir = v
-        elif o == '-l':
-            debuglevel = v
-        elif o == '-f':
-            filename = v
-        elif o == '-m':
-            updateMeta = True
-        elif o == '-n':
-            agghosts = False
-        elif o == '-t':
-            fromdate =  to_datetime(v)
-        elif o == '-T':
-            todate   = to_datetime(v)
-        elif o == '-r':
-            updateRaw = True
-        elif o == '-s':
-            srclist.append(v)
-        elif o == '-W':
-            max_wait = int(v)
-        else:
-            print >> sys.stderr, 'Unknown option %s' % o
-            print_usage(progname)
-            sys.exit(0)
+    all_dls = True
+    num_days = int(d)
+    todate = datetime.datetime.today()
+    fromdate = todate - datetime.timedelta(days=num_days)
+    datadir = D
+    debuglevel = l
+    filename = f
+    updateMeta = True
+    agghosts = False
+    fromdate = to_datetime(t)
+    todate = to_datetime(T)
+    updateRaw = True
+    srclist.append(s)
+    max_wait = int(W)
 
     leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
                  'warning': logging.WARNING, 'info': logging.INFO, \
                  'debug': logging.DEBUG}
 
-    logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
+    logfmt = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
     datefmt = '%Y-%m-%d %H:%M:%S'
 
     if datadir == None:
@@ -132,20 +110,23 @@ if __name__ == '__main__':
         filename = os.path.join(statsdir, filename)
 
     if filename:
-        logging.basicConfig(\
-            level   = leveldict[debuglevel], \
-            format  = logfmt, \
-            filename = filename, \
-            datefmt = datefmt \
-        )
+        logging.basicConfig( \
+            level=leveldict[debuglevel], \
+            format=logfmt, \
+            filename=filename, \
+            datefmt=datefmt \
+            )
     else:
-        logging.basicConfig(\
-            level   = leveldict[debuglevel], \
-            format  = logfmt, \
-            datefmt = datefmt \
-        )
-
+        logging.basicConfig( \
+            level=leveldict[debuglevel], \
+            format=logfmt, \
+            datefmt=datefmt \
+            )
 
     storage = FileManager(datadir, updateMeta, updateRaw)
     execute(storage, srclist, agghosts, fromdate, todate, max_wait, all_dls)
 
+
+if __name__ == '__main__':
+    #initial values
+    main()
