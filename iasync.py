@@ -100,7 +100,7 @@ class GazetteIA:
             identifier = re.sub('^central_weekly', 'central.w', identifier)
         elif srcname == 'bihar':
             num = relurl.split('/')[-1]
-            identifier = 'bih.gazette.%d.%s' % (dateobj.year, num)
+            identifier = 'bih.gazette.%s.%s' % (dateobj, num)
             prefix    = 'in.gov.' 
         elif srcname == 'delhi_weekly':    
             identifier = relurl.replace('/', '.')
