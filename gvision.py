@@ -61,7 +61,7 @@ def construct_text_layout(response):
     return u'\n\n'.join(pagetext)
 
 def get_left_offset(l1, l2, page_width, numchars, maxchars):
-    print "OFFSET", numchars, maxchars, page_width, l1, l2
+    #print "OFFSET", numchars, maxchars, page_width, l1, l2
     pix_offset = (maxchars - numchars) * l1 * 1.0/  (page_width - (l2 -l1))
 
     return int(round(pix_offset))
@@ -84,8 +84,10 @@ def get_word_text(words):
                 t = symbol.property.detected_break.type 
                 if t == 1:
                     stext.append(u' ')
+                '''    
                 elif t == 5:
                     stext.append('\n')
+                '''    
 
         box = word.bounding_box
         word_text.append((box, u''.join(stext)))
@@ -105,15 +107,20 @@ def get_page_text(page):
     return u''.join(page_text)
 
 
-def get_maxchars(page_words):
-    prevbox  = None
-    maxchars = 0
-    numchars = 0
-    maxwidth = 0
-    width    = 0
+def get_char_width(page_words):
+    prevbox   = None
+    maxchars  = 0
+    numchars  = 0
+    maxwidth  = 0
+    width     = 0
+    min_width = None
 
     for box, word_text in page_words:
+        if min_width == None or min_width > box.vertices[0].x:
+            min_width = box.vertices[0].x
+
         if prevbox and not is_same_line(prevbox, box):
+           
             if numchars > maxchars:
                 maxchars = numchars
                 maxwidth = width
@@ -127,57 +134,83 @@ def get_maxchars(page_words):
         maxchars = numchars
         maxwidth = width
 
-    print 'MAXHARS', maxwidth, maxchars
+    char_width = maxwidth/ maxchars
+    if char_width == 0:
+        char_width = 1
+    if min_width == None:
+       min_width = 0
 
-    return maxchars
+    return char_width, min_width
 
-def get_line_text(line_boxes, page_width, maxchars):
+def get_num_spaces(length, char_width):
+    return int(length / char_width )
+
+def get_line_text(line_boxes, char_width, min_width):
     line_text = []
 
     numchars = 0
+    width    = 0 
+    prevbox = None
     for box, word_text in line_boxes:
-        line_text.append(word_text)
         numchars += len(word_text)
+        width += box.vertices[2].x - box.vertices[0].x
 
-    l1 = line_boxes[0][0].vertices[0].x
-    l2 = line_boxes[-1][0].vertices[2].x
+        prevbox = box   
 
-    left_offset = get_left_offset(l1, l2, page_width, numchars, maxchars)
+    prevbox = None
+    for box, word_text in line_boxes:
+        if prevbox == None:
+            lastpos = min_width
+        else:
+            lastpos = prevbox.vertices[2].x
+        currpos = box.vertices[0].x
+        length = currpos - lastpos
+        num_spaces = get_num_spaces(length, char_width)
+        #print lastpos, currpos, length, num_spaces, char_width, word_text.encode('utf8')
 
-    if left_offset > 0:
-        line_text.insert(0, ' ' * left_offset)
+        if num_spaces > 2:
+            line_text.append(' ' * num_spaces)
 
+        line_text.append(word_text)
+
+        prevbox = box
    
-    print 'LEFT_OFFSET', l1, l2, numchars, left_offset, (u''.join(line_text)).encode('utf8')
     return line_text
 
 def is_same_line(box1, box2):
-    ydiff = round((box2.vertices[0].y - box1.vertices[0].y) * 1.0/(box2.vertices[3].y - box2.vertices[0].y))
-    if int(ydiff) >= 1:
+    ydiff = box2.vertices[3].y - box2.vertices[0].y
+    if ydiff <= 0:
+        return True
+
+    numy  = round((box2.vertices[0].y - box1.vertices[0].y) * 1.0/ydiff)
+
+    xdiff =  round(box2.vertices[0].x - box1.vertices[2].x) 
+    numy = int(numy)
+    if numy >= 1 or xdiff <= -50: 
         return False
     return True    
 
 def stitch_boxes(page_words, page_width):
-    maxchars = get_maxchars(page_words)
+    char_width, min_width = get_char_width(page_words)
 
     page_text  = []
     line_boxes = []
     prevbox    = None
 
     for box, word_text in page_words:
-        print box
-        print word_text.encode('utf8')
+        #print box
+        #print word_text.encode('utf8')
         if prevbox != None and not is_same_line(prevbox, box):
-            print 'BOXES', prevbox.vertices[0],  box.vertices[0]
+            #print 'BOXES', prevbox.vertices[0],  box.vertices[0]
 
-            page_text.extend(get_line_text(line_boxes, page_width, maxchars))
+            page_text.extend(get_line_text(line_boxes, char_width, min_width))
 
             t2 = box.vertices[0].y
             t1 = prevbox.vertices[3].y
             twidth = (box.vertices[3].y - box.vertices[0].y)
             top_offset  = get_top_offset(t1, t2, twidth)  
 
-            print 'TOP_OFFSET', t1, t2, twidth, top_offset
+            #print 'TOP_OFFSET', t1, t2, twidth, top_offset
 
             if top_offset < 0:    
                 top_offset = 1
@@ -189,7 +222,7 @@ def stitch_boxes(page_words, page_width):
         line_boxes.append((box, word_text))       
         prevbox = box
     if line_boxes:
-        page_text.extend(get_line_text(line_boxes, page_width, maxchars))
+        page_text.extend(get_line_text(line_boxes, char_width, min_width))
 
     return page_text
 
@@ -217,7 +250,6 @@ def to_text(client, input_file, out_file, layout):
             paras = google_ocr(client, os.path.join(pngdir, filename), layout)
             outhandle.write(u'%s' % paras)
             outhandle.write('\n\n\n\n')
-            break
 
     os.system('rm -rf %s' % pngdir)
     outhandle.close()
