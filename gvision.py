@@ -7,6 +7,7 @@ import io
 import subprocess
 import tempfile
 import codecs
+from djvuxml import Djvu
 
 from google.cloud import vision
 
@@ -15,6 +16,7 @@ FNULL = open(os.devnull, 'w')
 
 def print_usage(progname):
     print '''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
+                       [-O output_format(text|djvu)]
                        [-g google_key_file]
                        [-f logfile]
                        [-i input_file] [-o output_file]
@@ -41,18 +43,21 @@ def pdf_to_png(infile, pngdir):
     else:
         return False
 
-def google_ocr(client, input_file, layout = False):
+def google_ocr(client, input_file):
     content = io.open(input_file, 'rb').read()
     image = vision.types.Image(content=content)
 
     response = client.document_text_detection(image=image)
 
-    if not layout:
-        return response.full_text_annotation.text
-    
-    layout_text = construct_text_layout(response)
+    return response
 
-    return layout_text
+def get_text(response, layout):
+    if layout:
+        text = construct_text_layout(response)
+    else:    
+        text = response.full_text_annotation.text
+
+    return text
 
 def construct_text_layout(response):    
     pagetext = []
@@ -232,7 +237,7 @@ def atoi(text):
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
-def to_text(client, input_file, out_file, layout):
+def process(client, input_file, out_file, out_format, layout):
     logger = logging.getLogger('gvision')
 
     pngdir = tempfile.mkdtemp()
@@ -246,13 +251,28 @@ def to_text(client, input_file, out_file, layout):
         filenames.sort(key=natural_keys)
 
         outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
-        for filename in filenames:
-            paras = google_ocr(client, os.path.join(pngdir, filename), layout)
-            outhandle.write(u'%s' % paras)
-            outhandle.write('\n\n\n\n')
+        if out_format == 'text':
+            to_text(pngdir, filenames, client, outhandle)
+        elif out_format == 'djvu':   
+            to_djvu(pngdir, filenames, client, outhandle)
+        outhandle.close()
 
     os.system('rm -rf %s' % pngdir)
-    outhandle.close()
+
+def to_text(pngdir, filenames, client, outhandle):
+    for filename in filenames:
+        response = google_ocr(client, os.path.join(pngdir, filename))
+        paras = get_text(response, layout)
+        outhandle.write(u'%s' % paras)
+        outhandle.write('\n\n\n\n')
+
+def to_djvu(pngdir, filenames, client, outhandle):
+    djvu = Djvu(outhandle)
+    djvu.write_header()
+    for filename in filenames:
+        response = google_ocr(client, os.path.join(pngdir, filename))
+        djvu.handle_google_response(response)
+    djvu.write_footer()
 
 if __name__ == '__main__':
     progname   = sys.argv[0]
@@ -261,9 +281,10 @@ if __name__ == '__main__':
     key_file   = None
     input_file = None
     out_file   = None
+    out_format = 'text'
     layout     = False
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'l:f:g:i:o:L')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'l:f:g:i:o:O:L')
 
     for o, v in optlist:
         if o == '-l':
@@ -278,6 +299,8 @@ if __name__ == '__main__':
             out_file   = v
         elif o == '-L':
             layout = True
+        elif o == '-O':
+            out_format = v
 
     if key_file == None:
         print 'Google Cloud API credentials are mising'
@@ -291,6 +314,11 @@ if __name__ == '__main__':
 
     if out_file == None:
         print 'No output file specified'
+        print_usage(progname)
+        sys.exit(0)
+
+    if out_format not in ['text', 'djvu']:
+        print 'Unsupported output format %s. Output format should be text or djvu.' % v
         print_usage(progname)
         sys.exit(0)
 
@@ -320,4 +348,4 @@ if __name__ == '__main__':
         )
 
     client = get_google_client(key_file)
-    to_text(client, input_file, out_file, layout)
+    process(client, input_file, out_file, out_format, layout)
