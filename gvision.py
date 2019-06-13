@@ -7,7 +7,9 @@ import io
 import subprocess
 import tempfile
 import codecs
+
 from djvuxml import Djvu
+from abbyxml import Abby
 
 from google.cloud import vision
 
@@ -16,7 +18,8 @@ FNULL = open(os.devnull, 'w')
 
 def print_usage(progname):
     print '''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
-                       [-O output_format(text|djvu)]
+                       [-d jpg_dir (intermediate jpg files)]
+                       [-O output_format(text|djvu|abby)]
                        [-g google_key_file]
                        [-f logfile]
                        [-i input_file] [-o output_file]
@@ -28,10 +31,10 @@ def get_google_client(key_file):
 
     return client
 
-def pdf_to_png(infile, pngdir):
-    outfile = pngdir + '/%d.png'
+def pdf_to_png(infile, jpgdir):
+    outfile = jpgdir + '/%d.jpg'
     command = ['gs', '-q', '-dNOPAUSE', '-dBATCH',  '-dSAFER', '-r300x300', \
-               '-sDEVICE=png16m', '-sOutputFile=%s' % outfile, '-c',  \
+               '-sDEVICE=jpeg', '-sOutputFile=%s' % outfile, '-c',  \
                'save', 'pop', '-f',  '%s' % infile]
 
     p = subprocess.Popen(command, stdout=FNULL, stderr = FNULL)
@@ -237,42 +240,56 @@ def atoi(text):
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
-def process(client, input_file, out_file, out_format, layout):
+def process(client, input_file, out_file, out_format, layout, jpgdir):
     logger = logging.getLogger('gvision')
 
-    pngdir = tempfile.mkdtemp()
+    tmpdir = False
+    if jpgdir == None:
+        jpgdir = tempfile.mkdtemp()
+        tmpdir = True
 
-    success = pdf_to_png(input_file, pngdir)
+    success = pdf_to_png(input_file, jpgdir)
 
     if not success:
         logger.warn('ghostscript on pdffile %s failed' % input_file)
     else:
-        filenames = os.listdir(pngdir)
+        filenames = os.listdir(jpgdir)
         filenames.sort(key=natural_keys)
 
         outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
         if out_format == 'text':
-            to_text(pngdir, filenames, client, outhandle)
+            to_text(jpgdir, filenames, client, outhandle)
         elif out_format == 'djvu':   
-            to_djvu(pngdir, filenames, client, outhandle)
+            to_djvu(jpgdir, filenames, client, outhandle)
+        elif out_format == 'abby':   
+            to_abby(jpgdir, filenames, client, outhandle)
         outhandle.close()
 
-    os.system('rm -rf %s' % pngdir)
+    if tmpdir:
+        os.system('rm -rf %s' % jpgdir)
 
-def to_text(pngdir, filenames, client, outhandle):
+def to_text(jpgdir, filenames, client, outhandle):
     for filename in filenames:
-        response = google_ocr(client, os.path.join(pngdir, filename))
+        response = google_ocr(client, os.path.join(jpgdir, filename))
         paras = get_text(response, layout)
         outhandle.write(u'%s' % paras)
         outhandle.write('\n\n\n\n')
 
-def to_djvu(pngdir, filenames, client, outhandle):
+def to_djvu(jpgdir, filenames, client, outhandle):
     djvu = Djvu(outhandle)
     djvu.write_header()
     for filename in filenames:
-        response = google_ocr(client, os.path.join(pngdir, filename))
+        response = google_ocr(client, os.path.join(jpgdir, filename))
         djvu.handle_google_response(response)
     djvu.write_footer()
+
+def to_abby(jpgdir, filenames, client, outhandle):
+    abby= Abby(outhandle)
+    abby.write_header()
+    for filename in filenames:
+        response = google_ocr(client, os.path.join(jpgdir, filename))
+        abby.handle_google_response(response)
+    abby.write_footer()
 
 if __name__ == '__main__':
     progname   = sys.argv[0]
@@ -284,10 +301,13 @@ if __name__ == '__main__':
     out_format = 'text'
     layout     = False
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'l:f:g:i:o:O:L')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'd:l:f:g:i:o:O:L')
 
+    jpgdir = None
     for o, v in optlist:
-        if o == '-l':
+        if o == '-d':
+            jpgdir = v
+        elif o == '-l':
             loglevel = v
         elif o == '-f':
             logfile = v
@@ -317,8 +337,8 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
-    if out_format not in ['text', 'djvu']:
-        print 'Unsupported output format %s. Output format should be text or djvu.' % v
+    if out_format not in ['text', 'djvu', 'abby']:
+        print 'Unsupported output format %s. Output format should be text or djvu.' % out_format
         print_usage(progname)
         sys.exit(0)
 
@@ -348,4 +368,4 @@ if __name__ == '__main__':
         )
 
     client = get_google_client(key_file)
-    process(client, input_file, out_file, out_format, layout)
+    process(client, input_file, out_file, out_format, layout, jpgdir)
