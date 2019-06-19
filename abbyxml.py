@@ -86,7 +86,7 @@ class Abby:
         baselines.sort( lambda x, y: cmp(baselinedict[x], baselinedict[y]), \
                         reverse = True)
         baseline = baselines[0]
-        self.outhandle.write('<line baseline="%d" l="%d" t="%d" r="%d" b="%d">\n' % (baseline, l, t, r, b))    
+        self.outhandle.write('<line baseline="%d" l="%d" t="%d" r="%d" b="%d">\n<formatting>\n' % (baseline, l, t, r, b))    
        
     def handle_words(self, words):
         lines = self.stitch_words(words)
@@ -103,7 +103,7 @@ class Abby:
                 self.write_word(word)
 
                 prevbox = box
-            self.outhandle.write('</line>\n')
+            self.outhandle.write('</formatting>\n</line>\n')
 
     def write_space(self, prevbox, box):
         l = prevbox.vertices[1].x + 1
