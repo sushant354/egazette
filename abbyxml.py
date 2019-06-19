@@ -6,7 +6,7 @@ class Abby:
 
     def write_header(self):
         self.outhandle.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n')
-        self.outhandle.write('<document xmlns="http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml" version="1.0" producer="ABBYY FineReader Engine 11" languages="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml">\n')
+        self.outhandle.write('<document xmlns="http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml" version="1.0" producer="ABBYY FineReader Engine 11" languages="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml">\n<documentData>\n<paragraphStyles>\n</paragraphStyles>\n</documentData>\n')
 
     def write_footer(self):
         self.outhandle.write('</document>\n')
@@ -52,11 +52,47 @@ class Abby:
 
         return lines 
 
+    def write_line_header(self, line):
+        l = t = r = b  = None
+        
+        baselinedict = {}
+        for word in line:
+            box = word.bounding_box
+
+            box_l = box.vertices[0].x
+            box_r = box.vertices[1].x
+            box_t = box.vertices[0].y
+            box_b = box.vertices[3].y
+
+            if l == None or l > box_l:
+                l = box_l
+
+            if r == None or r < box_r:
+                r = box_r
+
+            if t == None or t > box_t:
+                t = box_t
+
+            if b == None or b < box_b:
+                b = box_b
+            
+            if box_b in baselinedict:
+                baselinedict[box_b] += 1
+            else:    
+                baselinedict[box_b] = 1
+
+
+        baselines = baselinedict.keys()
+        baselines.sort( lambda x, y: cmp(baselinedict[x], baselinedict[y]), \
+                        reverse = True)
+        baseline = baselines[0]
+        self.outhandle.write('<line baseline="%d" l="%d" t="%d" r="%d" b="%d">\n' % (baseline, l, t, r, b))    
+       
     def handle_words(self, words):
         lines = self.stitch_words(words)
 
         for line in lines:
-            self.outhandle.write('<line>\n')
+            self.write_line_header(line)
 
             prevbox = None
             for word in line:
