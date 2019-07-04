@@ -6,7 +6,7 @@ class Abby:
 
     def write_header(self):
         self.outhandle.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n')
-        self.outhandle.write('<document xmlns="http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml" version="1.0" producer="ABBYY FineReader Engine 11" languages="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml http://www.abbyy.com/FineReader_xml/FineReader10-schema-v1.xml">\n<documentData>\n<paragraphStyles>\n</paragraphStyles>\n</documentData>\n')
+        self.outhandle.write('<document xmlns="http://www.abbyy.com/FineReader_xml/FineReader6-schema-v1.xml" version="1.0" producer="ABBYY FineReader Engine 11" languages="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.abbyy.com/FineReader_xml/FineReader6-schema-v1.xml">\n<documentData>\n<paragraphStyles>\n</paragraphStyles>\n</documentData>\n')
 
     def write_footer(self):
         self.outhandle.write('</document>\n')
