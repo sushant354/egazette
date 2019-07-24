@@ -3,6 +3,8 @@ from xml.sax import saxutils
 class Abby:
     def __init__(self, outhandle):
         self.outhandle = outhandle
+        self.height    = 0
+        self.width     = 0
 
     def write_header(self):
         self.outhandle.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n')
@@ -12,6 +14,12 @@ class Abby:
         self.outhandle.write('</document>\n')
 
     def write_page_header(self, height, width, dpi):
+        if height == None:
+            height = self.height
+        
+        if width == None:
+            width = self.width
+
         self.outhandle.write('<page width="%d" height="%d" resolution="%d" originalCoords="1">\n' % (width, height, dpi))
 
     def write_page_footer(self):
@@ -127,6 +135,11 @@ class Abby:
     def handle_google_response(self, response):
         for page in response.full_text_annotation.pages:
             self.write_page_header(page.height, page.width, 300)
+            if page.height > self.height:
+                self.height = page.height
+
+            if page.width > self.width:
+                self.width = page.width
 
             for block in page.blocks:
                 self.write_block_header(block.bounding_box)

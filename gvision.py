@@ -32,7 +32,10 @@ def get_google_client(key_file):
     return client
 
 def pdf_to_png(infile, jpgdir):
-    outfile = jpgdir + '/%d.jpg'
+    itemname = os.path.splitext(os.path.basename(infile))[0]
+
+    outfile = os.path.join(jpgdir, itemname+ '_%04d.jpg')
+
     command = ['gs', '-q', '-dNOPAUSE', '-dBATCH',  '-dSAFER', '-r300x300', \
                '-sDEVICE=jpeg', '-sOutputFile=%s' % outfile, '-c',  \
                'save', 'pop', '-f',  '%s' % infile]
@@ -284,11 +287,18 @@ def to_djvu(jpgdir, filenames, client, outhandle):
     djvu.write_footer()
 
 def to_abby(jpgdir, filenames, client, outhandle):
+    logger = logging.getLogger('gvision')
     abby= Abby(outhandle)
     abby.write_header()
     for filename in filenames:
         response = google_ocr(client, os.path.join(jpgdir, filename))
-        abby.handle_google_response(response)
+        if response.full_text_annotation.pages:
+            abby.handle_google_response(response)
+        else:
+            logger.warn('No pages in %s', filename)
+            abby.write_page_header(None, None, 300)
+            abby.write_page_footer()
+
     abby.write_footer()
 
 if __name__ == '__main__':
