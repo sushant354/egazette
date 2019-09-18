@@ -7,9 +7,14 @@ import io
 import subprocess
 import tempfile
 import codecs
+import pickle
+from zipfile import ZipFile
+import gzip
+from requests.exceptions import HTTPError
 
 from djvuxml import Djvu
 from abbyxml import Abby
+from internetarchive import download, upload, get_session, modify_metadata 
 
 from google.cloud import vision
 
@@ -18,9 +23,13 @@ FNULL = open(os.devnull, 'w')
 
 def print_usage(progname):
     print '''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
+                       [-D top_dir for InternetArchive mode]
+                       [-a access_key] [-k secret_key]
                        [-d jpg_dir (intermediate jpg files)]
+                       [-g google_ocr_output_directory]
                        [-O output_format(text|djvu|abby)]
-                       [-g google_key_file]
+                       [-G google_key_file]
+                       [-I internetarchive_item]
                        [-f logfile]
                        [-i input_file] [-o output_file]
           ''' % progname
@@ -31,7 +40,7 @@ def get_google_client(key_file):
 
     return client
 
-def pdf_to_png(infile, jpgdir):
+def pdf_to_jpg(infile, jpgdir):
     itemname = os.path.splitext(os.path.basename(infile))[0]
 
     outfile = os.path.join(jpgdir, itemname+ '_%04d.jpg')
@@ -49,11 +58,20 @@ def pdf_to_png(infile, jpgdir):
     else:
         return False
 
-def google_ocr(client, input_file):
+def google_ocr(client, input_file, gocr_file):
+    if gocr_file and os.path.exists(gocr_file):
+        pickle_in = open(gocr_file, 'rb')
+        return pickle.load(pickle_in)
+        
     content = io.open(input_file, 'rb').read()
     image = vision.types.Image(content=content)
 
     response = client.document_text_detection(image=image)
+
+    if gocr_file:
+        pickle_out = open(gocr_file, 'wb')
+        pickle.dump(response, pickle_out)
+        pickle_out.close()
 
     return response
 
@@ -243,55 +261,61 @@ def atoi(text):
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
-def process(client, input_file, out_file, out_format, layout, jpgdir):
-    logger = logging.getLogger('gvision')
+def process(client, jpgdir, out_file, out_format, gocr_dir, layout):
+    filenames = os.listdir(jpgdir)
+    filenames.sort(key=natural_keys)
 
-    tmpdir = False
-    if jpgdir == None:
-        jpgdir = tempfile.mkdtemp()
-        tmpdir = True
+    outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
+    if out_format == 'text':
+        to_text(jpgdir, filenames, client, outhandle, gocr_dir)
+    elif out_format == 'djvu':   
+        to_djvu(jpgdir, filenames, client, outhandle, gocr_dir)
+    elif out_format == 'abby':   
+        to_abby(jpgdir, filenames, client, outhandle, gocr_dir)
+    outhandle.close()
 
-    success = pdf_to_png(input_file, jpgdir)
 
-    if not success:
-        logger.warn('ghostscript on pdffile %s failed' % input_file)
-    else:
-        filenames = os.listdir(jpgdir)
-        filenames.sort(key=natural_keys)
-
-        outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
-        if out_format == 'text':
-            to_text(jpgdir, filenames, client, outhandle)
-        elif out_format == 'djvu':   
-            to_djvu(jpgdir, filenames, client, outhandle)
-        elif out_format == 'abby':   
-            to_abby(jpgdir, filenames, client, outhandle)
-        outhandle.close()
-
-    if tmpdir:
-        os.system('rm -rf %s' % jpgdir)
-
-def to_text(jpgdir, filenames, client, outhandle):
+def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
     for filename in filenames:
-        response = google_ocr(client, os.path.join(jpgdir, filename))
+        infile    = os.path.join(jpgdir, filename)
+        if gocr_dir:
+            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file = os.path.join(gocr_dir, gocr_file)
+        else:
+            gocr_file = None
+        response  = google_ocr(client, infile, gocr_file)
+
         paras = get_text(response, layout)
         outhandle.write(u'%s' % paras)
         outhandle.write('\n\n\n\n')
 
-def to_djvu(jpgdir, filenames, client, outhandle):
+def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
     djvu = Djvu(outhandle)
     djvu.write_header()
     for filename in filenames:
-        response = google_ocr(client, os.path.join(jpgdir, filename))
+        infile    = os.path.join(jpgdir, filename)
+
+        if gocr_dir:
+            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file = os.path.join(gocr_dir, gocr_file)
+        else:
+            gocr_file = None
+        response  = google_ocr(client, infile, gocr_file)
         djvu.handle_google_response(response)
     djvu.write_footer()
 
-def to_abby(jpgdir, filenames, client, outhandle):
+def to_abby(jpgdir, filenames, client, outhandle, gocr_dir):
     logger = logging.getLogger('gvision')
     abby= Abby(outhandle)
     abby.write_header()
     for filename in filenames:
-        response = google_ocr(client, os.path.join(jpgdir, filename))
+        infile    = os.path.join(jpgdir, filename)
+        if gocr_dir:
+            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file = os.path.join(gocr_dir, gocr_file)
+        else:
+            gocr_file = None
+        response  = google_ocr(client, infile, gocr_file)
         if response.full_text_annotation.pages:
             abby.handle_google_response(response)
         else:
@@ -300,6 +324,139 @@ def to_abby(jpgdir, filenames, client, outhandle):
             abby.write_page_footer()
 
     abby.write_footer()
+
+class IA:
+    def __init__(self, top_dir, access_key, secret_key, loglevel, logfile):
+        self.top_dir      = top_dir
+        self.access_key   = access_key
+        self.secret_key   = secret_key
+
+        session_data = {'access': access_key, 'secret': secret_key}
+        if logfile:
+            logconfig    = {'logging': {'level': loglevel, 'file': logfile}}
+        else:
+            logconfig    = {'logging': {'level': loglevel}}
+
+        self.session = get_session({'s3': session_data, 'logging': logconfig})
+        self.logger = logging.getLogger('gvision.ia')
+
+    def find_jp2(self, item_path):
+        zfile = None
+        for filename in os.listdir(item_path):
+            if re.search('_jp2.zip$', filename):
+                zfile = filename
+                break
+        return zfile        
+
+    def fetch_jp2(self, item):
+        item_path = os.path.join(self.top_dir, item)
+        if os.path.exists(item_path):
+            zfile     = self.find_jp2(item_path)
+            if zfile:
+                return zfile
+
+        download(item, glob_pattern='*_jp2.zip', destdir=self.top_dir)
+        if not os.path.exists(item_path):
+            self.logger.warn('Item path does not exist: %s', item_path)
+            return None 
+
+        return self.find_jp2(item_path)
+
+    def extract_jp2(self, item, zfile): 
+        item_path = os.path.join(self.top_dir, item)
+        jp2_dir,n   = re.subn('\.zip$', '', zfile)
+
+        if not zfile:        
+            self.logger.warn('JP2 zip file does not exist: %s', item)
+            return False
+        
+        if os.path.exists(jp2_dir):        
+            self.logger.info('JP2 dir already exists. No need to extract %s', item)
+            return False
+
+        z = ZipFile(os.path.join(item_path, zfile))
+        z.extractall(item_path)
+        return True
+
+
+    def jp2_to_jpg(self, jp2file, jpgfile):
+        command = ['convert', jp2file, jpgfile]
+        p = subprocess.Popen(command, stdout=FNULL, stderr = FNULL)
+        return p
+
+    def convert_jp2(self, item):
+        item_path = os.path.join(self.top_dir, item)
+        jp2_path = None
+        for filename in os.listdir(item_path):
+            filepath = os.path.join(item_path, filename)
+            if re.search('_jp2$', filename) and os.path.exists(filepath):
+                jp2_path = filepath
+                break
+
+        if not jp2_path:        
+            self.logger.warn('JP2 path does not exist: %s', jp2_path)
+            return None
+
+        jpg_path, n = re.subn('_jp2$', '_jpg', jp2_path)
+        if not os.path.exists(jpg_path):
+            os.mkdir(jpg_path)
+
+        plist = []
+        for filename in os.listdir(jp2_path):
+            jp2file = os.path.join(jp2_path, filename)
+            jpgfile, n = re.subn('.jp2$', '.jpg', filename)
+            jpgfile = os.path.join(jpg_path, jpgfile)
+
+            if not os.path.exists(jpgfile):
+                p = self.jp2_to_jpg(jp2file, jpgfile)
+                plist.append(p)
+        
+        for p in plist:
+            p.wait()
+
+        return jpg_path
+
+    def compress_abbyy(self, abby_file, compressed_file):
+        f_in = open(abby_file, 'rb')
+        f_out = gzip.open(compressed_file, 'wb')
+        f_out.writelines(f_in)
+        f_out.close()
+        f_in.close()
+
+    def update_metadata(self, identifier, metadata):
+        while 1:
+            if self.ia_modify_metadata(identifier, metadata):
+                break
+            time.sleep(300)
+
+    def ia_modify_metadata(self, identifier, metadata):
+        try:
+            modify_metadata(identifier, metadata = metadata, \
+                            access_key = self.access_key, \
+                            secret_key = self.secret_key)
+        except Exception as e:
+            self.logger.warn('Could not  modify metadata %s. Error %s' , identifier, e)
+            return False
+        return True
+
+    def upload_abbyy(self, ia_item, abby_file):
+        success = True
+        metadata = {'x-archive-keep-old-version': '0', \
+                    'fts-ignore-ingestion-lang-filter': 'true'}
+        self.update_metadata(ia_item, metadata)
+
+        abby_file_gz, n = re.subn('xml$', 'gz', abby_file)
+        self.compress_abbyy(abby_file, abby_file_gz)
+
+        try:
+           success = upload(ia_item, [abby_file_gz], \
+                           access_key = self.access_key, \
+                           secret_key = self.secret_key, retries=100)
+        except HTTPError as e:
+           self.logger.warn('Error in upload for %s: %s', ia_item, e)
+           success = False
+        return success   
+
 
 if __name__ == '__main__':
     progname   = sys.argv[0]
@@ -310,21 +467,36 @@ if __name__ == '__main__':
     out_file   = None
     out_format = 'text'
     layout     = False
+    gocr_dir   = None
+    top_dir    = None
+    access_key = None
+    secret_key = None
+    ia_item    = None
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'd:l:f:g:i:o:O:L')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:d:D:l:f:g:G:i:I:k:o:O:L')
 
     jpgdir = None
     for o, v in optlist:
         if o == '-d':
             jpgdir = v
+        elif o == '-D':
+            top_dir = v
         elif o == '-l':
             loglevel = v
         elif o == '-f':
             logfile = v
-        elif o == '-g':    
+        elif o == '-g':
+            gocr_dir = v
+        elif o == '-G':    
             key_file = v
         elif o == '-i':    
             input_file = v
+        elif o == '-I':
+            ia_item =v
+        elif o == '-a':
+            access_key = v
+        elif o == '-k':
+            secret_key = v
         elif o == '-o':
             out_file   = v
         elif o == '-L':
@@ -334,21 +506,6 @@ if __name__ == '__main__':
 
     if key_file == None:
         print 'Google Cloud API credentials are mising'
-        print_usage(progname)
-        sys.exit(0)
-
-    if input_file == None:
-        print 'No input file supplied'
-        print_usage(progname)
-        sys.exit(0)
-
-    if out_file == None:
-        print 'No output file specified'
-        print_usage(progname)
-        sys.exit(0)
-
-    if out_format not in ['text', 'djvu', 'abby']:
-        print 'Unsupported output format %s. Output format should be text or djvu.' % out_format
         print_usage(progname)
         sys.exit(0)
 
@@ -377,5 +534,79 @@ if __name__ == '__main__':
             datefmt = datefmt \
         )
 
+    logger = logging.getLogger('gvision')
+
+    ia = None
+    if top_dir:
+        if input_file or out_file:
+            print 'In InternetArchive mode, you should not specify input_file or output_file'
+            print_usage(progname)
+            sys.exit(0)
+
+        if secret_key == None or access_key == None or ia_item == None:
+            print 'In InternetArchive mode, you need to specify item, secret_key and access_key'
+            print_usage(progname)
+            sys.exit(0)
+
+        
+
+    if top_dir == None and input_file == None:
+        print 'No input file supplied'
+        print_usage(progname)
+        sys.exit(0)
+
+    if top_dir == None and out_file == None:
+        print 'No output file specified'
+        print_usage(progname)
+        sys.exit(0)
+
+    if out_format not in ['text', 'djvu', 'abby']:
+        print 'Unsupported output format %s. Output format should be text or djvu.' % out_format
+        print_usage(progname)
+        sys.exit(0)
+
     client = get_google_client(key_file)
-    process(client, input_file, out_file, out_format, layout, jpgdir)
+    tmpdir = False
+
+    ia = None
+    if input_file:
+        if jpgdir == None:
+            jpgdir = tempfile.mkdtemp()
+            tmpdir = True
+
+        success = pdf_to_jpg(input_file, jpgdir)
+
+        if not success:
+            logger.warn('ghostscript on pdffile %s failed' % input_file)
+            sys.exit(0)
+
+    else:
+        ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], logfile)
+        zfile = ia.fetch_jp2(ia_item)
+
+        if not zfile:
+            logger.warn('Could not get JP2 files for %s', ia_item)
+            sys.exit(0)
+        ia.extract_jp2(ia_item, zfile)    
+
+
+        jpgdir = ia.convert_jp2(ia_item)
+        if not jpgdir:
+            logger.warn('Could not convert JP2 files to JPG for %s', ia_item)
+            sys.exit(0)
+
+        out_format = 'abby'    
+        gocr_dir, n = re.subn('_jpg$', '_gocr', jpgdir)
+        if not os.path.exists(gocr_dir):
+            os.mkdir(gocr_dir)
+
+        out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)    
+    
+    process(client, jpgdir, out_file, out_format, gocr_dir, layout)
+
+    if ia:
+        ia.upload_abbyy(ia_item, out_file)
+        
+
+    if tmpdir:
+        os.system('rm -rf %s' % jpgdir)
