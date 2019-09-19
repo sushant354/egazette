@@ -10,7 +10,8 @@ import codecs
 import pickle
 from zipfile import ZipFile
 import gzip
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, ConnectionError
+import time
 
 from djvuxml import Djvu
 from abbyxml import Abby
@@ -341,42 +342,47 @@ class IA:
         self.logger = logging.getLogger('gvision.ia')
 
     def find_jp2(self, item_path):
-        zfile = None
+        zfiles = []
         for filename in os.listdir(item_path):
             if re.search('_jp2.zip$', filename):
-                zfile = filename
-                break
-        return zfile        
+                zfiles.append(filename)
+        return zfiles        
 
     def fetch_jp2(self, item):
         item_path = os.path.join(self.top_dir, item)
-        if os.path.exists(item_path):
-            zfile     = self.find_jp2(item_path)
-            if zfile:
-                return zfile
 
-        download(item, glob_pattern='*_jp2.zip', destdir=self.top_dir)
+        success = False
+        while not success:
+            try:
+                download(item, glob_pattern='*_jp2.zip', destdir=self.top_dir, \
+                         ignore_existing = True, retries = 10)
+                success = True         
+            except ConnectionError:
+                success = False
+                time.sleep(60)
+                
         if not os.path.exists(item_path):
             self.logger.warn('Item path does not exist: %s', item_path)
-            return None 
+            return [] 
 
         return self.find_jp2(item_path)
 
     def extract_jp2(self, item, zfile): 
         item_path = os.path.join(self.top_dir, item)
-        jp2_dir,n   = re.subn('\.zip$', '', zfile)
+        jp2_dir,n = re.subn('\.zip$', '', zfile)
+        jp2_dir   = os.path.join(item_path, jp2_dir)
 
         if not zfile:        
             self.logger.warn('JP2 zip file does not exist: %s', item)
-            return False
+            return None 
         
         if os.path.exists(jp2_dir):        
             self.logger.info('JP2 dir already exists. No need to extract %s', item)
-            return False
+            return jp2_dir
 
         z = ZipFile(os.path.join(item_path, zfile))
         z.extractall(item_path)
-        return True
+        return jp2_dir 
 
 
     def jp2_to_jpg(self, jp2file, jpgfile):
@@ -384,15 +390,7 @@ class IA:
         p = subprocess.Popen(command, stdout=FNULL, stderr = FNULL)
         return p
 
-    def convert_jp2(self, item):
-        item_path = os.path.join(self.top_dir, item)
-        jp2_path = None
-        for filename in os.listdir(item_path):
-            filepath = os.path.join(item_path, filename)
-            if re.search('_jp2$', filename) and os.path.exists(filepath):
-                jp2_path = filepath
-                break
-
+    def convert_jp2(self, jp2_path):
         if not jp2_path:        
             self.logger.warn('JP2 path does not exist: %s', jp2_path)
             return None
@@ -439,17 +437,20 @@ class IA:
             return False
         return True
 
-    def upload_abbyy(self, ia_item, abby_file):
+    def upload_abbyy(self, ia_item, abby_filelist):
         success = True
         metadata = {'x-archive-keep-old-version': '0', \
                     'fts-ignore-ingestion-lang-filter': 'true'}
         self.update_metadata(ia_item, metadata)
 
-        abby_file_gz, n = re.subn('xml$', 'gz', abby_file)
-        self.compress_abbyy(abby_file, abby_file_gz)
+        abby_files_gz = []
+        for abby_file in abby_filelist:
+            abby_file_gz, n = re.subn('xml$', 'gz', abby_file)
+            self.compress_abbyy(abby_file, abby_file_gz)
+            abby_files_gz.append(abby_file_gz)
 
         try:
-           success = upload(ia_item, [abby_file_gz], \
+           success = upload(ia_item, abby_files_gz, \
                            access_key = self.access_key, \
                            secret_key = self.secret_key, retries=100)
         except HTTPError as e:
@@ -579,34 +580,39 @@ if __name__ == '__main__':
         if not success:
             logger.warn('ghostscript on pdffile %s failed' % input_file)
             sys.exit(0)
+        process(client, jpgdir, out_file, out_format, gocr_dir, layout)
 
+        if tmpdir:
+           os.system('rm -rf %s' % jpgdir)
     else:
         ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], logfile)
-        zfile = ia.fetch_jp2(ia_item)
+        zfiles = ia.fetch_jp2(ia_item)
 
-        if not zfile:
+        if not zfiles:
             logger.warn('Could not get JP2 files for %s', ia_item)
-            sys.exit(0)
-        ia.extract_jp2(ia_item, zfile)    
-
-
-        jpgdir = ia.convert_jp2(ia_item)
-        if not jpgdir:
-            logger.warn('Could not convert JP2 files to JPG for %s', ia_item)
             sys.exit(0)
 
         out_format = 'abby'    
-        gocr_dir, n = re.subn('_jpg$', '_gocr', jpgdir)
-        if not os.path.exists(gocr_dir):
-            os.mkdir(gocr_dir)
+        
+        abby_files = []
+        for zfile in zfiles:   
+            jp2_path = ia.extract_jp2(ia_item, zfile)   
+            if not jp2_path:
+                logger.warn('JP2 files not extracted %s', zfile)
+                continue
+            jpgdir   = ia.convert_jp2(jp2_path)
+            if not jpgdir:
+                logger.warn('Could not convert JP2 to JPG for %s', jp2_path)
+                continue
 
-        out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)    
+            gocr_dir, n = re.subn('_jpg$', '_gocr', jpgdir)
+            if not os.path.exists(gocr_dir):
+                os.mkdir(gocr_dir)
+
+            out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)   
+            process(client, jpgdir, out_file, out_format, gocr_dir, layout)
+            abby_files.append(out_file)
     
-    process(client, jpgdir, out_file, out_format, gocr_dir, layout)
-
-    if ia:
-        ia.upload_abbyy(ia_item, out_file)
+        ia.upload_abbyy(ia_item, abby_files)
         
 
-    if tmpdir:
-        os.system('rm -rf %s' % jpgdir)
