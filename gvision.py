@@ -28,10 +28,13 @@ def print_usage(progname):
                        [-a access_key] [-k secret_key]
                        [-d jpg_dir (intermediate jpg files)]
                        [-g google_ocr_output_directory]
+                       [-f jp2_filter]
+                       [-F logfile]
                        [-O output_format(text|djvu|abby)]
                        [-G google_key_file]
-                       [-I internetarchive_item]
-                       [-f logfile]
+                       [-m internetarchive_item]
+                       [-s (stdin for streaming internetarchive_items)]
+                       [-I file with internetarchive_items]
                        [-i input_file] [-o output_file]
           ''' % progname
 
@@ -348,18 +351,24 @@ class IA:
                 zfiles.append(filename)
         return zfiles        
 
-    def fetch_jp2(self, item):
-        item_path = os.path.join(self.top_dir, item)
-
+    def download_jp2(self, item, glob_pattern):
         success = False
         while not success:
             try:
-                download(item, glob_pattern='*_jp2.zip', destdir=self.top_dir, \
+                download(item, glob_pattern=glob_pattern, destdir=self.top_dir,\
                          ignore_existing = True, retries = 10)
                 success = True         
             except ConnectionError:
                 success = False
                 time.sleep(60)
+
+    def fetch_jp2(self, item, jp2_filter):
+        item_path = os.path.join(self.top_dir, item)
+        if jp2_filter:
+            for f in jp2_filter:
+                self.download_jp2(item, '%s*_jp2.zip' % f)
+        else:        
+            self.download_jp2(item, '*_jp2.zip')
                 
         if not os.path.exists(item_path):
             self.logger.warn('Item path does not exist: %s', item_path)
@@ -458,6 +467,35 @@ class IA:
            success = False
         return success   
 
+def process_item(client, ia, ia_item, jp2_filter):
+        zfiles = ia.fetch_jp2(ia_item, jp2_filter)
+
+        if not zfiles:
+            logger.warn('Could not get JP2 files for %s', ia_item)
+            sys.exit(0)
+
+        out_format = 'abby'    
+        
+        abby_files = []
+        for zfile in zfiles:   
+            jp2_path = ia.extract_jp2(ia_item, zfile)   
+            if not jp2_path:
+                logger.warn('JP2 files not extracted %s', zfile)
+                continue
+            jpgdir   = ia.convert_jp2(jp2_path)
+            if not jpgdir:
+                logger.warn('Could not convert JP2 to JPG for %s', jp2_path)
+                continue
+
+            gocr_dir, n = re.subn('_jpg$', '_gocr', jpgdir)
+            if not os.path.exists(gocr_dir):
+                os.mkdir(gocr_dir)
+
+            out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)   
+            process(client, jpgdir, out_file, out_format, gocr_dir, layout)
+            abby_files.append(out_file)
+    
+        ia.upload_abbyy(ia_item, abby_files)
 
 if __name__ == '__main__':
     progname   = sys.argv[0]
@@ -473,8 +511,10 @@ if __name__ == '__main__':
     access_key = None
     secret_key = None
     ia_item    = None
+    jp2_filter = []
+    ia_item_file = None
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:d:D:l:f:g:G:i:I:k:o:O:L')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:d:D:l:f:F:g:G:i:I:k:m:o:O:Ls')
 
     jpgdir = None
     for o, v in optlist:
@@ -484,16 +524,22 @@ if __name__ == '__main__':
             top_dir = v
         elif o == '-l':
             loglevel = v
-        elif o == '-f':
+        elif o == '-F':
             logfile = v
+        elif o == '-f':
+            jp2_filter.append(v)
         elif o == '-g':
             gocr_dir = v
         elif o == '-G':    
             key_file = v
         elif o == '-i':    
             input_file = v
-        elif o == '-I':
+        elif o == '-m':
             ia_item =v
+        elif o == '-I':
+            ia_item_file = codecs.open(v, 'r', encoding = 'utf8')
+        elif o == '-s':
+            ia_item_file = sys.stdin
         elif o == '-a':
             access_key = v
         elif o == '-k':
@@ -544,13 +590,13 @@ if __name__ == '__main__':
             print_usage(progname)
             sys.exit(0)
 
-        if secret_key == None or access_key == None or ia_item == None:
+        if secret_key == None or access_key == None or \
+                (ia_item == None and ia_item_file == None):
             print 'In InternetArchive mode, you need to specify item, secret_key and access_key'
             print_usage(progname)
             sys.exit(0)
 
         
-
     if top_dir == None and input_file == None:
         print 'No input file supplied'
         print_usage(progname)
@@ -586,33 +632,11 @@ if __name__ == '__main__':
            os.system('rm -rf %s' % jpgdir)
     else:
         ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], logfile)
-        zfiles = ia.fetch_jp2(ia_item)
-
-        if not zfiles:
-            logger.warn('Could not get JP2 files for %s', ia_item)
-            sys.exit(0)
-
-        out_format = 'abby'    
-        
-        abby_files = []
-        for zfile in zfiles:   
-            jp2_path = ia.extract_jp2(ia_item, zfile)   
-            if not jp2_path:
-                logger.warn('JP2 files not extracted %s', zfile)
-                continue
-            jpgdir   = ia.convert_jp2(jp2_path)
-            if not jpgdir:
-                logger.warn('Could not convert JP2 to JPG for %s', jp2_path)
-                continue
-
-            gocr_dir, n = re.subn('_jpg$', '_gocr', jpgdir)
-            if not os.path.exists(gocr_dir):
-                os.mkdir(gocr_dir)
-
-            out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)   
-            process(client, jpgdir, out_file, out_format, gocr_dir, layout)
-            abby_files.append(out_file)
-    
-        ia.upload_abbyy(ia_item, abby_files)
+        if ia_item:
+            process_item(client, ia, ia_item, jp2_filter)
+        elif ia_item_file:
+            for ia_item in ia_item_file:
+                ia_item = ia_item.strip()
+                process_item(client, ia, ia_item, jp2_filter)
         
 
