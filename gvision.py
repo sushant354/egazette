@@ -70,7 +70,12 @@ def google_ocr(client, input_file, gocr_file):
     content = io.open(input_file, 'rb').read()
     image = vision.types.Image(content=content)
 
-    response = client.document_text_detection(image=image)
+    try:
+        response = client.document_text_detection(image=image)
+    except Exception as e:
+        logger = logging.getLogger('gvision.ocr')
+        logger.warn('Error in Google Vision API for %s %s', input_file, e)
+        return None
 
     if gocr_file:
         pickle_out = open(gocr_file, 'wb')
@@ -289,9 +294,10 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
             gocr_file = None
         response  = google_ocr(client, infile, gocr_file)
 
-        paras = get_text(response, layout)
-        outhandle.write(u'%s' % paras)
-        outhandle.write('\n\n\n\n')
+        if response:
+            paras = get_text(response, layout)
+            outhandle.write(u'%s' % paras)
+            outhandle.write('\n\n\n\n')
 
 def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
     djvu = Djvu(outhandle)
@@ -305,7 +311,8 @@ def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
         else:
             gocr_file = None
         response  = google_ocr(client, infile, gocr_file)
-        djvu.handle_google_response(response)
+        if response:
+            djvu.handle_google_response(response)
     djvu.write_footer()
 
 def to_abby(jpgdir, filenames, client, outhandle, gocr_dir):
@@ -320,7 +327,7 @@ def to_abby(jpgdir, filenames, client, outhandle, gocr_dir):
         else:
             gocr_file = None
         response  = google_ocr(client, infile, gocr_file)
-        if response.full_text_annotation.pages:
+        if response and response.full_text_annotation.pages:
             abby.handle_google_response(response)
         else:
             logger.warn('No pages in %s', filename)
@@ -358,7 +365,7 @@ class IA:
                 download(item, glob_pattern=glob_pattern, destdir=self.top_dir,\
                          ignore_existing = True, retries = 10)
                 success = True         
-            except ConnectionError:
+            except Exception as e:
                 success = False
                 time.sleep(60)
 
@@ -417,6 +424,11 @@ class IA:
             if not os.path.exists(jpgfile):
                 p = self.jp2_to_jpg(jp2file, jpgfile)
                 plist.append(p)
+                if len(plist) >= 10:
+                    for p in plist:
+                       p.wait()
+                    plist = []   
+
         
         for p in plist:
             p.wait()
@@ -447,7 +459,6 @@ class IA:
         return True
 
     def upload_abbyy(self, ia_item, abby_filelist):
-        success = True
         metadata = {'x-archive-keep-old-version': '0', \
                     'fts-ignore-ingestion-lang-filter': 'true'}
         self.update_metadata(ia_item, metadata)
@@ -458,13 +469,18 @@ class IA:
             self.compress_abbyy(abby_file, abby_file_gz)
             abby_files_gz.append(abby_file_gz)
 
-        try:
-           success = upload(ia_item, abby_files_gz, \
-                           access_key = self.access_key, \
-                           secret_key = self.secret_key, retries=100)
-        except HTTPError as e:
-           self.logger.warn('Error in upload for %s: %s', ia_item, e)
-           success = False
+      
+        success = False 
+        while not success:
+            try:
+                success = upload(ia_item, abby_files_gz, \
+                                 access_key = self.access_key, \
+                                 secret_key = self.secret_key, retries=100)
+                success = True                 
+            except Exception as e:
+                self.logger.warn('Error in upload for %s: %s', ia_item, e)
+                success = False
+                time.sleep(120)
         return success   
 
 def process_item(client, ia, ia_item, jp2_filter):
