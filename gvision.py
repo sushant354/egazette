@@ -443,10 +443,16 @@ class IA:
         f_in.close()
 
     def update_metadata(self, identifier, metadata):
-        while 1:
-            if self.ia_modify_metadata(identifier, metadata):
-                break
-            time.sleep(300)
+        success = False
+        count = 1
+        while not success:
+            success = self.ia_modify_metadata(identifier, metadata)
+            if not success:
+                count += 1
+                self.logger.info('Metadata failed for %s. Rety %d time', identifier, count)
+                time.sleep(300)
+
+        self.logger.info('Updated metadata for %s', identifier)
 
     def ia_modify_metadata(self, identifier, metadata):
         try:
@@ -488,7 +494,7 @@ def process_item(client, ia, ia_item, jp2_filter):
 
         if not zfiles:
             logger.warn('Could not get JP2 files for %s', ia_item)
-            sys.exit(0)
+            return 
 
         out_format = 'abby'    
         
