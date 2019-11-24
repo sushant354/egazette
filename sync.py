@@ -5,13 +5,13 @@ import logging
 import getopt
 import re
 
-import utils
-import datasrcs
-import download
-from file_storage import FileManager
+from egazette.utils import utils
+from egazette.utils import download
+from egazette.utils.file_storage import FileManager
+from egazette.srcs import datasrcs
 
 def print_usage(progname):
-    print '''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
+    print('''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
                        [-a (all_downloads)]
                        [-m (updateMeta)]
                        [-n (no aggregation of srcs by hostname)]
@@ -33,17 +33,17 @@ def print_usage(progname):
                         -s haryana     -s kerala      -s haryanaarchive
                         -s stgeorge    -s himachal    -s keralalibrary
                        ]
-                       ''' % progname
+                       ''' % progname)
 
-    print 'The program will download gazettes from various egazette sites'
-    print 'and will place in a specified directory. Gazettes will be'
-    print 'placed into directories named by type and date. If fromdate or'
-    print 'todate is not specified then the default is your current date.'
+    print('The program will download gazettes from various egazette sites')
+    print('and will place in a specified directory. Gazettes will be')
+    print('placed into directories named by type and date. If fromdate or')
+    print('todate is not specified then the default is your current date.')
 
 def to_datetime(datestr):
     numlist = re.findall('\d+', datestr)
     if len(numlist) != 3:
-        print >>sys.stderr, '%s not in correct format [DD/MM/YYYY]' % datestr
+        print('%s not in correct format [DD/MM/YYYY]' % datestr, file=sys.stderr)
         return None
     else:
         datelist = []
@@ -109,7 +109,7 @@ if __name__ == '__main__':
         elif o == '-W':
             max_wait = int(v)
         else:
-            print >> sys.stderr, 'Unknown option %s' % o
+            print('Unknown option %s' % o, file=sys.stderr)
             print_usage(progname)
             sys.exit(0)
 
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     datefmt = '%Y-%m-%d %H:%M:%S'
 
     if datadir == None:
-        print >> sys.stderr, 'No data directory specified'
+        print('No data directory specified', file=sys.stderr)
         print_usage(progname)
         sys.exit(0)
 

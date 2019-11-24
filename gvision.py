@@ -13,8 +13,8 @@ import gzip
 from requests.exceptions import HTTPError, ConnectionError
 import time
 
-from djvuxml import Djvu
-from abbyxml import Abby
+from egazette.ocr.djvuxml import Djvu
+from egazette.ocr.abbyxml import Abby
 from internetarchive import download, upload, get_session, modify_metadata 
 
 from google.cloud import vision
@@ -23,7 +23,7 @@ FNULL = open(os.devnull, 'w')
 
 
 def print_usage(progname):
-    print '''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
+    print('''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
                        [-D top_dir for InternetArchive mode]
                        [-a access_key] [-k secret_key]
                        [-d jpg_dir (intermediate jpg files)]
@@ -36,7 +36,7 @@ def print_usage(progname):
                        [-s (stdin for streaming internetarchive_items)]
                        [-I file with internetarchive_items]
                        [-i input_file] [-o output_file]
-          ''' % progname
+          ''' % progname)
 
 def get_google_client(key_file):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_file
@@ -96,7 +96,7 @@ def construct_text_layout(response):
     pagetext = []
     for page in response.full_text_annotation.pages:
         pagetext.append(get_page_text(page))
-    return u'\n\n'.join(pagetext)
+    return '\n\n'.join(pagetext)
 
 def get_left_offset(l1, l2, page_width, numchars, maxchars):
     #print "OFFSET", numchars, maxchars, page_width, l1, l2
@@ -121,14 +121,14 @@ def get_word_text(words):
             if hasattr(symbol.property, 'detected_break'):
                 t = symbol.property.detected_break.type 
                 if t == 1:
-                    stext.append(u' ')
+                    stext.append(' ')
                 '''    
                 elif t == 5:
                     stext.append('\n')
                 '''    
 
         box = word.bounding_box
-        word_text.append((box, u''.join(stext)))
+        word_text.append((box, ''.join(stext)))
 
     return word_text 
 
@@ -142,7 +142,7 @@ def get_page_text(page):
             page_words.extend(word_text)
 
     page_text = stitch_boxes(page_words, page.width)
-    return u''.join(page_text)
+    return ''.join(page_text)
 
 
 def get_char_width(page_words):
@@ -296,7 +296,7 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
 
         if response:
             paras = get_text(response, layout)
-            outhandle.write(u'%s' % paras)
+            outhandle.write('%s' % paras)
             outhandle.write('\n\n\n\n')
 
 def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
@@ -574,7 +574,7 @@ if __name__ == '__main__':
             out_format = v
 
     if key_file == None:
-        print 'Google Cloud API credentials are mising'
+        print('Google Cloud API credentials are mising')
         print_usage(progname)
         sys.exit(0)
 
@@ -583,7 +583,7 @@ if __name__ == '__main__':
                  'debug': logging.DEBUG}
 
     if loglevel not in leveldict:
-        print 'Unknown log level %s' % loglevel             
+        print('Unknown log level %s' % loglevel)             
         print_usage(progname)
         sys.exit(0)
 
@@ -608,29 +608,29 @@ if __name__ == '__main__':
     ia = None
     if top_dir:
         if input_file or out_file:
-            print 'In InternetArchive mode, you should not specify input_file or output_file'
+            print('In InternetArchive mode, you should not specify input_file or output_file')
             print_usage(progname)
             sys.exit(0)
 
         if secret_key == None or access_key == None or \
                 (ia_item == None and ia_item_file == None):
-            print 'In InternetArchive mode, you need to specify item, secret_key and access_key'
+            print('In InternetArchive mode, you need to specify item, secret_key and access_key')
             print_usage(progname)
             sys.exit(0)
 
         
     if top_dir == None and input_file == None:
-        print 'No input file supplied'
+        print('No input file supplied')
         print_usage(progname)
         sys.exit(0)
 
     if top_dir == None and out_file == None:
-        print 'No output file specified'
+        print('No output file specified')
         print_usage(progname)
         sys.exit(0)
 
     if out_format not in ['text', 'djvu', 'abby']:
-        print 'Unsupported output format %s. Output format should be text or djvu.' % out_format
+        print('Unsupported output format %s. Output format should be text or djvu.' % out_format)
         print_usage(progname)
         sys.exit(0)
 

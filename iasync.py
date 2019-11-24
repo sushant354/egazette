@@ -11,10 +11,11 @@ import time
 from requests.exceptions import HTTPError
 
 from internetarchive import upload, get_session, get_item, modify_metadata
-from file_storage import FileManager
-import reporting
-import datasrcs 
-import utils
+from egazette.utils.file_storage import FileManager
+
+from egazette.utils import reporting
+from egazette.srcs  import datasrcs 
+from egazette.utils import utils
 
 class Stats:
     def __init__(self):
@@ -43,7 +44,7 @@ class Stats:
     def get_msg_by_srcs(self, msg, total, total_success):
         msg.append('------------')
         msg.append('Srcname\tTotal\tSuccess')
-        keys = total.keys()
+        keys = list(total.keys())
         keys.sort()
         for srcname in keys:
             msg.append('%s\t%d\t%d' % (srcname, total[srcname], total_success[srcname]))
@@ -86,7 +87,7 @@ class GazetteIA:
    
     def get_identifier(self, relurl, metainfo):
         srcname    = self.get_srcname(relurl)
-        relurl     = relurl.decode('ascii', 'ignore')
+        #relurl     = relurl.decode('ascii', 'ignore')
         identifier = None
 
         dateobj = metainfo.get_date()
@@ -297,7 +298,7 @@ class GazetteIA:
         title = [category]
 
         if 'date' in metainfo:
-            title.append(u'%s' % metainfo['date'])
+            title.append('%s' % metainfo['date'])
 
         if 'gztype' in metainfo:
             title.append(metainfo['gztype'])
@@ -307,12 +308,12 @@ class GazetteIA:
             if re.search(r'\bPart\b', partnum):
                 title.append(partnum)
             else:    
-                title.append(u'Part %s' %partnum)
+                title.append('Part %s' %partnum)
 
         if 'gznum' in metainfo:
-            title.append(u'Number %s' % metainfo['gznum'])
+            title.append('Number %s' % metainfo['gznum'])
 
-        return u', '.join(title)
+        return ', '.join(title)
 
     def get_srcname(self, relurl):
        words    = relurl.split('/')
@@ -383,9 +384,9 @@ class GazetteIA:
 
        known_keys = set([k for k, kdesc in keys])
 
-       for k, v in metainfo.iteritems():
+       for k, v in metainfo.items():
            if k not in known_keys and k not in ignore_keys:
-               if type(v) in types.StringTypes:
+               if type(v) in (str,):
                    v = v.strip()
                elif isinstance(v, list):
                    v = '%s' % v    
@@ -432,7 +433,7 @@ class GazetteIA:
         return True        
 
 def print_usage(progname):
-    print 'Usage: python %s [-l loglevel(critical, error, warn, info, debug)]' % progname + '''
+    print('Usage: python %s [-l loglevel(critical, error, warn, info, debug)]' % progname + '''
                         [-a access_key] [-k secret_key]
                         [-f logfile]
                         [-m (update_meta)]
@@ -456,7 +457,7 @@ def print_usage(progname):
                          -s haryana     -s kerala      -s haryanaarchive
                          -s stgeorge    -s himachal    -s keralalibrary
                         ] 
-    '''                     
+    ''')                     
 
 def handle_relurl(gazette_ia, relurl, to_upload, to_update, stats):
     srcname = gazette_ia.get_srcname(relurl)
@@ -538,27 +539,27 @@ if __name__ == '__main__':
                  'debug': logging.DEBUG}
 
     if loglevel not in leveldict:
-        print 'Unknown log level %s' % loglevel             
+        print('Unknown log level %s' % loglevel)             
         print_usage(progname)
         sys.exit(0)
 
     if not datadir:
-        print 'Directory not specified'
+        print('Directory not specified')
         print_usage(progname)
         sys.exit(0)
 
     if not to_update and not to_upload:
-        print 'Please specify whether to upload or update to internetarchive'
+        print('Please specify whether to upload or update to internetarchive')
         print_usage(progname)
         sys.exit(0)
 
     if not access_key or not secret_key:
-        print 'Please specify access and secret keys to internetarchive'
+        print('Please specify access and secret keys to internetarchive')
         print_usage(progname)
         sys.exit(0)
 
     if to_addrs and (not gmail_user or not gmail_pwd):
-        print 'To report through email, please specify gmail username and password'
+        print('To report through email, please specify gmail username and password')
         print_usage(progname)
         sys.exit(0)
 
