@@ -270,22 +270,20 @@ def atoi(text):
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
-def process(client, jpgdir, out_file, out_format, gocr_dir, layout):
+def process(client, jpgdir, outhandle, out_format, gocr_dir, layout):
     filenames = os.listdir(jpgdir)
     filenames.sort(key=natural_keys)
 
-    outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
     if out_format == 'text':
         to_text(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'djvu':   
         to_djvu(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'abby':   
         to_abby(jpgdir, filenames, client, outhandle, gocr_dir)
-    outhandle.close()
 
 
 def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
-    for filename in filenames:
+    for filename in filenames[:40]:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
             gocr_file, n =  re.subn('jpg$', 'pickle', filename)
@@ -489,14 +487,13 @@ class IA:
                 time.sleep(120)
         return success   
 
-def process_item(client, ia, ia_item, jp2_filter):
+def process_item(client, ia, ia_item, jp2_filter, out_format):
         zfiles = ia.fetch_jp2(ia_item, jp2_filter)
 
         if not zfiles:
             logger.warn('Could not get JP2 files for %s', ia_item)
             return 
 
-        out_format = 'abby'    
         
         abby_files = []
         for zfile in zfiles:   
@@ -513,11 +510,22 @@ def process_item(client, ia, ia_item, jp2_filter):
             if not os.path.exists(gocr_dir):
                 os.mkdir(gocr_dir)
 
-            out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)   
-            process(client, jpgdir, out_file, out_format, gocr_dir, layout)
-            abby_files.append(out_file)
+            if out_format == 'abby':
+                out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)   
+            elif out_format == 'text':
+                out_file, n = re.subn('_jpg$', '.txt', jpgdir)   
+            elif out_format == 'djvu':
+                out_file, n = re.subn('_jpg$', '.djvu', jpgdir)
+
+            outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
+            process(client, jpgdir, outhandle, out_format, gocr_dir, layout)
+            outhandle.close()
+
+            if out_format == 'abby':
+                abby_files.append(out_file)
     
-        ia.upload_abbyy(ia_item, abby_files)
+        if out_format == 'abby':
+            ia.upload_abbyy(ia_item, abby_files)
 
 if __name__ == '__main__':
     progname   = sys.argv[0]
@@ -648,17 +656,19 @@ if __name__ == '__main__':
         if not success:
             logger.warn('ghostscript on pdffile %s failed' % input_file)
             sys.exit(0)
-        process(client, jpgdir, out_file, out_format, gocr_dir, layout)
+        outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
+        process(client, jpgdir, outhandle, out_format, gocr_dir, layout)
+        outhandle.close()
 
         if tmpdir:
            os.system('rm -rf %s' % jpgdir)
     else:
         ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], logfile)
         if ia_item:
-            process_item(client, ia, ia_item, jp2_filter)
+            process_item(client, ia, ia_item, jp2_filter, out_format)
         elif ia_item_file:
             for ia_item in ia_item_file:
                 ia_item = ia_item.strip()
-                process_item(client, ia, ia_item, jp2_filter)
+                process_item(client, ia, ia_item, jp2_filter, out_format)
         
 
