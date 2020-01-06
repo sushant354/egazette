@@ -81,8 +81,8 @@ srcnames = { \
 }
 
 categories = { \
-'central_weekly'       : 'Gazette of India - Weekly', \
-'central_extraordinary': 'Gazette of India - Extraordinary', \
+'central_weekly'       : 'Weekly Gazette of India', \
+'central_extraordinary': 'Extraordinary Gazette of India', \
 'bihar'                : 'Bihar Gazette', \
 'delhi_weekly'         : 'Delhi Gazette - Weekly', \
 'delhi_extraordinary'  : 'Delhi Gazette - Extraordinary', \
