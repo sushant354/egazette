@@ -15,6 +15,7 @@ import time
 
 from egazette.ocr.djvuxml import Djvu
 from egazette.ocr.abbyxml import Abby
+from egazette.ocr.htmlmaker import HtmlMaker
 from internetarchive import download, upload, get_session, modify_metadata 
 
 from google.cloud import vision
@@ -30,7 +31,7 @@ def print_usage(progname):
                        [-g google_ocr_output_directory]
                        [-f jp2_filter]
                        [-F logfile]
-                       [-O output_format(text|djvu|abby)]
+                       [-O output_format(text|djvu|abby|html)]
                        [-G google_key_file]
                        [-m internetarchive_item]
                        [-s (stdin for streaming internetarchive_items)]
@@ -122,10 +123,8 @@ def get_word_text(words):
                 t = symbol.property.detected_break.type 
                 if t == 1:
                     stext.append(' ')
-                '''    
                 elif t == 5:
                     stext.append('\n')
-                '''    
 
         box = word.bounding_box
         word_text.append((box, ''.join(stext)))
@@ -276,6 +275,8 @@ def process(client, jpgdir, outhandle, out_format, gocr_dir, layout):
 
     if out_format == 'text':
         to_text(jpgdir, filenames, client, outhandle, gocr_dir)
+    elif out_format == 'html':
+        to_html(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'djvu':   
         to_djvu(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'abby':   
@@ -296,6 +297,22 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
             paras = get_text(response, layout)
             outhandle.write('%s' % paras)
             outhandle.write('\n\n\n\n')
+
+def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
+    htmlmaker = HtmlMaker(outhandle)
+    htmlmaker.write_header()
+    for filename in filenames[:50]:
+        infile    = os.path.join(jpgdir, filename)
+        if gocr_dir:
+            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file = os.path.join(gocr_dir, gocr_file)
+        else:
+            gocr_file = None
+        response  = google_ocr(client, infile, gocr_file)
+
+        if response:
+            htmlmaker.write_page(response)
+    htmlmaker.write_footer()
 
 def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
     djvu = Djvu(outhandle)
@@ -516,6 +533,8 @@ def process_item(client, ia, ia_item, jp2_filter, out_format):
                 out_file, n = re.subn('_jpg$', '.txt', jpgdir)   
             elif out_format == 'djvu':
                 out_file, n = re.subn('_jpg$', '.djvu', jpgdir)
+            elif out_format == 'html':
+                out_file, n = re.subn('_jpg$', '.html', jpgdir)
 
             outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
             process(client, jpgdir, outhandle, out_format, gocr_dir, layout)
@@ -637,7 +656,7 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
-    if out_format not in ['text', 'djvu', 'abby']:
+    if out_format not in ['text', 'djvu', 'abby', 'html']:
         print('Unsupported output format %s. Output format should be text or djvu.' % out_format)
         print_usage(progname)
         sys.exit(0)
