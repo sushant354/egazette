@@ -465,7 +465,7 @@ class IA:
         return True
 
     def upload_abbyy(self, ia_item, abby_filelist):
-        metadata = {'x-archive-keep-old-version': '0', \
+        metadata = {'ocr': 'google-cloud-vision IndianKanoon 1.0', \
                     'fts-ignore-ingestion-lang-filter': 'true'}
         self.update_metadata(ia_item, metadata)
 
@@ -477,9 +477,10 @@ class IA:
 
       
         success = False 
+        headers = {'x-archive-keep-old-version': '0'}
         while not success:
             try:
-                success = upload(ia_item, abby_files_gz, \
+                success = upload(ia_item, abby_files_gz, headers = headers, \
                                  access_key = self.access_key, \
                                  secret_key = self.secret_key, retries=100)
                 success = True                 
