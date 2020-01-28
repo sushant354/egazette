@@ -15,6 +15,7 @@ import time
 
 from egazette.ocr.djvuxml import Djvu
 from egazette.ocr.abbyxml import Abby
+from egazette.ocr.htmlmaker import HtmlMaker
 from internetarchive import download, upload, get_session, modify_metadata 
 
 from google.cloud import vision
@@ -30,7 +31,7 @@ def print_usage(progname):
                        [-g google_ocr_output_directory]
                        [-f jp2_filter]
                        [-F logfile]
-                       [-O output_format(text|djvu|abby)]
+                       [-O output_format(text|djvu|abby|html)]
                        [-G google_key_file]
                        [-m internetarchive_item]
                        [-s (stdin for streaming internetarchive_items)]
@@ -122,10 +123,8 @@ def get_word_text(words):
                 t = symbol.property.detected_break.type 
                 if t == 1:
                     stext.append(' ')
-                '''    
                 elif t == 5:
                     stext.append('\n')
-                '''    
 
         box = word.bounding_box
         word_text.append((box, ''.join(stext)))
@@ -270,22 +269,22 @@ def atoi(text):
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
-def process(client, jpgdir, out_file, out_format, gocr_dir, layout):
+def process(client, jpgdir, outhandle, out_format, gocr_dir, layout):
     filenames = os.listdir(jpgdir)
     filenames.sort(key=natural_keys)
 
-    outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
     if out_format == 'text':
         to_text(jpgdir, filenames, client, outhandle, gocr_dir)
+    elif out_format == 'html':
+        to_html(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'djvu':   
         to_djvu(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'abby':   
         to_abby(jpgdir, filenames, client, outhandle, gocr_dir)
-    outhandle.close()
 
 
 def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
-    for filename in filenames:
+    for filename in filenames[:40]:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
             gocr_file, n =  re.subn('jpg$', 'pickle', filename)
@@ -298,6 +297,22 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
             paras = get_text(response, layout)
             outhandle.write('%s' % paras)
             outhandle.write('\n\n\n\n')
+
+def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
+    htmlmaker = HtmlMaker(outhandle)
+    htmlmaker.write_header()
+    for filename in filenames[:50]:
+        infile    = os.path.join(jpgdir, filename)
+        if gocr_dir:
+            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file = os.path.join(gocr_dir, gocr_file)
+        else:
+            gocr_file = None
+        response  = google_ocr(client, infile, gocr_file)
+
+        if response:
+            htmlmaker.write_page(response)
+    htmlmaker.write_footer()
 
 def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
     djvu = Djvu(outhandle)
@@ -490,14 +505,13 @@ class IA:
                 time.sleep(120)
         return success   
 
-def process_item(client, ia, ia_item, jp2_filter):
+def process_item(client, ia, ia_item, jp2_filter, out_format):
         zfiles = ia.fetch_jp2(ia_item, jp2_filter)
 
         if not zfiles:
             logger.warn('Could not get JP2 files for %s', ia_item)
             return 
 
-        out_format = 'abby'    
         
         abby_files = []
         for zfile in zfiles:   
@@ -514,11 +528,24 @@ def process_item(client, ia, ia_item, jp2_filter):
             if not os.path.exists(gocr_dir):
                 os.mkdir(gocr_dir)
 
-            out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)   
-            process(client, jpgdir, out_file, out_format, gocr_dir, layout)
-            abby_files.append(out_file)
+            if out_format == 'abby':
+                out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)   
+            elif out_format == 'text':
+                out_file, n = re.subn('_jpg$', '.txt', jpgdir)   
+            elif out_format == 'djvu':
+                out_file, n = re.subn('_jpg$', '.djvu', jpgdir)
+            elif out_format == 'html':
+                out_file, n = re.subn('_jpg$', '.html', jpgdir)
+
+            outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
+            process(client, jpgdir, outhandle, out_format, gocr_dir, layout)
+            outhandle.close()
+
+            if out_format == 'abby':
+                abby_files.append(out_file)
     
-        ia.upload_abbyy(ia_item, abby_files)
+        if out_format == 'abby':
+            ia.upload_abbyy(ia_item, abby_files)
 
 if __name__ == '__main__':
     progname   = sys.argv[0]
@@ -630,7 +657,7 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
-    if out_format not in ['text', 'djvu', 'abby']:
+    if out_format not in ['text', 'djvu', 'abby', 'html']:
         print('Unsupported output format %s. Output format should be text or djvu.' % out_format)
         print_usage(progname)
         sys.exit(0)
@@ -649,17 +676,19 @@ if __name__ == '__main__':
         if not success:
             logger.warn('ghostscript on pdffile %s failed' % input_file)
             sys.exit(0)
-        process(client, jpgdir, out_file, out_format, gocr_dir, layout)
+        outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
+        process(client, jpgdir, outhandle, out_format, gocr_dir, layout)
+        outhandle.close()
 
         if tmpdir:
            os.system('rm -rf %s' % jpgdir)
     else:
         ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], logfile)
         if ia_item:
-            process_item(client, ia, ia_item, jp2_filter)
+            process_item(client, ia, ia_item, jp2_filter, out_format)
         elif ia_item_file:
             for ia_item in ia_item_file:
                 ia_item = ia_item.strip()
-                process_item(client, ia, ia_item, jp2_filter)
+                process_item(client, ia, ia_item, jp2_filter, out_format)
         
 
