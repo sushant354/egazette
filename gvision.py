@@ -284,7 +284,7 @@ def process(client, jpgdir, outhandle, out_format, gocr_dir, layout):
 
 
 def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
-    for filename in filenames[:40]:
+    for filename in filenames:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
             gocr_file, n =  re.subn('jpg$', 'pickle', filename)
@@ -301,7 +301,7 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
 def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
     htmlmaker = HtmlMaker(outhandle)
     htmlmaker.write_header()
-    for filename in filenames[:50]:
+    for filename in filenames:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
             gocr_file, n =  re.subn('jpg$', 'pickle', filename)
@@ -439,7 +439,7 @@ class IA:
             if not os.path.exists(jpgfile):
                 p = self.jp2_to_jpg(jp2file, jpgfile)
                 plist.append(p)
-                if len(plist) >= 10:
+                if len(plist) >= 5:
                     for p in plist:
                        p.wait()
                     plist = []   
