@@ -9,12 +9,12 @@ from .basegazette import BaseGazette
 class CentralWeekly(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl     = 'http://egazette.nic.in'
+        self.baseurl     = 'http://egazette.nic.in/default.aspx?AcceptsCookies=yes'
         self.hostname    = 'egazette.nic.in'
         self.gztype      = 'Weekly'
         self.parser      = 'lxml'
-        self.search_endp = 'Search1.aspx'
-        self.result_table= 'ContentPlaceHolder1_dgGeneralUser'
+        self.search_endp = 'SearchCategory.aspx'
+        self.result_table= 'gvGazette'
 
     def find_search_form(self, d):
         search_form = None
@@ -39,26 +39,24 @@ class CentralWeekly(BaseGazette):
                 name  = tag.get('name')
                 value = tag.get('value')
                 t     = tag.get('type')
-                if t == 'image':
+                if t == 'image' or name == 'btnStandard':
                     continue
 
-                if name == 'ctl00$ContentPlaceHolder1$btnstd':
-                    continue
-
-                if name == 'ctl00$ContentPlaceHolder1$txtDateIssueF' or \
-                        name == 'ctl00$ContentPlaceHolder1$txtDateIssueT':
+                if name == 'txtDateIssueF' or name == 'txtDateIssueT':
                     value = datestr
+                elif name == 'btnDetail':
+                    value = 'Detailed Report'
             elif tag.name == 'select':        
                 name = tag.get('name')
-                if name == 'ctl00$ContentPlaceHolder1$ddlcate':
+                if name == 'ddlGazetteCategory':
                     value = self.gztype
-                elif name == 'ctl00$ContentPlaceHolder1$ddlPartSection':
+                elif name == 'ddlPartSection':
                     value = 'Select Part & Section'
-                elif name == 'ctl00$ContentPlaceHolder1$ddlministry':
+                elif name == 'ddlMinistryName':
                     value = 'Select Ministry'
-                elif name == 'ctl00$ContentPlaceHolder1$ddlSubMinistry':
+                elif name == 'ddlDepartmentName':
                     value = 'Select Department'
-                elif name == 'ctl00$ContentPlaceHolder1$ddldepartment':
+                elif name == 'ddlOfficeName':
                     value = 'Select Office'
             if name:
                 if value == None:
@@ -93,24 +91,26 @@ class CentralWeekly(BaseGazette):
         return postdata
 
     def get_search_results(self, search_url, dateobj, cookiejar):
-        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
+        referer_url = urllib.parse.urljoin(search_url, 'SearchMenu.aspx')
+        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar, referer = referer_url)
 
         postdata = self.get_form_data(response.webpage, dateobj)
         if postdata == None:
             return None
 
         response = self.download_url(search_url, savecookies = cookiejar, \
+                                     referer = search_url, \
                                    loadcookies = cookiejar, postdata = postdata)
-
         postdata = self.get_form_data(response.webpage, dateobj)
         response = self.download_url(search_url, savecookies = cookiejar, \
-                                   loadcookies = cookiejar, postdata = postdata)
+                                     referer = search_url, \
+                                  loadcookies = cookiejar, postdata = postdata)
 
         return response
 
     def get_column_order(self, tr):
         order = []
-        for td in tr.find_all('td'):
+        for td in tr.find_all('th'):
             txt = utils.get_tag_contents(td)
             if txt and re.search('Ministry', txt):
                 order.append('ministry')
@@ -122,10 +122,8 @@ class CentralWeekly(BaseGazette):
                 order.append('department')
             elif txt and re.search('Office', txt):
                 order.append('office')
-            elif txt and re.search('Part.+Section', txt):
-                order.append('partnum')
-            elif txt and re.search('Reference', txt):
-                order.append('refnum')
+            elif txt and re.search('Gazette\s+ID', txt):
+                order.append('gazetteid')
             else:
                 order.append('')
         return order
@@ -164,10 +162,53 @@ class CentralWeekly(BaseGazette):
         return metainfos, nextpage
 
     def find_next_page(self, tr, curr_page):
-        return None
+        classes = tr.get('class')
+        if classes and 'pager' in classes:
+            for td in tr.find_all('td'):
+                link = td.find('a')
+                txt = utils.get_tag_contents(td)
+                if txt:
+                   try: 
+                       page_no = int(txt)
+                   except:
+                       page_no = None
+                   if page_no == curr_page + 1 and link:
+                       return link
+
+        return None               
 
     def download_nextpage(self, nextpage, search_url, postdata, cookiejar):
-        return None
+        newdata = []
+        href = nextpage.get('href') 
+        if not href:
+            return None
+
+        groups = []
+        for reobj in re.finditer("'(?P<obj>[^']+)'", href):
+            groups.append(reobj.groupdict()['obj'])
+
+        if not groups or len(groups) < 2:
+            return None
+
+        etarget = groups[0]    
+        page_no = groups[1]
+            
+        for k, v in postdata:
+            if k == '__EVENTTARGET':
+                newdata.append((k, etarget))
+            elif k == '__EVENTARGUMENT':
+                newdata.append((k, page_no))
+            elif k == 'btnDetail':
+                continue
+            else:
+                newdata.append((k, v))
+
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                     referer = search_url, \
+                                     loadcookies = cookiejar, \
+                                     postdata = newdata)
+            
+        return response 
 
     def process_result_row(self, tr, metainfos, dateobj, order):
         metainfo = utils.MetaInfo()
@@ -199,50 +240,36 @@ class CentralWeekly(BaseGazette):
                         if link:
                             metainfo[col] = link 
                                             
-                elif col in ['office', 'department', 'partnum', 'refnum']:
+                elif col in ['office', 'department', 'gazetteid']:
                     metainfo[col] = txt
             i += 1
 
 
     def download_gazette(self, relpath, search_url, postdata, \
                          metainfo, cookiejar):
-        response = self.download_url(search_url, savecookies = cookiejar, \
-                                   postdata = postdata, loadcookies = cookiejar)
-        doc    = response.webpage
-        srvhdr = response.srvresponse
 
-        filename = None
-        if 'Content-Disposition' in srvhdr:
-            hdr   = srvhdr['Content-Disposition']
-            reobj = re.search('(?P<num>\d+)\.pdf\s*$', hdr)
-            if reobj:
-                groups = reobj.groupdict()
-                filename = groups['num']
-        if filename == None:
-            self.logger.warn('Could not get filename in server response for relpath: %s', relpath)
+        if 'gazetteid' not in metainfo:
             return None
 
-        relurl  = os.path.join(relpath, filename)
+        gazetteid = metainfo['gazetteid']
+        reobj = re.search('(?P<num>\d+)\s*$', gazetteid)
+        if not reobj:
+            return None
+
+        filename = reobj.groupdict()['num']
+        relurl   = os.path.join(relpath, filename)
         updated = False
 
-        if doc and  self.storage_manager.should_download_raw(relurl, None, validurl = False):
-            if self.storage_manager.save_rawdoc(self.name, relurl, srvhdr, doc):
-                updated = True
-                self.logger.info('Saved rawfile %s' % relurl)
-
-        metainfo.pop('download')
-        if self.storage_manager.save_metainfo(self.name, relurl, metainfo):
-            updated = True
-            self.logger.info('Saved metainfo %s' % relurl)
-
-        if updated:
-            return relurl
-        return None
+        if self.save_gazette(relurl, search_url, metainfo, postdata = postdata,\
+                             cookiefile = cookiejar):
+                             
+            return relurl 
+        return None     
 
     def download_oneday(self, relpath, dateobj):
         dls = []
         cookiejar  = CookieJar()
-        response = self.download_url(self.baseurl, savecookies = cookiejar)
+        response = self.download_url(self.baseurl, savecookies = cookiejar, loadcookies = cookiejar)
         if not response:
             self.logger.warn('Could not fetch %s for the day %s', self.baseurl, dateobj)
             return dls

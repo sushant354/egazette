@@ -358,6 +358,7 @@ class GazetteIA:
          ('linknames',        'Gazette Links'), \
          ('url',              'Gazette Source'), \
          ('num',              'Number'), \
+         ('gazetteid',        'Gazette ID'), \
        ]
        for k, kdesc in keys:
            if k in metainfo:
