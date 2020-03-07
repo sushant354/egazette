@@ -122,7 +122,7 @@ class CentralWeekly(BaseGazette):
                 order.append('department')
             elif txt and re.search('Office', txt):
                 order.append('office')
-            elif txt and re.search('Gazette\s+ID', txt):
+            elif txt and re.search('(Gazette\s+ID)|(UGID)', txt):
                 order.append('gazetteid')
             else:
                 order.append('')
