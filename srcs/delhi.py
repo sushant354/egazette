@@ -21,6 +21,22 @@ class DelhiWeekly(CentralWeekly):
         if postdata == None:
             return None
 
+        newdata = []
+        for k, v in postdata:
+            if k == '__EVENTTARGET':
+                v = 'ddlcate'
+            elif k == 'ddlcate':
+                v = self.gztype
+
+            newdata.append((k, v))
+
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                   referer = search_url, \
+                                   loadcookies = cookiejar, postdata = newdata)
+
+        postdata = self.get_form_data(response.webpage, dateobj)
+        if postdata == None:
+            return None
         response = self.download_url(search_url, savecookies = cookiejar, \
                                    referer = search_url, \
                                    loadcookies = cookiejar, postdata = postdata)
@@ -28,8 +44,8 @@ class DelhiWeekly(CentralWeekly):
 
     def get_post_data(self, tags, dateobj):
         datestr  = utils.get_egz_date(dateobj)
-        postdata = []
 
+        postdata = []
         for tag in tags:
             name  = None
             value = None
@@ -38,7 +54,7 @@ class DelhiWeekly(CentralWeekly):
                 name  = tag.get('name')
                 value = tag.get('value')
                 t     = tag.get('type')
-                if t == 'image' or name in ['btn_Reset', 'hidden2', 'hidden1']:
+                if t == 'image' or name  == 'btn_Reset':
                     continue
 
                 if name == 'btnstd':
@@ -52,6 +68,8 @@ class DelhiWeekly(CentralWeekly):
                     value = self.gztype
                 elif name == 'ddlPartSection':
                     value = 'Select Part & Section'
+                elif name == 'ddlSubMinistry':
+                    value = 'Select Department'
             if name:
                 if value == None:
                     value = ''
