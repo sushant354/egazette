@@ -7,8 +7,8 @@ from ..utils import utils
 class Jharkhand(AndhraArchive):
     def __init__(self, name, storage):
         AndhraArchive.__init__(self, name, storage)
-        self.baseurl      = 'http://jhr2.nic.in/egazette/SearchGazette.aspx'
-        self.hostname     = 'jhr2.nic.in'
+        self.baseurl      = 'https://jharkhandgazette.nic.in/SearchGazette.aspx'
+        self.hostname     = 'jharkhandgazette.nic.in'
         self.search_endp  = 'SearchGazette.aspx'
 
         self.result_table = 'ctl00_ContentPlaceHolder1_DetailView'
