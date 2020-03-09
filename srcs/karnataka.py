@@ -1,6 +1,6 @@
 import re
 import os
-from io import StringIO
+from io import BytesIO
 import urllib.request, urllib.parse, urllib.error
 import datetime
 
@@ -53,7 +53,7 @@ class Karnataka(BaseGazette):
 
         links = []
         linknames = []
-        hrefs = utils.extract_links_from_pdf(StringIO(response.webpage))
+        hrefs = utils.extract_links_from_pdf(BytesIO(response.webpage))
         for href in hrefs:
             reobj = re.search('(?P<num>Part-\w+)', href)
             if reobj:
