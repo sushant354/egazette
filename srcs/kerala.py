@@ -15,7 +15,7 @@ class Kerala(BaseGazette):
         self.parser     = 'html.parser'
         self.start_date   = datetime.datetime(2007, 1, 1)
 
-        self.year_href =  '/archive%d_iframe.htm'
+        self.year_href =  '/%d.php'
 
     def sync(self, fromdate, todate, event):
         newdownloads = []
@@ -144,9 +144,9 @@ class Kerala(BaseGazette):
         partnum = None
         dept    = None
         for td in d.find_all('td'):
-            bgcolor = td.get('bgcolor')
+            colspan = td.get('colspan')
             links   = td.find_all('a')
-            if bgcolor == '#91BAE8' and len(links) == 0:
+            if colspan == '2' and len(links) == 0:
                 partnum =  utils.get_tag_contents(td)
                 partnum  = utils.remove_spaces(partnum)
                 dept    = None
@@ -158,7 +158,7 @@ class Kerala(BaseGazette):
                         dept = utils.remove_spaces(dept)
                     elif x.name == 'a'  and partnum:
                         href  = x.get('href')
-                        if not href.startswith('pdf'):
+                        if not href.startswith('../pdf'):
                             continue
 
                         title = utils.get_tag_contents(x)
