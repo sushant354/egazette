@@ -6,6 +6,7 @@ import calendar
 import magic
 import datetime
 import sys
+import calendar
 
 from PyPDF2 import PdfFileReader
 from xml.parsers.expat import ExpatError
@@ -62,6 +63,36 @@ def check_next_page(tr, pagenum):
             break
 
     return pageblock, nextlink
+
+def month_to_num(month):
+    month = month.lower()
+    if month in ['frbruary', 'februay']:
+        month = 'february'
+
+    count = 0
+    for mth in calendar.month_name:
+        if mth.lower() == month:
+            return count
+        count += 1
+
+    count = 0
+    for mth in calendar.month_abbr:
+        if mth.lower() == month:
+            return count
+        count += 1
+
+    return None
+
+def to_dateobj(x):
+    reobj = re.search('(?P<day>\d+)-(?P<month>jan|feb|mar|apr|may|jun|jul|aug|sep|aug|sep|oct|nov|dec)-(?P<year>\d+)', x, re.IGNORECASE)
+    if reobj:
+        groupdict = reobj.groupdict()
+        month = month_to_num(groupdict['month'])
+        day   = int(groupdict['day'])
+        year  = int(groupdict['year'])
+        return datetime.date(year, month, day)
+
+    return None    
 
 def get_month_num(month, monthnames):
     i = 0

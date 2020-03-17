@@ -23,6 +23,7 @@ from . import himachal
 from . import stgeorge
 
 from . import goa
+from . import csl 
 
 srcdict = { \
 'central_weekly'       : central.CentralWeekly, \
@@ -50,6 +51,8 @@ srcdict = { \
 'stgeorge'             : stgeorge.StGeorge, \
 'keralalibrary'        : stgeorge.KeralaLibrary, \
 'goa'                  : goa.Goa, \
+'csl_weekly'           : csl.CSLWeekly, \
+'csl_extraordinary'    : csl.CSLExtraordinary, \
 }
 
 srcnames = { \
@@ -78,6 +81,8 @@ srcnames = { \
 'stgeorge'             : 'Madras Presidency', \
 'keralalibrary'        : 'Government of Kerala', \
 'goa'                  : 'Government of Goa', \
+'csl_weekly'           : 'Government of India' , \
+'csl_extraordinary'    : 'Government of India', \
 }
 
 categories = { \
@@ -106,6 +111,8 @@ categories = { \
 'stgeorge'             : 'Fort St. George Gazette', \
 'keralalibrary'        : 'Kerala Gazette', \
 'goa'                  : 'Goa Gazette', \
+'csl_weekly'           : 'Weekly Gazette of India' , \
+'csl_extraordinary'    : 'Extraordinary Gazette of India', \
 }
 
 languages = { \
@@ -134,10 +141,13 @@ languages = { \
 'stgeorge'             : ['eng', 'mal'], \
 'keralalibrary'        : ['eng', 'mal'], \
 'goa'                  : ['eng', 'por'], \
+'csl_weekly'           : ['eng', 'hin'], \
+'csl_extraordinary'    : ['eng', 'hin'], \
 }
 
 srchierarchy = { \
 'central'    : ['central_weekly', 'central_extraordinary'], \
+'csl'        : ['csl_weekly' , 'csl_extraordinary'], \
 'delhi'      : ['delhi_weekly', 'delhi_extraordinary'], \
 'chattisgarh': ['cgweekly', 'cgextraordinary'], \
 'states'     : ['delhi', 'bihar', 'chattisgarh', 'andhra', 'karnataka', \

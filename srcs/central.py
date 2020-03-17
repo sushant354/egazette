@@ -124,6 +124,8 @@ class CentralWeekly(BaseGazette):
                 order.append('office')
             elif txt and re.search('(Gazette\s+ID)|(UGID)', txt):
                 order.append('gazetteid')
+            elif txt and re.search('Issue\s+Date', txt):
+                order.append('issuedate')
             else:
                 order.append('')
         return order
@@ -198,11 +200,10 @@ class CentralWeekly(BaseGazette):
                 newdata.append((k, etarget))
             elif k == '__EVENTARGUMENT':
                 newdata.append((k, page_no))
-            elif k == 'btnDetail':
+            elif k in ['btnDetail', 'btnSubmit']:
                 continue
             else:
                 newdata.append((k, v))
-
         response = self.download_url(search_url, savecookies = cookiejar, \
                                      referer = search_url, \
                                      loadcookies = cookiejar, \
