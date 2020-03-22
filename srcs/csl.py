@@ -150,7 +150,6 @@ class CSLWeekly(CentralWeekly):
             if nextpage:
                 pagenum += 1
                 self.logger.info('Going to page %d for date %s', pagenum, fromdate)
-                print ('NExtPage', nextpage)
 
                 response = self.download_nextpage(nextpage, search_url, postdata, cookiejar)
             else:
@@ -238,6 +237,26 @@ class CSLWeekly(CentralWeekly):
                     if dateobj:
                         metainfo.set_date(dateobj)
             i += 1
+
+    def find_next_page(self, tr, curr_page):
+        classes = tr.get('class')
+        if classes and 'pager' in classes:
+            for td in tr.find_all('td'):
+                link = td.find('a')
+                txt = utils.get_tag_contents(td)
+                if txt:
+                   txt = txt.strip()
+                   if txt == '...' and curr_page == 10 and link:
+                       return link
+
+                   try: 
+                       page_no = int(txt)
+                   except:
+                       page_no = None
+                   if page_no == curr_page + 1 and link:
+                       return link
+
+        return None               
 
 class CSLExtraordinary(CSLWeekly):
     def __init__(self, name, storage):

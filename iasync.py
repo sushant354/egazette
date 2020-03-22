@@ -161,7 +161,9 @@ class GazetteIA:
             prefix = 'in.goa.egaz.' 
             gznum  = metainfo['gznum']
             series = metainfo['series']
-            identifier = '%s.%s' % (gznum, series) 
+            identifier = '%s.%s' % (gznum, series)
+        else:
+            identifier = relurl.replace('/', '.')
          
         identifier = prefix + identifier 
         return identifier    
@@ -589,8 +591,11 @@ if __name__ == '__main__':
 
     storage = FileManager(datadir, False, False)
     gazette_ia = GazetteIA(storage, access_key, secret_key, loglevel, logfile)
-
     stats        = Stats()
+
+    if len(srcnames) == 0:
+        srcnames = datasrcs.srcdict.keys()
+
     if relurls:
         for relurl in relurls:
             handle_relurl(gazette_ia, relurl, to_upload, to_update, stats)
