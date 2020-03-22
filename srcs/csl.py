@@ -241,16 +241,21 @@ class CSLWeekly(CentralWeekly):
     def find_next_page(self, tr, curr_page):
         classes = tr.get('class')
         if classes and 'pager' in classes:
+            prev_page = None
             for td in tr.find_all('td'):
                 link = td.find('a')
                 txt = utils.get_tag_contents(td)
                 if txt:
                    txt = txt.strip()
-                   if txt == '...' and curr_page == 10 and link:
+                   self.logger.debug('%s %s %s', txt, curr_page, link)
+
+                   if txt == '...' and curr_page % 10 == 0 and link 
+                           and prev_page == curr_page:
                        return link
 
                    try: 
                        page_no = int(txt)
+                       prev_page = page_no
                    except:
                        page_no = None
                    if page_no == curr_page + 1 and link:
