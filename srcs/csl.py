@@ -249,7 +249,7 @@ class CSLWeekly(CentralWeekly):
                    txt = txt.strip()
                    self.logger.debug('%s %s %s', txt, curr_page, link)
 
-                   if txt == '...' and curr_page % 10 == 0 and link 
+                   if txt == '...' and curr_page % 10 == 0 and link \
                            and prev_page == curr_page:
                        return link
 
