@@ -14,6 +14,7 @@ class CSLWeekly(CentralWeekly):
         self.search_endp = 'Digital.aspx'
         self.result_table = 'GV_Content_Detail'
         self.gazette_js   = 'window.open\(\'(?P<href>[^\']+)'
+        self.partnum      = '30'
 
 
     def get_post_data(self, tags, dateobj):
@@ -39,7 +40,7 @@ class CSLWeekly(CentralWeekly):
                 elif name == 'ddlCategory':
                     value = self.gztype
                 elif name == 'ddlPartSection':
-                    value = '30'
+                    value = self.partnum
             if name:
                 if value == None:
                     value = ''
@@ -204,6 +205,7 @@ class CSLWeekly(CentralWeekly):
         metainfo.set_gztype(self.gztype)
 
         i        = 0
+
         for td in tr.find_all('td'):
             if len(order) > i:
                 col = order[i]
@@ -267,5 +269,6 @@ class CSLExtraordinary(CSLWeekly):
     def __init__(self, name, storage):
         CSLWeekly.__init__(self, name, storage)
         self.gztype   = 'Extra Ordinary'
+        self.partnum  = '31'
 
 
