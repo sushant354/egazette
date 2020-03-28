@@ -3,12 +3,12 @@ import getopt
 import datetime
 import logging
 import re
-import types
 import shutil
 import os
 import time
-
 from requests.exceptions import HTTPError
+from zipfile import ZipFile
+import codecs
 
 from internetarchive import upload, get_session, get_item, modify_metadata
 from egazette.utils.file_storage import FileManager
@@ -16,6 +16,7 @@ from egazette.utils.file_storage import FileManager
 from egazette.utils import reporting
 from egazette.srcs  import datasrcs 
 from egazette.utils import utils
+from egazette.gvision import get_google_client, to_abby, pdf_to_jpg, compress_abbyy
 
 class Stats:
     def __init__(self):
@@ -68,10 +69,70 @@ class Stats:
              msg.append('No updates from %s' % ', '.join(noupdate))
         return '\n'.join(msg)
 
+def create_zip(zipfile, filenames):
+    zipobj = ZipFile(zipfile, 'w')
+    for filename in filenames:
+        head, tail   = os.path.split(filename)
+        head1, tail1 = os.path.split(head)
+        dirpath = os.path.join(tail1, tail)
+        zipobj.write(filename, dirpath)
+    zipobj.close()
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    return [ atoi(c) for c in re.split('(\d+)', text) ]
+
+class Gvision:
+    def __init__(self, iadir, key_file):
+        self.client = get_google_client(key_file)
+        self.iadir  = iadir
+
+    def mkdir(self, path):
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+    def convert_to_jpg_abby(self, identifier, filepath):
+        path, filename  = os.path.split(filepath)
+        name, n = re.subn('.pdf$', '', filename)
+
+        item_path = os.path.join(self.iadir, identifier)
+        jpgdir    = os.path.join(item_path, name + '_jpg')
+        gocrdir   = os.path.join(item_path, name + '_gocr')
+        abbyfile  = os.path.join(item_path, name + '_abbyy.xml')
+
+        self.mkdir(item_path)
+        self.mkdir(jpgdir)
+        self.mkdir(gocrdir)
+
+        success = pdf_to_jpg(filepath, jpgdir)
+        if not success:
+            self.logger.warn('Could not convert into jpg files %s', filepath)
+            return None, None
+
+        filenames = os.listdir(jpgdir)
+        filenames.sort(key=natural_keys)
+
+        outhandle = codecs.open(abbyfile, 'w', encoding = 'utf8')
+        to_abby(jpgdir, filenames, self.client, outhandle, gocrdir)    
+        outhandle.close()
+        
+        abbyfile_gz, n = re.subn('xml$', 'gz', abbyfile)
+        compress_abbyy(abbyfile, abbyfile_gz)
+
+
+        jpgzip   = jpgdir + '.zip'
+        jpgfiles = [os.path.join(jpgdir, x) for x in filenames]
+
+        create_zip(jpgzip, jpgfiles)
+        return jpgzip, abbyfile_gz
 
 
 class GazetteIA:
-    def __init__(self, file_storage, access_key, secret_key, loglevel, logfile):
+    def __init__(self, gvisionobj, file_storage, access_key, secret_key, \
+                 loglevel, logfile):
+        self.gvisionobj   = gvisionobj         
         self.file_storage = file_storage
         self.access_key   = access_key
         self.secret_key   = secret_key
@@ -181,6 +242,20 @@ class GazetteIA:
             item = None 
         return item
 
+    def ocr_files(self, identifier, to_upload):
+        final = []
+        for filepath in to_upload:
+            if re.search('pdf$', filepath):
+                jpgzip, abbyzip = self.gvisionobj.convert_to_jpg_abby(identifier, filepath)
+                if jpgzip:
+                    final.append(jpgzip)
+                if abbyzip:
+                    final.append(abbyzip)
+            else:
+                final.append(filepath)
+
+        return final
+
     def upload(self, relurl):
         metainfo = self.file_storage.get_metainfo(relurl)
         if metainfo == None:
@@ -229,6 +304,11 @@ class GazetteIA:
         if not to_upload:
             self.logger.info('No files need to be uploaded for %s', identifier)
             return False
+
+        if self.gvisionobj:
+            to_upload = self.ocr_files(identifier, to_upload)
+            metadata['ocr'] = 'google-cloud-vision IndianKanoon 1.0'
+            metadata['fts-ignore-ingestion-lang-filter'] = 'true'
 
         count = 5
         while count > 0:
@@ -445,6 +525,8 @@ def print_usage(progname):
                         [-i (relurls_from_stdin)]
                         [-d days_to_sync]
                         [-D gazette_directory]
+                        [-I internet_archive_directory]
+                        [-g google_gvision_key]
                         [-t start_time (%Y-%m-%d %H:%M:%S)]
                         [-T end_time (%Y-%m-%d %H:%M:%S)]
                         [-U gmail_user]
@@ -489,8 +571,10 @@ if __name__ == '__main__':
     gmail_user = None
     gmail_pwd  = None
     to_addrs   = []
+    key_file   = None
+    iadir      = None
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:hil:s:t:T:mr:uE:U:P:')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:g:hiI:l:s:t:T:mr:uE:U:P:')
     for o, v in optlist:
         if o == '-l':
             loglevel = v
@@ -529,6 +613,10 @@ if __name__ == '__main__':
             gmail_user = v
         elif o == '-P':
             gmail_pwd = v
+        elif o == '-I':
+            iadir = v
+        elif o == '-g':
+            key_file = v
         elif o == '-h':
             print_usage(progname)
             sys.exit(0)
@@ -566,6 +654,15 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
+    if (key_file and not iadir) or (iadir and not key_file):
+        print('Please specify google key file and internetarchive directory both for using OCR while uploading files')
+        print_usage(progname)
+        sys.exit(0)
+
+    gvisionobj = None
+    if key_file and iadir:
+        gvisionobj = Gvision(iadir, key_file)
+        
     logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
     datefmt = '%Y-%m-%d %H:%M:%S'
 
@@ -590,7 +687,7 @@ if __name__ == '__main__':
 
 
     storage = FileManager(datadir, False, False)
-    gazette_ia = GazetteIA(storage, access_key, secret_key, loglevel, logfile)
+    gazette_ia = GazetteIA(gvisionobj, storage, access_key, secret_key, loglevel, logfile)
     stats        = Stats()
 
     if len(srcnames) == 0:

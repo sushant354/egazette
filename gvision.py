@@ -351,6 +351,13 @@ def to_abby(jpgdir, filenames, client, outhandle, gocr_dir):
 
     abby.write_footer()
 
+def compress_abbyy(abby_file, compressed_file):
+    f_in = open(abby_file, 'rb')
+    f_out = gzip.open(compressed_file, 'wb')
+    f_out.writelines(f_in)
+    f_out.close()
+    f_in.close()
+
 class IA:
     def __init__(self, top_dir, access_key, secret_key, loglevel, logfile):
         self.top_dir      = top_dir
@@ -450,12 +457,6 @@ class IA:
 
         return jpg_path
 
-    def compress_abbyy(self, abby_file, compressed_file):
-        f_in = open(abby_file, 'rb')
-        f_out = gzip.open(compressed_file, 'wb')
-        f_out.writelines(f_in)
-        f_out.close()
-        f_in.close()
 
     def update_metadata(self, identifier, metadata):
         success = False
@@ -487,7 +488,7 @@ class IA:
         abby_files_gz = []
         for abby_file in abby_filelist:
             abby_file_gz, n = re.subn('xml$', 'gz', abby_file)
-            self.compress_abbyy(abby_file, abby_file_gz)
+            compress_abbyy(abby_file, abby_file_gz)
             abby_files_gz.append(abby_file_gz)
 
       
