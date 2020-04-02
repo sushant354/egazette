@@ -37,6 +37,7 @@ def print_usage(progname):
                        [-s (stdin for streaming internetarchive_items)]
                        [-I file with internetarchive_items]
                        [-i input_file] [-o output_file]
+                       [-u (update)]
           ''' % progname)
 
 def get_google_client(key_file):
@@ -391,6 +392,12 @@ class IA:
                 success = False
                 time.sleep(60)
 
+    def is_exist(self, item):
+        item_path = os.path.join(self.top_dir, item)
+        if os.path.exists(item_path):
+            return True
+        return False    
+
     def fetch_jp2(self, item, jp2_filter):
         item_path = os.path.join(self.top_dir, item)
         if jp2_filter:
@@ -506,7 +513,11 @@ class IA:
                 time.sleep(120)
         return success   
 
-def process_item(client, ia, ia_item, jp2_filter, out_format):
+def process_item(client, ia, ia_item, jp2_filter, out_format, update):
+        if not update and ia.is_exist(ia_item):
+            logger.warn('Item already processed %s', ia_item)
+            return
+
         zfiles = ia.fetch_jp2(ia_item, jp2_filter)
 
         if not zfiles:
@@ -563,9 +574,10 @@ if __name__ == '__main__':
     secret_key = None
     ia_item    = None
     jp2_filter = []
+    update     = False
     ia_item_file = None
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:d:D:l:f:F:g:G:i:I:k:m:o:O:Ls')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:d:D:l:f:F:g:G:i:I:k:m:o:O:Lsu')
 
     jpgdir = None
     for o, v in optlist:
@@ -601,6 +613,8 @@ if __name__ == '__main__':
             layout = True
         elif o == '-O':
             out_format = v
+        elif o == '-u':
+            update = True
 
     if key_file == None:
         print('Google Cloud API credentials are mising')
@@ -686,10 +700,10 @@ if __name__ == '__main__':
     else:
         ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], logfile)
         if ia_item:
-            process_item(client, ia, ia_item, jp2_filter, out_format)
+            process_item(client, ia, ia_item, jp2_filter, out_format, update)
         elif ia_item_file:
             for ia_item in ia_item_file:
                 ia_item = ia_item.strip()
-                process_item(client, ia, ia_item, jp2_filter, out_format)
+                process_item(client, ia, ia_item, jp2_filter, out_format, update)
         
 
