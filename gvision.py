@@ -10,8 +10,8 @@ import codecs
 import pickle
 from zipfile import ZipFile
 import gzip
-from requests.exceptions import HTTPError, ConnectionError
 import time
+import shutil
 
 from egazette.ocr.djvuxml import Djvu
 from egazette.ocr.abbyxml import Abby
@@ -525,16 +525,26 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, update):
             return 
 
         
-        abby_files = []
+        inter_files = []
+        abby_files  = []
+        item_path   = os.path.join(ia.top_dir, ia_item)
+
         for zfile in zfiles:   
+            inter_files.append(('file', os.path.join(item_path, zfile)))
+
             jp2_path = ia.extract_jp2(ia_item, zfile)   
             if not jp2_path:
                 logger.warn('JP2 files not extracted %s', zfile)
                 continue
+            
+            inter_files.append(('dir', jp2_path))
+
             jpgdir   = ia.convert_jp2(jp2_path)
             if not jpgdir:
                 logger.warn('Could not convert JP2 to JPG for %s', jp2_path)
                 continue
+
+            inter_files.append(('dir', jpgdir))
 
             gocr_dir, n = re.subn('_jpg$', '_gocr', jpgdir)
             if not os.path.exists(gocr_dir):
@@ -559,6 +569,15 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, update):
         if out_format == 'abby':
             ia.upload_abbyy(ia_item, abby_files)
 
+        clean_datadir(inter_files)
+
+def clean_datadir(inter_files):
+    for filetype, filepath in inter_files:
+        if filetype == 'file':
+            os.remove(filepath)
+        else:    
+            shutil.rmtree(filepath)
+        
 if __name__ == '__main__':
     progname   = sys.argv[0]
     loglevel   = 'info'

@@ -307,6 +307,8 @@ class GazetteIA:
 
         if self.gvisionobj:
             to_upload = self.ocr_files(identifier, to_upload)
+            if metadata == None:
+                metadata = {}
             metadata['ocr'] = 'google-cloud-vision IndianKanoon 1.0'
             metadata['fts-ignore-ingestion-lang-filter'] = 'true'
 
