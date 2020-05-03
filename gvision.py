@@ -16,7 +16,8 @@ import shutil
 from egazette.ocr.djvuxml import Djvu
 from egazette.ocr.abbyxml import Abby
 from egazette.ocr.htmlmaker import HtmlMaker
-from internetarchive import download, upload, get_session, modify_metadata 
+import internetarchive 
+from internetarchive import download, upload, get_session, modify_metadata
 
 from google.cloud import vision
 
@@ -364,6 +365,7 @@ class IA:
         self.top_dir      = top_dir
         self.access_key   = access_key
         self.secret_key   = secret_key
+        self.headers      = {'x-archive-keep-old-version': '0'}
 
         session_data = {'access': access_key, 'secret': secret_key}
         if logfile:
@@ -373,6 +375,20 @@ class IA:
 
         self.session = get_session({'s3': session_data, 'logging': logconfig})
         self.logger = logging.getLogger('gvision.ia')
+
+    def delete_imagepdf(self, item, abby_filegz):
+        head, abby_file = os.path.split(abby_filegz)
+        pdffile = re.sub('_abbyy.gz$', '.pdf', abby_file)
+
+        itemobj = internetarchive.get_item(item)
+        fileobj = internetarchive.File(itemobj, pdffile)
+        if fileobj and fileobj.source == 'derivative' and \
+                fileobj.format == 'Image Container PDF':
+            fileobj.delete(access_key = self.access_key, headers= self.headers,\
+                           secret_key = self.secret_key)    
+            self.logger.warn('Old image pdf exists in %s. Deleted it', item)
+
+
 
     def find_jp2(self, item_path):
         zfiles = []
@@ -490,20 +506,20 @@ class IA:
     def upload_abbyy(self, ia_item, abby_filelist):
         metadata = {'ocr': 'google-cloud-vision IndianKanoon 1.0', \
                     'fts-ignore-ingestion-lang-filter': 'true'}
-        self.update_metadata(ia_item, metadata)
 
         abby_files_gz = []
         for abby_file in abby_filelist:
             abby_file_gz, n = re.subn('xml$', 'gz', abby_file)
+            self.delete_imagepdf(ia_item, abby_file_gz)
+
             compress_abbyy(abby_file, abby_file_gz)
             abby_files_gz.append(abby_file_gz)
 
-      
+        self.update_metadata(ia_item, metadata)
         success = False 
-        headers = {'x-archive-keep-old-version': '0'}
         while not success:
             try:
-                success = upload(ia_item, abby_files_gz, headers = headers, \
+                success = upload(ia_item, abby_files_gz, headers=self.headers,\
                                  access_key = self.access_key, \
                                  secret_key = self.secret_key, retries=100)
                 success = True                 
