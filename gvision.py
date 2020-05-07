@@ -47,12 +47,13 @@ def get_google_client(key_file):
 
     return client
 
-def pdf_to_jpg(infile, jpgdir):
+def pdf_to_jpg(infile, jpgdir, ppi):
     itemname = os.path.splitext(os.path.basename(infile))[0]
 
     outfile = os.path.join(jpgdir, itemname+ '_%04d.jpg')
 
-    command = ['gs', '-q', '-dNOPAUSE', '-dBATCH',  '-dSAFER', '-r300x300', \
+    command = ['gs', '-q', '-dNOPAUSE', '-dBATCH',  '-dSAFER', \
+               '-r%dx%d' % (ppi, ppi), \
                '-sDEVICE=jpeg', '-sOutputFile=%s' % outfile, '-c',  \
                'save', 'pop', '-f',  '%s' % infile]
 
@@ -271,7 +272,7 @@ def atoi(text):
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
-def process(client, jpgdir, outhandle, out_format, gocr_dir, layout):
+def process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi):
     filenames = os.listdir(jpgdir)
     filenames.sort(key=natural_keys)
 
@@ -282,7 +283,7 @@ def process(client, jpgdir, outhandle, out_format, gocr_dir, layout):
     elif out_format == 'djvu':   
         to_djvu(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'abby':   
-        to_abby(jpgdir, filenames, client, outhandle, gocr_dir)
+        to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi)
 
 
 def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
@@ -332,7 +333,7 @@ def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
             djvu.handle_google_response(response)
     djvu.write_footer()
 
-def to_abby(jpgdir, filenames, client, outhandle, gocr_dir):
+def to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi):
     logger = logging.getLogger('gvision')
     abby= Abby(outhandle)
     abby.write_header()
@@ -345,10 +346,10 @@ def to_abby(jpgdir, filenames, client, outhandle, gocr_dir):
             gocr_file = None
         response  = google_ocr(client, infile, gocr_file)
         if response and response.full_text_annotation.pages:
-            abby.handle_google_response(response)
+            abby.handle_google_response(response, ppi)
         else:
             logger.warn('No pages in %s', filename)
-            abby.write_page_header(None, None, 300)
+            abby.write_page_header(None, None, ppi)
             abby.write_page_footer()
 
     abby.write_footer()
@@ -529,7 +530,7 @@ class IA:
                 time.sleep(120)
         return success   
 
-def process_item(client, ia, ia_item, jp2_filter, out_format, update):
+def process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi):
         if not update and ia.is_exist(ia_item):
             logger.warn('Item already processed %s', ia_item)
             return
@@ -576,7 +577,8 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, update):
                 out_file, n = re.subn('_jpg$', '.html', jpgdir)
 
             outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
-            process(client, jpgdir, outhandle, out_format, gocr_dir, layout)
+            process(client, jpgdir, outhandle, out_format, gocr_dir, layout, \
+                    ppi)
             outhandle.close()
 
             if out_format == 'abby':
@@ -610,9 +612,10 @@ if __name__ == '__main__':
     ia_item    = None
     jp2_filter = []
     update     = False
+    ppi        = 300
     ia_item_file = None
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:d:D:l:f:F:g:G:i:I:k:m:o:O:Lsu')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:d:D:l:f:F:g:G:i:I:k:m:o:O:p:Lsu')
 
     jpgdir = None
     for o, v in optlist:
@@ -636,6 +639,8 @@ if __name__ == '__main__':
             ia_item =v
         elif o == '-I':
             ia_item_file = codecs.open(v, 'r', encoding = 'utf8')
+        elif o == '-p':
+            ppi = int(v)
         elif o == '-s':
             ia_item_file = sys.stdin
         elif o == '-a':
@@ -721,13 +726,13 @@ if __name__ == '__main__':
             jpgdir = tempfile.mkdtemp()
             tmpdir = True
 
-        success = pdf_to_jpg(input_file, jpgdir)
+        success = pdf_to_jpg(input_file, jpgdir, ppi)
 
         if not success:
             logger.warn('ghostscript on pdffile %s failed' % input_file)
             sys.exit(0)
         outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
-        process(client, jpgdir, outhandle, out_format, gocr_dir, layout)
+        process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi)
         outhandle.close()
 
         if tmpdir:
@@ -735,10 +740,10 @@ if __name__ == '__main__':
     else:
         ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], logfile)
         if ia_item:
-            process_item(client, ia, ia_item, jp2_filter, out_format, update)
+            process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi)
         elif ia_item_file:
             for ia_item in ia_item_file:
                 ia_item = ia_item.strip()
-                process_item(client, ia, ia_item, jp2_filter, out_format, update)
+                process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi)
         
 

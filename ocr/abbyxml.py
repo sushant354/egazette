@@ -131,9 +131,9 @@ class Abby:
         self.outhandle.write('<block blockType="Text" blockName="" l="%d" t="%d" r="%d" b="%d">\n' % (l, t, r, b))
         self.outhandle.write('<region><rect l="%d" t="%d" r="%d" b="%d"/></region>\n<text>\n' % (l, t, r, b))
 
-    def handle_google_response(self, response):
+    def handle_google_response(self, response, ppi):
         for page in response.full_text_annotation.pages:
-            self.write_page_header(page.height, page.width, 300)
+            self.write_page_header(page.height, page.width, ppi)
             if page.height > self.height:
                 self.height = page.height
 
