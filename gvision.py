@@ -300,9 +300,9 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
             outhandle.write('\n\n\n\n')
 
 def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
-    htmlmaker = HtmlMaker(outhandle)
-    htmlmaker.write_header()
-    for filename in filenames:
+    htmlmaker = HtmlMaker()
+
+    for filename in filenames[37:41]:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
             gocr_file, n =  re.subn('jpg$', 'pickle', filename)
@@ -312,8 +312,10 @@ def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
         response  = google_ocr(client, infile, gocr_file)
 
         if response:
-            htmlmaker.write_page(response)
-    htmlmaker.write_footer()
+            htmlmaker.process_page(response)
+
+    htmldoc = htmlmaker.get_annotated_doc()  
+    outhandle.write(htmldoc)
 
 def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
     djvu = Djvu(outhandle)
@@ -568,8 +570,7 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, update):
     
         if out_format == 'abby':
             ia.upload_abbyy(ia_item, abby_files)
-
-        clean_datadir(inter_files)
+            clean_datadir(inter_files)
 
 def clean_datadir(inter_files):
     for filetype, filepath in inter_files:
