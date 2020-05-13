@@ -106,7 +106,7 @@ class Gvision:
         self.mkdir(jpgdir)
         self.mkdir(gocrdir)
 
-        success = pdf_to_jpg(filepath, jpgdir)
+        success = pdf_to_jpg(filepath, jpgdir, 300)
         if not success:
             self.logger.warn('Could not convert into jpg files %s', filepath)
             return None, None
@@ -115,7 +115,7 @@ class Gvision:
         filenames.sort(key=natural_keys)
 
         outhandle = codecs.open(abbyfile, 'w', encoding = 'utf8')
-        to_abby(jpgdir, filenames, self.client, outhandle, gocrdir)    
+        to_abby(jpgdir, filenames, self.client, outhandle, gocrdir, 300)
         outhandle.close()
         
         abbyfile_gz, n = re.subn('xml$', 'gz', abbyfile)
