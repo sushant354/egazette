@@ -64,11 +64,11 @@ def flatten_nodes(nodelist, inserts, idmap, segmentmap):
     for node in nodelist:
         attrlist = node.attrs[:]
 
-        id1 = '%s_%d' % (node.tag, get_id(node.tag, idmap))
-        attrlist.append(('id', id1))
+        #id1 = '%s_%d' % (node.tag, get_id(node.tag, idmap))
+        #attrlist.append(('id', id1))
 
-        attrs = ' '.join('%s="%s"' % (attr[0], attr[1]) for attr in attrlist)
-        if attrs:
+        if attrlist:
+            attrs = ' '.join('%s="%s"' % (attr[0], attr[1]) for attr in attrlist)
             start_tag = '<%s %s>' % (node.tag, attrs)
         else:
             start_tag = '<%s>' % node.tag
@@ -79,5 +79,5 @@ def flatten_nodes(nodelist, inserts, idmap, segmentmap):
         segmentmap[node.tag].append(node.start)
 
         flatten_nodes(node.children, inserts, idmap, segmentmap)
-        inserts.append((node.end, '</%s>' % node.tag))
+        inserts.append((node.end, '</%s>\n' % node.tag))
 
