@@ -2,124 +2,9 @@ import cgi
 import re
 
 from egazette.ocr.annotations import Node, annotate_doc
+from egazette.ocr.textmaker import TextMaker
 
-class Vertex:
-    def __init__(self, vertex):
-        self.x = vertex.x
-        self.y = vertex.y
-
-class BoundingBox:
-    def __init__(self):
-        self.vertices = None
-    
-    def __repr__(self):
-        x = 'vertices{\n\tx: %d\n\ty: %d\n}\n'
-        s = []
-        for v in self.vertices:
-           s.append(x % (v.x, v.y))
-        return ''.join(s) 
-
-    def update(self, word):
-        vs = word.bounding_box.vertices
-        if not self.vertices:
-            self.vertices = (Vertex(vs[0]), Vertex(vs[1]), \
-                             Vertex(vs[2]), Vertex(vs[3]))
-            return
-
-        if vs[0].x < self.vertices[0].x:
-           self.vertices[0].x = vs[0].x
-
-        if vs[0].y < self.vertices[0].y:
-           self.vertices[0].y = vs[0].y
-
-        if vs[1].x > self.vertices[1].x:
-           self.vertices[1].x = vs[1].x
-
-        if vs[1].y < self.vertices[1].y:
-           self.vertices[1].y = vs[1].y
-
-        if vs[2].x > self.vertices[2].x:
-           self.vertices[2].x = vs[2].x
-
-        if vs[2].y > self.vertices[2].y:
-           self.vertices[2].y = vs[2].y
-
-        if vs[3].x < self.vertices[3].x:
-           self.vertices[3].x = vs[3].x
-
-        if vs[3].y > self.vertices[3].y:
-           self.vertices[3].y = vs[3].y
-
-class Paragraph:
-    def __init__(self):
-        self.words = []
-
-    def add_word(self, word):
-        self.words.append(word)
-
-class PageBlock:
-    def __init__(self):
-        self.bounding_box = BoundingBox()
-        self.paragraphs   = []
-        self.current      = -1
-
-        
-    def add_word(self, word, newpara):
-        if newpara:
-            self.paragraphs.append(Paragraph())
-            self.current += 1
-        self.paragraphs[self.current].add_word(word)
-
-        self.bounding_box.update(word)
-
-    def add_para(self, para):
-        newpara = True
-        for word in para.words:
-            self.add_word(word, newpara)
-            newpara = False
-
-class LineWords:
-    def __init__(self):
-        self.words = []
-
-    def add_word(self, word):
-        self.words.append(word)
-
-    def get_width(self):
-        if not self.words:
-            return 0
-
-        return self.words[-1].bounding_box.vertices[1].x - self.words[0].bounding_box.vertices[0].x   
-
-    def get_start(self):
-        if not self.words:
-            return -1
-        return self.words[0].bounding_box.vertices[0].x     
-
-    def get_end(self):    
-        if not self.words:
-            return -1
-        return self.words[-1].bounding_box.vertices[1].x     
-
-    def get_height(self):
-        if not self.words:
-            return -1
-
-        ht = 0.0
-        for word in self.words:
-           word_ht = word.bounding_box.vertices[3].y - word.bounding_box.vertices[0].y
-           if word_ht > ht:
-               ht = word_ht
-        return ht
-
-    def get_top_offset(self):
-        y = -1
-        for word in self.words:
-            y1 = word.bounding_box.vertices[0].y
-            if y < 0 or y > y1:
-                y = y1
-        return y
-
+from egazette.ocr.gapi import Paragraph, PageBlock, LineWords 
 
 class HtmlMaker:
     def __init__(self):
@@ -127,19 +12,39 @@ class HtmlMaker:
         self.current_node = self.htmlroot
         self.pos  = 0
         self.text = []
+        self.textmaker = TextMaker()
         self.abbreviation_re = re.compile(' (A\.D|a\.m|C\>?V|e\.?g|et al|etc|i\.e|p.a|p\.?m|P\.?S|Dr|Gen|Hon|Mr|Mrs|Ms|Prof|Rev|Sr|Jr|St|Assn|Ave|Dept|est|Fig|fig|hrs|Inc|Mt|No|oz|sq|st|vs|Vs|Sri|Shri|Smt)\.$')
+
+    def is_pre(self, page):
+        numwords = 0
+        for block in page.blocks:
+            for para in block.paragraphs:
+                numwords += len(para.words)
+        pre = False
+        #print ('Numwords', numwords)
+        if numwords < 600:
+           pre = True
+        return pre
 
     def process_page(self, response):
         for page in response.full_text_annotation.pages:
-            width  = page.width
-            height = page.height
 
+            if self.is_pre(page):
+                self.process_pre(page)
+            else:    
+                self.process_txt(page)
 
-            blocks = self.fix_incorrect_blocks(page.blocks, width, height)
-            ordered_blocks = self.order_blocks(blocks, width, height)  
+    def process_txt(self, page):
+        #for block in page.blocks:
+        #    self.print_block(block)
+        width  = page.width
+        height = page.height
+
+        blocks = self.fix_incorrect_blocks(page.blocks, width, height)
+        ordered_blocks = self.order_blocks(blocks, width, height)  
             
-            for category, block in ordered_blocks:
-                self.process_block(category, block)
+        for category, block in ordered_blocks:
+            self.process_block(category, block)
   
     def is_past_halfway(self, word, width):
         return word.bounding_box.vertices[0].x > width/2
@@ -194,22 +99,28 @@ class HtmlMaker:
                     else:
                         twocol = False
                         break
-            
+                
                 prev_word = word
-        #print ('TWOCOL', twocol)   
-        #print ('PARATEXT', self.get_para_text(para.words))
+            if not twocol:
+                break
         return twocol
 
     def print_block(self, block):
         print ('----------------------------------------------------------------')
+        vertices = block.bounding_box.vertices
+        print ('x1: ', vertices[0].x, 'x2:', vertices[1].x, 'y1:', vertices[1].y, 'y2:', vertices[2].y)
         for para in block.paragraphs:
             print ('PARATEXT', self.get_para_text(para.words))
 
     def is_block_twocol(self, block, width):
         num = 0
         for para in block.paragraphs:
-            if self.is_para_twocol(para, width):
+            twocol = self.is_para_twocol(para, width)
+            #print ('TWOCOL', twocol)   
+            #print ('PARATEXT', self.get_para_text(para.words))
+            if twocol:
                 num += 1
+        #print ('BLOCK', num, len(block.paragraphs))        
         return num > 0.67 * len(block.paragraphs)
 
     def is_sentence_end(self, para_text):
@@ -393,6 +304,16 @@ class HtmlMaker:
         para_text = ''.join(wordlist)
         return para_text
 
+    def process_pre(self, page):
+        pre_node = Node(self.pos, None, 'pre', self.current_node, None)
+        self.current_node.add_child(pre_node)
+
+        page_text = self.textmaker.get_pre_text(page)
+        #print (page_text)
+        self.text.append(page_text)
+        self.pos += len(page_text)
+        pre_node.end = self.pos
+
     def process_para(self, words):
         para_node = Node(self.pos, None, 'p', self.current_node, None)
         self.current_node.add_child(para_node)
@@ -412,3 +333,5 @@ class HtmlMaker:
         doc, segmentmap =  annotate_doc(doc, [self.htmlroot])
         doc = '<!DOCTYPE HTML>\n' + doc
         return doc
+
+
