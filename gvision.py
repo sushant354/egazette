@@ -304,7 +304,7 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
 def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
     htmlmaker = HtmlMaker()
 
-    for filename in filenames:
+    for filename in filenames:#[:100]:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
             gocr_file, n =  re.subn('jpg$', 'pickle', filename)
@@ -313,8 +313,10 @@ def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
             gocr_file = None
         response  = google_ocr(client, infile, gocr_file)
 
-        if response:
+        if response and response.full_text_annotation.pages:
             htmlmaker.process_page(response)
+        else:
+            htmlmaker.add_page_end()
 
     htmldoc = htmlmaker.get_annotated_doc()  
     outhandle.write(htmldoc)

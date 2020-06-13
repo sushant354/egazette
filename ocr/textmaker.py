@@ -1,4 +1,5 @@
 from egazette.ocr.gapi import LineWords, get_lines
+import re
 
 class TextMaker:
     def __init__(self):
@@ -9,10 +10,6 @@ class TextMaker:
         pix_offset = (maxchars - numchars) * l1 * 1.0/  (self.width - (l2 -l1))
 
         return int(round(pix_offset))
-
-    def get_top_offset(self, t1, t2, pix_per_char):
-        pix_offset = t2 - t1
-        return int(round(pix_offset * 1.0/pix_per_char))
 
 
     def get_word_text(self, word, line_break = True):
@@ -50,20 +47,30 @@ class TextMaker:
         min_left   = self.min_left_offset(lines)
         line_ht    = self.get_avg_ht(lines)
 
-        txtlines = []
-        prevline = None
+        txtlines   = []
+        prevline   = None
+        footnotes  = []
+        numlines   = len(lines)
+        count      = 0
+
         for linewords in lines:
-            txt = self.get_line_text(linewords.words, char_width, min_left)
 
             if prevline:
                 num_lines = self.get_num_lines(prevline, linewords, line_ht)
                 txtlines.append('\n' * (num_lines +1))
+                if num_lines > 0 and count == numlines - 1:
+                    top_offset = self.get_top_offset(linewords)
+                    if top_offset >= 0.85 * page.height:
+                        footnotes.append(linewords)
+                        continue
 
+            txt = self.get_line_text(linewords.words, char_width, min_left)
             txtlines.append(txt)
 
             prevline = linewords
+            count += 1
             
-        return ''.join(txtlines)
+        return txtlines, footnotes
 
     def get_top_offset(self, line):
         yoffset = None
@@ -118,7 +125,7 @@ class TextMaker:
         return char_width
 
     def get_num_spaces(self, length, char_width):
-        return int(length / char_width )
+        return int((round(length / char_width )))
 
     def get_line_text(self, words, char_width, min_left):
         line_text = []
@@ -142,4 +149,12 @@ class TextMaker:
 
         return ''.join(line_text)
 
+
+    def is_all_capstart(self, words):
+        for word in words:
+            for symbol in word.symbols:
+               if symbol.text and re.match('[a-z]', symbol.text):
+                   return False
+               break
+        return True        
 

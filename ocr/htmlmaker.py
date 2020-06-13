@@ -14,29 +14,38 @@ class HtmlMaker:
         self.text = []
         self.textmaker = TextMaker()
         self.abbreviation_re = re.compile(' (A\.D|a\.m|C\>?V|e\.?g|et al|etc|i\.e|p.a|p\.?m|P\.?S|Dr|Gen|Hon|Mr|Mrs|Ms|Prof|Rev|Sr|Jr|St|Assn|Ave|Dept|est|Fig|fig|hrs|Inc|Mt|No|oz|sq|st|vs|Vs|Sri|Shri|Smt)\.$')
+        self.pagenum  = 0
 
     def is_pre(self, page):
         numwords = 0
+        numpara  = 0
         for block in page.blocks:
+            numpara += len(block.paragraphs)
             for para in block.paragraphs:
                 numwords += len(para.words)
         pre = False
-        #print ('Numwords', numwords)
-        if numwords < 600:
+        per_para = numwords/numpara
+
+        #if numwords < 600:
+        #    print (self.pagenum + 1, numwords, per_para)
+        if numwords < 600 and per_para < 50:
            pre = True
         return pre
 
     def process_page(self, response):
         for page in response.full_text_annotation.pages:
-
+            self.footnotes = []
             if self.is_pre(page):
                 self.process_pre(page)
             else:    
                 self.process_txt(page)
 
+            for footnote in self.footnotes:
+                self.process_footnote(footnote.words)
+
+            self.add_page_end()
+
     def process_txt(self, page):
-        #for block in page.blocks:
-        #    self.print_block(block)
         width  = page.width
         height = page.height
 
@@ -44,7 +53,7 @@ class HtmlMaker:
         ordered_blocks = self.order_blocks(blocks, width, height)  
             
         for category, block in ordered_blocks:
-            self.process_block(category, block)
+            self.process_block(category, block, height)
   
     def is_past_halfway(self, word, width):
         return word.bounding_box.vertices[0].x > width/2
@@ -108,7 +117,7 @@ class HtmlMaker:
     def print_block(self, block):
         print ('----------------------------------------------------------------')
         vertices = block.bounding_box.vertices
-        print ('x1: ', vertices[0].x, 'x2:', vertices[1].x, 'y1:', vertices[1].y, 'y2:', vertices[2].y)
+        #print ('x1: ', vertices[0].x, 'x2:', vertices[1].x, 'y1:', vertices[1].y, 'y2:', vertices[2].y)
         for para in block.paragraphs:
             print ('PARATEXT', self.get_para_text(para.words))
 
@@ -177,8 +186,8 @@ class HtmlMaker:
         top   = (block.bounding_box.vertices[0].y * 100/height)
         bottom = (block.bounding_box.vertices[2].y * 100/height)
 
-        if top >= 90:
-            return 'footnote', 'footnote'
+        #if top >= 90:
+        #    return 'footnote', 'footnote'
         if abs(left + right - 100) <= 10 and left > 25:
             return '1st', 'center'
 
@@ -220,6 +229,7 @@ class HtmlMaker:
 
         return lines
 
+
     def split_paras(self, lines):
         paragraph = Paragraph()
         new_paras = [paragraph]   
@@ -238,6 +248,9 @@ class HtmlMaker:
                #print (ht_diff, linewords.get_height(), ht_diff*1.0/ linewords.get_height(), self.get_para_text(linewords.words))
                if ht_diff > 1.3 * linewords.get_height():
                    is_new_para = True
+           if self.textmaker.is_all_capstart(linewords.words):
+               is_new_para = True
+
            line_text = self.get_para_text(linewords.words)
            line_text = line_text.strip()
            if re.match('\w\)\s+', line_text) or re.match('[\d\sA-Z]+$', line_text):
@@ -253,12 +266,35 @@ class HtmlMaker:
 
         return new_paras
 
-    def process_lines(self, lines):
+    def is_footnote(self, line1, line2, page_ht):
+        h1 = self.textmaker.get_top_offset(line1)
+        h2 = self.textmaker.get_top_offset(line2)
+        ht_diff = (h2-h1)
+        ht      = self.textmaker.get_line_ht(line1)
+
+        footnote = False
+        if h2 > 0.85 * page_ht and ht_diff > 1.35 * ht:
+            #print (ht_diff, ht, ht_diff * 1.0/ht)
+            footnote = True
+
+        return footnote
+
+    def process_lines(self, lines, page_ht):
+        if len(lines) == 1 and self.textmaker.get_top_offset(lines[0]) > 0.87* page_ht:
+            #print ('SINGLE', self.textmaker.get_top_offset(lines[0]) * 1.0/page_ht)
+            self.footnotes.append(lines[0])
+            lines = []
+
+        elif len(lines) > 1 and self.is_footnote(lines[-2], lines[-1], page_ht):
+            self.footnotes.append(lines[-1])
+            lines = lines[:-1]
+
         new_paras = self.split_paras(lines)
         for p in new_paras:
             self.process_para(p.words)
 
-    def process_block(self, category, block):
+
+    def process_block(self, category, block, page_ht):
         if category == 'center':
             center_node = Node(self.pos, None, 'center', self.current_node, None)
             self.current_node.add_child(center_node)
@@ -270,12 +306,12 @@ class HtmlMaker:
             new_lines = self.get_lines(para)
             if self.is_sentence_end(para_text):
                 if lines:
-                    self.process_lines(lines)
+                    self.process_lines(lines, page_ht)
                 lines = []    
             lines.extend(new_lines)
 
         if lines:
-            self.process_lines(lines)
+            self.process_lines(lines, page_ht)
 
         if category == 'center':
             center_node.end = self.pos
@@ -305,11 +341,15 @@ class HtmlMaker:
         return para_text
 
     def process_pre(self, page):
+        txtlines, footnotes = self.textmaker.get_pre_text(page)
+        if footnotes:
+            self.footnotes.extend(footnotes)
+
         pre_node = Node(self.pos, None, 'pre', self.current_node, None)
         self.current_node.add_child(pre_node)
 
-        page_text = self.textmaker.get_pre_text(page)
         #print (page_text)
+        page_text = ''.join(txtlines)
         self.text.append(page_text)
         self.pos += len(page_text)
         pre_node.end = self.pos
@@ -323,6 +363,21 @@ class HtmlMaker:
         self.pos += len(para_text)
         para_node.end = self.pos
 
+    def add_page_end(self):
+        self.pagenum += 1
+        node = Node(self.pos, self.pos, 'p', self.current_node,[('class', 'pageend'), ('data-pagenum', '%d' % self.pagenum)])
+        self.current_node.add_child(node)
+
+    def process_footnote(self, words):
+        node = Node(self.pos, None, 'p', self.current_node,[('class', 'footnote')])
+        self.current_node.add_child(node)
+
+        para_text  = self.get_para_text(words)
+        #print ('FOOTNOTE', para_text)
+        self.text.append(para_text)
+        self.pos += len(para_text)
+        node.end = self.pos
+        
     def get_annotated_doc(self):
         current_node = self.current_node
         while current_node != None:
