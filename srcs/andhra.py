@@ -4,7 +4,7 @@ import os
 
 from ..utils import utils
 from .basegazette import BaseGazette
-from .central import CentralWeekly
+from .central import CentralBase
 
 class Andhra(BaseGazette):
     def __init__(self, name, storage):
@@ -167,9 +167,9 @@ class Andhra(BaseGazette):
             return relurl
         return None    
 
-class AndhraArchive(CentralWeekly):
+class AndhraArchive(CentralBase):
     def __init__(self, name, storage):
-        CentralWeekly.__init__(self, name, storage)
+        CentralBase.__init__(self, name, storage)
         self.baseurl      = 'https://gazettearchive.ap.gov.in/gt_PublicReport.aspx'
         self.hostname     = 'gazettearchive.ap.gov.in'
         self.search_endp  = 'gt_PublicReport.aspx'

@@ -3,11 +3,11 @@ import os
 import datetime
 
 from ..utils import utils
-from .central import CentralWeekly
+from .central import CentralBase
 
-class Bihar(CentralWeekly):
+class Bihar(CentralBase):
     def __init__(self, name, storage):
-        CentralWeekly.__init__(self, name, storage)
+        CentralBase.__init__(self, name, storage)
         self.hostname   = 'egazette.bih.nic.in'
         self.baseurl    = 'http://egazette.bih.nic.in/SearchGazette.aspx'
         self.search_endp = 'SearchGazette.aspx'

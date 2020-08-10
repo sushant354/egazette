@@ -6,7 +6,7 @@ import os
 from ..utils import utils
 from .basegazette import BaseGazette
 
-class CentralWeekly(BaseGazette):
+class CentralBase(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
         self.baseurl     = 'http://egazette.nic.in/default.aspx?AcceptsCookies=yes'
@@ -15,6 +15,7 @@ class CentralWeekly(BaseGazette):
         self.parser      = 'lxml'
         self.search_endp = 'SearchCategory.aspx'
         self.result_table= 'gvGazette'
+        self.gazette_js  = 'window.open\(\'(?P<href>[^\']+)'
 
     def find_search_form(self, d):
         search_form = None
@@ -26,6 +27,15 @@ class CentralWeekly(BaseGazette):
                 break
 
         return search_form
+
+    def get_partnum(self, select_tag):
+        option = select_tag.find('option', {'selected': 'selected'})
+
+        if option:
+            val = option.get('value')
+            if val:
+                return val
+        return ''        
 
     def get_post_data(self, tags, dateobj):
         datestr  = utils.get_egz_date(dateobj)
@@ -42,7 +52,7 @@ class CentralWeekly(BaseGazette):
                 if t == 'image' or name == 'btnStandard':
                     continue
 
-                if name == 'txtDateIssueF' or name == 'txtDateIssueT':
+                if name == 'txtDateFrom' or name == 'txtDateTo':
                     value = datestr
                 elif name == 'btnDetail':
                     value = 'Detailed Report'
@@ -51,12 +61,12 @@ class CentralWeekly(BaseGazette):
                 if name == 'ddlGazetteCategory':
                     value = self.gztype
                 elif name == 'ddlPartSection':
-                    value = 'Select Part & Section'
-                elif name == 'ddlMinistryName':
+                    value = self.get_partnum(tag) 
+                elif name == 'ddlMinistry':
                     value = 'Select Ministry'
-                elif name == 'ddlDepartmentName':
+                elif name == 'ddlDepartment':
                     value = 'Select Department'
-                elif name == 'ddlOfficeName':
+                elif name == 'ddlOffice':
                     value = 'Select Office'
             if name:
                 if value == None:
@@ -102,6 +112,7 @@ class CentralWeekly(BaseGazette):
                                      referer = search_url, \
                                    loadcookies = cookiejar, postdata = postdata)
         postdata = self.get_form_data(response.webpage, dateobj)
+
         response = self.download_url(search_url, savecookies = cookiejar, \
                                      referer = search_url, \
                                   loadcookies = cookiejar, postdata = postdata)
@@ -252,6 +263,21 @@ class CentralWeekly(BaseGazette):
         if 'gazetteid' not in metainfo:
             return None
 
+        response = self.download_url(search_url, postdata = postdata, \
+                                         loadcookies= cookiejar)
+        if not response or not response.webpage:
+            self.logger.warn('Could not get the page for %s' % metainfo)
+            return None
+
+        webpage = response.webpage.decode('utf-8', 'ignore')
+        reobj = re.search(self.gazette_js, webpage)
+        if not reobj:
+            self.logger.warn('Could not get url link for %s' % metainfo)
+            return None
+
+        href  = reobj.groupdict()['href']
+        gzurl = urllib.parse.urljoin(search_url, href)
+
         gazetteid = metainfo['gazetteid']
         reobj = re.search('(?P<num>\d+)\s*$', gazetteid)
         if not reobj:
@@ -259,12 +285,10 @@ class CentralWeekly(BaseGazette):
 
         filename = reobj.groupdict()['num']
         relurl   = os.path.join(relpath, filename)
-        updated = False
 
-        if self.save_gazette(relurl, search_url, metainfo, postdata = postdata,\
-                             cookiefile = cookiejar):
-                             
-            return relurl 
+        if self.save_gazette(relurl, gzurl, metainfo): 
+            return relurl
+
         return None     
 
     def download_oneday(self, relpath, dateobj):
@@ -303,12 +327,108 @@ class CentralWeekly(BaseGazette):
         for metainfo in metainfos:
             if 'download' in metainfo:
                 newpost = postdata[:]
-                name = metainfo['download']
+                name = metainfo.pop('download')
                 newpost.append(('%s.x' % name, '10'))
                 newpost.append(('%s.y' % name, '10'))
                 relurl = self.download_gazette(relpath, search_url, newpost, metainfo, cookiejar)
                 if relurl:
                     dls.append(relurl)
+        return dls
+
+class CentralWeekly(CentralBase):
+    def __init__(self, name, storage):
+        CentralBase.__init__(self, name, storage)
+
+
+    def modify_partnum(self, postdata, partnum):
+        newdata = []
+        for k, v in postdata:
+            if k == 'ddlPartSection':
+                v = partnum 
+            newdata.append((k, v))
+        return newdata
+
+    def download_oneday(self, relpath, dateobj):
+        dls = []
+        cookiejar  = CookieJar()
+        response = self.download_url(self.baseurl, savecookies = cookiejar, loadcookies = cookiejar)
+        if not response:
+            self.logger.warn('Could not fetch %s for the day %s', self.baseurl, dateobj)
+            return dls
+        curr_url = response.response_url
+        search_url = urllib.parse.urljoin(curr_url, self.search_endp)
+        referer_url = urllib.parse.urljoin(search_url, 'SearchMenu.aspx')
+        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar, referer = referer_url)
+
+        if not response or not response.webpage:
+            self.logger.warn('Could not fetch %s for the day %s', search_url, dateobj)
+            return dls
+
+        postdata = self.get_form_data(response.webpage, dateobj)
+        if postdata == None:
+            return None
+
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                     referer = search_url, \
+                                   loadcookies = cookiejar, postdata = postdata)           
+        search_form = self.get_search_form(response.webpage, dateobj)
+        if not search_form:
+            self.logger.warn('Could not find the search form for the day %s', dateobj)
+            return dls
+        partnum_tag = search_form.find('select', {'name': 'ddlPartSection'})
+        if not partnum_tag:
+            self.logger.warn('Could not find the partnum tag for the day %s', dateobj)
+            return dls
+
+        for option in partnum_tag.find_all('option'):
+            val = option.get('value')
+            if not val or val == '31':
+                continue
+            self.logger.info('Date: %s, Partnum: %s', dateobj, partnum)
+            newdls = self.download_partnum(relpath, dateobj, search_url, val, cookiejar)
+            dls.extend(newdls)
+
+        return dls
+
+    def download_partnum(self, relpath, dateobj, search_url, partnum, cookiejar):
+        dls = []
+        referer_url = urllib.parse.urljoin(search_url, 'SearchMenu.aspx')
+        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar, referer = referer_url)
+
+        postdata = self.get_form_data(response.webpage, dateobj)
+        if postdata == None:
+            return None
+
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                     referer = search_url, \
+                                   loadcookies = cookiejar, postdata = postdata)
+        postdata = self.get_form_data(response.webpage, dateobj)
+        postdata = self.modify_partnum(postdata, partnum)
+
+        postdata.append(('ImgSubmitDetails.x', '73'))
+        postdata.append(('ImgSubmitDetails.y', '19'))
+        response = self.download_url(search_url, savecookies = cookiejar, \
+                                     referer = search_url, \
+                                  loadcookies = cookiejar, postdata = postdata)
+
+
+        pagenum = 1
+        while response != None and response.webpage != None:
+            metainfos, nextpage = self.parse_search_results(response.webpage, \
+                                                            dateobj, pagenum)
+
+            postdata = self.get_form_data(response.webpage, dateobj)
+
+            relurls = self.download_metainfos(relpath, metainfos, search_url, \
+                                              postdata, cookiejar)
+            dls.extend(relurls)
+            if nextpage:
+                pagenum += 1
+                self.logger.info('Going to page %d for date %s', pagenum, dateobj)
+                response = self.download_nextpage(nextpage, search_url, postdata, cookiejar)
+            else:
+                break
+ 
         return dls
 
 class CentralExtraordinary(CentralWeekly):

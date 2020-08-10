@@ -6,11 +6,11 @@ import http.client
 import datetime
 
 from ..utils  import utils
-from .central import CentralWeekly 
+from .central import CentralBase 
 
-class ChattisgarhWeekly(CentralWeekly):
+class ChattisgarhWeekly(CentralBase):
     def __init__(self, name, storage):
-        CentralWeekly.__init__(self, name, storage)
+        CentralBase.__init__(self, name, storage)
         self.hostname     = 'egazette.cg.nic.in'
         self.baseurl      = 'http://egazette.cg.nic.in/FileSearch.aspx'
         self.search_endp  = 'FileSearch.aspx'
@@ -178,7 +178,6 @@ class ChattisgarhWeekly(CentralWeekly):
             return None
         
         fileurl = self.file_url % gzid 
-        metainfo.pop('download')
         cookie = Cookie(0, self.filenum_cookie, gzid, None, False, \
                        self.hostname, True, False, '/', True, False, \
                        None, False, None, None, None)

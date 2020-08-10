@@ -595,7 +595,14 @@ def clean_datadir(inter_files):
             os.remove(filepath)
         else:    
             shutil.rmtree(filepath)
-        
+
+def is_processed(ia_item, check_dirs):
+    for dirname in check_dirs:
+        filepath = os.path.join(dirname, ia_item)
+        if os.path.exists(filepath):
+            return True
+    return False
+
 if __name__ == '__main__':
     progname   = sys.argv[0]
     loglevel   = 'info'
@@ -614,8 +621,9 @@ if __name__ == '__main__':
     update     = False
     ppi        = 300
     ia_item_file = None
+    check_dirs   = []
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:d:D:l:f:F:g:G:i:I:k:m:o:O:p:Lsu')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:c:d:D:l:f:F:g:G:i:I:k:m:o:O:p:Lsu')
 
     jpgdir = None
     for o, v in optlist:
@@ -623,6 +631,8 @@ if __name__ == '__main__':
             jpgdir = v
         elif o == '-D':
             top_dir = v
+        elif o == '-c':
+            check_dirs.append(v)
         elif o == '-l':
             loglevel = v
         elif o == '-F':
@@ -688,6 +698,10 @@ if __name__ == '__main__':
 
     logger = logging.getLogger('gvision')
 
+    if ia_item and check_dirs and is_processed(ia_item, check_dirs):
+        logger.warn('Item is already processed. Exiting %s', ia_item)
+        sys.exit(0)
+
     ia = None
     if top_dir:
         if input_file or out_file:
@@ -746,4 +760,3 @@ if __name__ == '__main__':
                 ia_item = ia_item.strip()
                 process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi)
         
-

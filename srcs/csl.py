@@ -4,12 +4,12 @@ from http.cookiejar import CookieJar
 import os
 import re
 
-from .central import CentralWeekly
+from .central import CentralBase
 from ..utils import utils
 
-class CSLWeekly(CentralWeekly):
+class CSLWeekly(CentralBase):
     def __init__(self, name, storage):
-        CentralWeekly.__init__(self, name, storage)
+        CentralBase.__init__(self, name, storage)
         self.baseurl     = 'http://www.egazette.nic.in/Digital.aspx'
         self.search_endp = 'Digital.aspx'
         self.result_table = 'GV_Content_Detail'

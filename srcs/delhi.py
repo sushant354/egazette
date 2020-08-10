@@ -1,12 +1,14 @@
 import datetime
 import urllib.request, urllib.parse, urllib.error
+import re
+import os
 
-from .central import CentralWeekly
+from .central import CentralBase
 from ..utils import utils
 
-class DelhiWeekly(CentralWeekly):
+class DelhiWeekly(CentralBase):
     def __init__(self, name, storage):
-        CentralWeekly.__init__(self, name, storage)
+        CentralBase.__init__(self, name, storage)
         self.baseurl     = 'http://www.egazette.nic.in/DelhiGazette.aspx'
         self.search_endp = 'SG_DL_Search.aspx'
         self.result_table = 'dgGeneralUser'
@@ -77,6 +79,25 @@ class DelhiWeekly(CentralWeekly):
 
         return postdata
 
+    def download_gazette(self, relpath, search_url, postdata, \
+                         metainfo, cookiejar):
+
+        if 'gazetteid' not in metainfo:
+            return None
+
+        gazetteid = metainfo['gazetteid']
+        reobj = re.search('(?P<num>\d+)\s*$', gazetteid)
+        if not reobj:
+            return None
+
+        filename = reobj.groupdict()['num']
+        relurl   = os.path.join(relpath, filename)
+
+        if self.save_gazette(relurl, search_url, metainfo, validurl = False, \
+                             postdata = postdata, cookiefile = cookiejar):
+            return relurl
+
+        return None     
 
 class DelhiExtraordinary(DelhiWeekly):
     def __init__(self, name, storage):
