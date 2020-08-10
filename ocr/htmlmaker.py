@@ -1,22 +1,184 @@
 import cgi
+import re
+
+from egazette.ocr.annotations import Node, annotate_doc
+from egazette.ocr.textmaker import TextMaker
+
+from egazette.ocr.gapi import Paragraph, PageBlock, LineWords 
 
 class HtmlMaker:
-    def __init__(self, outhandle):
-        self.outhandle  = outhandle
-        self.para_break = True
+    def __init__(self):
+        self.htmlroot = Node(0, None, 'html', None, None)
+        self.current_node = self.htmlroot
+        self.pos  = 0
+        self.text = []
+        self.textmaker = TextMaker()
+        self.abbreviation_re = re.compile(' (A\.D|a\.m|C\>?V|e\.?g|et al|etc|i\.e|p.a|p\.?m|P\.?S|Dr|Gen|Hon|Mr|Mrs|Ms|Prof|Rev|Sr|Jr|St|Assn|Ave|Dept|est|Fig|fig|hrs|Inc|Mt|No|oz|sq|st|vs|Vs|Sri|Shri|Smt)\.$')
+        self.pagenum  = 0
 
-    def write_header(self):
-        self.outhandle.write('<!DOCTYPE HTML>\n<html>\n')
+    def is_pre(self, page):
+        numwords = 0
+        numpara  = 0
+        for block in page.blocks:
+            numpara += len(block.paragraphs)
+            for para in block.paragraphs:
+                numwords += len(para.words)
+        pre = False
+        per_para = numwords/numpara
 
-    def write_footer(self):
-        self.outhandle.write('</html>')
+        #if numwords < 600:
+        #    print (self.pagenum + 1, numwords, per_para)
+        if numwords < 600 and per_para < 50:
+           pre = True
+        return pre
 
-    def write_page(self, response):
+    def process_page(self, response):
         for page in response.full_text_annotation.pages:
-            ordered_blocks = self.order_blocks(page.blocks, page.width, \
-                                               page.height)   
-            for category, block in ordered_blocks:
-                self.print_block(block)
+            self.footnotes = []
+            if self.is_pre(page):
+                self.process_pre(page)
+            else:    
+                self.process_txt(page)
+
+            for footnote in self.footnotes:
+                self.process_footnote(footnote.words)
+
+            self.add_page_end()
+
+    def process_txt(self, page):
+        width  = page.width
+        height = page.height
+
+        blocks = self.fix_incorrect_blocks(page.blocks, width, height)
+        ordered_blocks = self.order_blocks(blocks, width, height)  
+            
+        for category, block in ordered_blocks:
+            self.process_block(category, block, height)
+  
+    def is_past_halfway(self, word, width):
+        return word.bounding_box.vertices[0].x > width/2
+
+    def is_new_line(self, prev_word, word):
+        return word.bounding_box.vertices[0].x < prev_word.bounding_box.vertices[0].x 
+
+    def get_word_gap(self, prev_word, word):
+        return word.bounding_box.vertices[0].x - prev_word.bounding_box.vertices[1].x 
+
+    def is_twoline(self, lines, width):
+        if len(lines) == 2 and len(lines[0].words) > 0 and len(lines[1].words) > 0:
+            word1 = lines[0].words[0]
+            word2 = lines[1].words[0]
+            if self.is_past_halfway(word1, width) and not self.is_past_halfway(word2, width):
+                return True
+        return False
+
+    def is_para_twocol(self, para, width):
+        lines = self.get_lines(para)
+        if self.is_twoline(lines, width):
+            return True
+
+        count     = 0 
+        word_gap  = 0
+        for linewords in lines:
+            prev_word = 0
+            for word in linewords.words:
+                if prev_word:
+                    word_gap += self.get_word_gap(prev_word, word)
+                    count += 1
+                prev_word = word
+
+        if count <= 0:
+            return False
+
+        avg_word_gap = word_gap /count
+
+        prev_word = None
+        twocol    = False
+        for linewords in lines:
+            prev_word = 0
+            for word in linewords.words:
+               #if prev_word: 
+                   #print (self.get_word_text(prev_word), self.get_word_text(word), width, self.get_word_gap(prev_word, word), word.bounding_box.vertices[0].x, prev_word.bounding_box.vertices[0].x)
+                if prev_word and not self.is_past_halfway(prev_word, width) and\
+                        self.is_past_halfway(word, width):
+                    word_gap = self.get_word_gap(prev_word, word)
+                    #print ('GAP', word_gap, avg_word_gap, self.get_word_text(prev_word), self.get_word_text(word))
+                    if word_gap > 2.5* avg_word_gap:
+                        twocol = True
+                    else:
+                        twocol = False
+                        break
+                
+                prev_word = word
+            if not twocol:
+                break
+        return twocol
+
+    def print_block(self, block):
+        print ('----------------------------------------------------------------')
+        vertices = block.bounding_box.vertices
+        #print ('x1: ', vertices[0].x, 'x2:', vertices[1].x, 'y1:', vertices[1].y, 'y2:', vertices[2].y)
+        for para in block.paragraphs:
+            print ('PARATEXT', self.get_para_text(para.words))
+
+    def is_block_twocol(self, block, width):
+        num = 0
+        for para in block.paragraphs:
+            twocol = self.is_para_twocol(para, width)
+            #print ('TWOCOL', twocol)   
+            #print ('PARATEXT', self.get_para_text(para.words))
+            if twocol:
+                num += 1
+        #print ('BLOCK', num, len(block.paragraphs))        
+        return num > 0.67 * len(block.paragraphs)
+
+    def is_sentence_end(self, para_text):
+        para_text = para_text.strip()
+        last = para_text[-1]
+        if last == '.' and self.abbreviation_re.search(para_text) == None or\
+               last == '\u0964':
+            return True
+        return False
+
+    def split_twocol(self, block, width):
+        left_block   = PageBlock()
+        right_block  = PageBlock()
+
+        left_para  = True
+        right_para = True
+        for para in block.paragraphs:
+
+            for word in para.words:
+                if self.is_past_halfway(word, width): 
+                    right_block.add_word(word, right_para)
+                    right_para = False
+                else:
+                    left_block.add_word(word, left_para)
+                    left_para = False
+            if right_block.current >= 0:        
+                para_text = self.get_para_text(right_block.paragraphs[right_block.current].words)
+                if para_text and self.is_sentence_end(para_text):
+                    right_para = True
+            #print ('RIGHT', para_text, right_para)
+
+            if left_block.current >= 0:        
+                para_text = self.get_para_text(left_block.paragraphs[left_block.current].words)
+                if para_text and self.is_sentence_end(para_text):
+                    left_para = True
+           # print ('LEFT', para_text, left_para)
+                
+
+        return [left_block, right_block] 
+
+    def fix_incorrect_blocks(self, blocks, width, height):
+        new_blocks = []
+        for block in blocks:
+            if self.is_block_twocol(block, width):
+                split_blocks = self.split_twocol(block, width)
+                new_blocks.extend(split_blocks)
+            else:
+                new_blocks.append(block)
+        return new_blocks
 
     def classify_block(self, block, width, height):
         left  = (block.bounding_box.vertices[0].x * 100/width)
@@ -24,9 +186,9 @@ class HtmlMaker:
         top   = (block.bounding_box.vertices[0].y * 100/height)
         bottom = (block.bounding_box.vertices[2].y * 100/height)
 
-        if bottom >= 90:
-            return 'footnote', 'footnote'
-        if abs(left + right - 100) <= 10:
+        #if top >= 90:
+        #    return 'footnote', 'footnote'
+        if abs(left + right - 100) <= 10 and left > 25:
             return '1st', 'center'
 
         if right <= 55:
@@ -34,7 +196,7 @@ class HtmlMaker:
 
         if left >= 45:    
             return '2nd', 'right_column'
-        return '1st', 'center'
+        return '1st', 'left_column'
 
     def order_blocks(self, blocks, width, height):
         blockdict = {}
@@ -54,34 +216,177 @@ class HtmlMaker:
 
         return ordered_blocks    
 
-    def print_block(self, block):
-        #print (block.bounding_box.vertices)
+    def get_lines(self, para):
+        prev_word = None
+        linewords = LineWords()
+        lines     = [linewords]
+        for word in para.words:
+            if prev_word and self.is_new_line(prev_word, word):
+                linewords = LineWords()
+                lines.append(linewords)
+            linewords.add_word(word)
+            prev_word = word
+
+        return lines
+
+
+    def split_paras(self, lines):
+        paragraph = Paragraph()
+        new_paras = [paragraph]   
+        prev_line = None
+        for linewords in lines:
+           is_new_para = False
+           start_pos = linewords.get_start() 
+           end_pos   = linewords.get_end()
+           width     = linewords.get_width()
+
+           if prev_line and self.is_sentence_end(self.get_para_text(prev_line.words)):
+               h1 = linewords.get_top_offset()
+               h2 = prev_line.get_top_offset()
+               ht_diff = (h1-h2)
+
+               #print (ht_diff, linewords.get_height(), ht_diff*1.0/ linewords.get_height(), self.get_para_text(linewords.words))
+               if ht_diff > 1.3 * linewords.get_height():
+                   is_new_para = True
+           if self.textmaker.is_all_capstart(linewords.words):
+               is_new_para = True
+
+           line_text = self.get_para_text(linewords.words)
+           line_text = line_text.strip()
+           if re.match('\w\)\s+', line_text) or re.match('[\d\sA-Z]+$', line_text):
+               is_new_para = True
+
+           if is_new_para:       
+               paragraph = Paragraph()
+               new_paras.append(paragraph)
+
+           for word in linewords.words:
+               paragraph.add_word(word)
+           prev_line = linewords 
+
+        return new_paras
+
+    def is_footnote(self, line1, line2, page_ht):
+        h1 = self.textmaker.get_top_offset(line1)
+        h2 = self.textmaker.get_top_offset(line2)
+        ht_diff = (h2-h1)
+        ht      = self.textmaker.get_line_ht(line1)
+
+        footnote = False
+        if h2 > 0.85 * page_ht and ht_diff > 1.35 * ht:
+            #print (ht_diff, ht, ht_diff * 1.0/ht)
+            footnote = True
+
+        return footnote
+
+    def process_lines(self, lines, page_ht):
+        if len(lines) == 1 and self.textmaker.get_top_offset(lines[0]) > 0.87* page_ht:
+            #print ('SINGLE', self.textmaker.get_top_offset(lines[0]) * 1.0/page_ht)
+            self.footnotes.append(lines[0])
+            lines = []
+
+        elif len(lines) > 1 and self.is_footnote(lines[-2], lines[-1], page_ht):
+            self.footnotes.append(lines[-1])
+            lines = lines[:-1]
+
+        new_paras = self.split_paras(lines)
+        for p in new_paras:
+            self.process_para(p.words)
+
+
+    def process_block(self, category, block, page_ht):
+        if category == 'center':
+            center_node = Node(self.pos, None, 'center', self.current_node, None)
+            self.current_node.add_child(center_node)
+            self.current_node = center_node
+
+        lines = []    
         for para in block.paragraphs:
-            self.outhandle.write('<p>')
-            para_text = self.handle_words(para.words)
-            #print ('----------------------------')
-            #print (para_text)
-            self.outhandle.write(cgi.escape(para_text))
-            self.outhandle.write('</p>\n\n')
-    
-    def handle_words(self, words):
+            para_text = self.get_para_text(para.words)
+            new_lines = self.get_lines(para)
+            if self.is_sentence_end(para_text):
+                if lines:
+                    self.process_lines(lines, page_ht)
+                lines = []    
+            lines.extend(new_lines)
+
+        if lines:
+            self.process_lines(lines, page_ht)
+
+        if category == 'center':
+            center_node.end = self.pos
+            self.current_node = center_node.parent
+
+    def get_word_text(self, word):
+        stext = []
+        for symbol in word.symbols:
+            if symbol.text:
+                stext.append(symbol.text)
+
+            if hasattr(symbol.property, 'detected_break'):
+                t = symbol.property.detected_break.type
+                if t == 1 or t == 3:
+                     stext.append(' ')
+                elif t == 5:
+                     stext.append('\n')
+        return ''.join(stext)
+
+    def get_para_text(self, words):
         wordlist = []
-
         for word in words:
-            #print (word)
-            stext = []
-            for symbol in word.symbols:
-                if symbol.text:
-                    stext.append(symbol.text)
+            word_text = self.get_word_text(word)
+            wordlist.append(word_text)
 
-                if hasattr(symbol.property, 'detected_break'):
-                    t = symbol.property.detected_break.type
-                    #print (symbol.text, t)
-                    if t == 1 or t == 3:
-                        stext.append(' ')
-                    elif t == 5:
-                        stext.append('\n')
+        para_text = ''.join(wordlist)
+        return para_text
 
-            wordlist.append(''.join(stext))
+    def process_pre(self, page):
+        txtlines, footnotes = self.textmaker.get_pre_text(page)
+        if footnotes:
+            self.footnotes.extend(footnotes)
 
-        return ''.join(wordlist)
+        pre_node = Node(self.pos, None, 'pre', self.current_node, None)
+        self.current_node.add_child(pre_node)
+
+        #print (page_text)
+        page_text = ''.join(txtlines)
+        self.text.append(page_text)
+        self.pos += len(page_text)
+        pre_node.end = self.pos
+
+    def process_para(self, words):
+        para_node = Node(self.pos, None, 'p', self.current_node, None)
+        self.current_node.add_child(para_node)
+
+        para_text  = self.get_para_text(words)
+        self.text.append(para_text)
+        self.pos += len(para_text)
+        para_node.end = self.pos
+
+    def add_page_end(self):
+        self.pagenum += 1
+        node = Node(self.pos, self.pos, 'p', self.current_node,[('class', 'pageend'), ('data-pagenum', '%d' % self.pagenum)])
+        self.current_node.add_child(node)
+
+    def process_footnote(self, words):
+        node = Node(self.pos, None, 'p', self.current_node,[('class', 'footnote')])
+        self.current_node.add_child(node)
+
+        para_text  = self.get_para_text(words)
+        #print ('FOOTNOTE', para_text)
+        self.text.append(para_text)
+        self.pos += len(para_text)
+        node.end = self.pos
+        
+    def get_annotated_doc(self):
+        current_node = self.current_node
+        while current_node != None:
+            current_node.end = self.pos
+            current_node = current_node.parent
+
+        doc = ''.join(self.text)
+        doc, segmentmap =  annotate_doc(doc, [self.htmlroot])
+        doc = '<!DOCTYPE HTML>\n' + doc
+        return doc
+
+
