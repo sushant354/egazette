@@ -1,7 +1,10 @@
 import urllib.request, urllib.parse, urllib.error
 import re
 import os
+import ssl
 import datetime
+import json
+import base64
 
 from .basegazette import BaseGazette
 from ..utils import utils
@@ -138,4 +141,112 @@ class Punjab(BaseGazette):
                         if reobj:
                             metainfo['docid'] = onclick[reobj.start():reobj.end()]
             i += 1           
-        return metainfo    
+        return metainfo   
+
+class PunjabDSA(BaseGazette):
+    def __init__(self, name, storage):
+        BaseGazette.__init__(self, name, storage)
+        self.hostname  = 'dsa.punjab.gov.in'
+        self.baseurl = 'https://dsa.punjab.gov.in'
+        self.dateurl = urllib.parse.urljoin(self.baseurl, '/egazette/api/Final/FinalFilter')
+        self.gzurl   = urllib.parse.urljoin(self.baseurl, '/egazette/api/Final/Output_Copy')
+
+    def get_post_data(self, dateobj):
+        datestr = utils.dateobj_to_str(dateobj, '-', reverse=True)
+        postdata = "{'fromdate': '%s', 'todate': '%s'}" % (datestr, datestr)
+        return postdata.encode('utf-8')
+
+    def download_oneday(self, relpath, dateobj):
+        dls = []
+        postdata = self.get_post_data(dateobj)
+        accept_hdr = {'Content-Type': 'application/json'}
+        response = self.download_url(self.dateurl, postdata = postdata, \
+                                     encodepost = False, headers= accept_hdr)
+
+        if not response or not response.webpage:
+            self.logger.warn('Could not download search result for date %s', \
+                              dateobj)
+            return dls
+
+        try:
+            x = json.loads(response.webpage)
+        except Exception as e:
+            self.logger.warn('Unable to parse json for %s', dateobj)
+            return dls
+
+
+        for d in x['data']:
+            metainfo =  self.get_metainfo(d, dateobj)
+            if metainfo:
+                relurl =  self.download_gazette(relpath, metainfo)
+                if relurl:
+                    dls.append(relurl) 
+        return dls
+
+    def get_metainfo(self, d, dateobj):
+        metainfo = utils.MetaInfo()
+        metainfo.set_date(dateobj)
+
+        if 'Request_Id' in d:
+            metainfo['Request_Id'] = d['Request_Id']
+        
+        if 'Dept_Name' in d:
+            metainfo.set_field('department', d['Dept_Name'])
+           
+        if 'Gazette_Type_Name' in d:
+            metainfo.set_gztype(d['Gazette_Type_Name'])
+
+        if 'Gazette_Number' in d:
+            metainfo.set_field('gazetteid', d['Gazette_Number'])
+
+        if 'Notification_Number' in d:
+            metainfo.set_field('notification_num', d['Notification_Number'])
+
+        if 'Notification_Title' in d:
+            metainfo.set_title(d['Notification_Title'])
+
+        return metainfo
+
+    def download_gazette(self, relpath, metainfo):
+        if 'Request_Id' not in metainfo:
+            return None
+
+        request_id = metainfo.pop('Request_Id')
+        relurl = os.path.join(relpath, request_id)
+
+        postdata = '{"Request_Id":"%s"}' % request_id
+        postdata =  postdata.encode('utf-8')
+        accept_hdr = {'Content-Type': 'application/json'}
+
+        gurl = self.gzurl
+        if self.storage_manager.should_download_raw(relurl, gurl, validurl = False):
+            response = self.download_url(gurl, encodepost = False, \
+                                 headers = accept_hdr,  postdata = postdata)
+            if response and response.webpage:
+                if self.save_rawdoc(relurl, response.webpage, metainfo):
+                    return relurl
+                                 
+            return None 
+
+        return None    
+
+    def save_rawdoc(self, relurl, doc, metainfo):
+        try:
+            x = json.loads(doc)
+        except Exception as e:
+            self.logger.warn('Error in parsing json on the request of %s', relurl)
+            return False
+
+        updated = False
+        if 'data' in x and len(x['data']) > 0 and 'Output_File' in x['data'][0]:
+            doc = base64.b64decode(x['data'][0]['Output_File'])
+            if doc and self.storage_manager.save_rawdoc(self.name, relurl, None, doc):
+                updated = True
+                self.logger.info('Saved rawdoc %s', relurl)
+
+        if self.storage_manager.save_metainfo(self.name, relurl, metainfo):
+            updated = True
+            self.logger.info('Saved metainfo %s', relurl)
+        return updated
+
+            

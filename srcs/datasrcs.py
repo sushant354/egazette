@@ -43,6 +43,7 @@ srcdict = { \
 'jharkhand'            : jharkhand.Jharkhand, \
 'madhyapradesh'        : madhyapradesh.MadhyaPradesh, \
 'punjab'               : punjab.Punjab, \
+'punjabdsa'            : punjab.PunjabDSA, \
 'uttarakhand'          : uttarakhand.Uttarakhand, \
 'himachal'             : himachal.Himachal, \
 'haryana'              : haryana.Haryana, \
@@ -73,6 +74,7 @@ srcnames = { \
 'jharkhand'            : 'Government of Jharkhand', \
 'madhyapradesh'        : 'Government of Madhya Pradesh', \
 'punjab'               : 'Government of Punjab', \
+'punjabdsa'            : 'Government of Punjab', \
 'uttarakhand'          : 'Government of Uttarakhand', \
 'himachal'             : 'Government of Himachal Pradesh', \
 'haryana'              : 'Government of Haryana', \
@@ -103,6 +105,7 @@ categories = { \
 'jharkhand'            : 'Jharkhand Gazette', \
 'madhyapradesh'        : 'Madhya Pradesh Gazette', \
 'punjab'               : 'Punjab Gazette', \
+'punjabdsa'            : 'Punjab Gazette', \
 'uttarakhand'          : 'Uttarakhand Gazette', \
 'himachal'             : 'Himachal Pradesh Gazette', \
 'haryana'              : 'Haryana Gazette', \
@@ -133,6 +136,7 @@ languages = { \
 'jharkhand'            : ['eng', 'hin'], \
 'madhyapradesh'        : ['eng', 'hin'], \
 'punjab'               : ['eng', 'pan'], \
+'punjabdsa'            : ['eng', 'pan'], \
 'uttarakhand'          : ['eng', 'hin'], \
 'himachal'             : ['eng', 'hin'], \
 'haryana'              : ['eng', 'hin'], \
@@ -154,16 +158,17 @@ srchierarchy = { \
                 'andhraarchive', 'maharashtra', 'telangana', 'tamilnadu', \
                 'odisha', 'jharkhand', 'madhyapradesh', 'punjab', \
                 'uttarakhand', 'haryana', 'haryanaarchive', 'kerala', \
-                'stgeorge', 'keralalibrary', 'goa'] \
+                'stgeorge', 'keralalibrary', 'goa', 'punjabdsa'] \
 }
 
+inactive_srcs = set(['punjab'])
 def get_srcobjs(srclist, storage):
     srcobjs = []
 
     for src in srclist:
         if src in srchierarchy:
             srcobjs.extend(get_srcobjs(srchierarchy[src], storage))            
-        if src in srcdict:
+        if src in srcdict and src not in inactive_srcs:
             obj = srcdict[src](src, storage)
             srcobjs.append(obj)
 

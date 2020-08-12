@@ -384,7 +384,7 @@ class CentralWeekly(CentralBase):
             val = option.get('value')
             if not val or val == '31':
                 continue
-            self.logger.info('Date: %s, Partnum: %s', dateobj, partnum)
+            self.logger.info('Date: %s, Partnum: %s', dateobj, val)
             newdls = self.download_partnum(relpath, dateobj, search_url, val, cookiejar)
             dls.extend(newdls)
 

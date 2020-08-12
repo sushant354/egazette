@@ -196,6 +196,8 @@ class GazetteIA:
             identifier = 'madhya.%s.%s.%s'% (datestr, gznum, gztype)
         elif srcname == 'punjab':
             identifier = relurl.replace('/', '.')
+        elif srcname == 'punjabdsa':
+            identifier = relurl.replace('/', '.')
         elif srcname == 'uttarakhand':
             relurl, n  = re.subn('[()]', '', relurl)
             identifier = relurl.replace('/', '.')
