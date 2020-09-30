@@ -1,0 +1,6 @@
+beautifulsoup4==4.9.2
+Pillow==7.2.0
+pkg-resources==0.0.0
+PyPDF2==1.26.0
+python-magic==0.4.18
+soupsieve==2.0.1
