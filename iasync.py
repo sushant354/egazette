@@ -3,18 +3,20 @@ import getopt
 import datetime
 import logging
 import re
-import types
 import shutil
 import os
 import time
-
 from requests.exceptions import HTTPError
+from zipfile import ZipFile
+import codecs
 
 from internetarchive import upload, get_session, get_item, modify_metadata
-from file_storage import FileManager
-import reporting
-import datasrcs 
-import utils
+from egazette.utils.file_storage import FileManager
+
+from egazette.utils import reporting
+from egazette.srcs  import datasrcs 
+from egazette.utils import utils
+from egazette.gvision import get_google_client, to_abby, pdf_to_jpg, compress_abbyy
 
 class Stats:
     def __init__(self):
@@ -43,7 +45,7 @@ class Stats:
     def get_msg_by_srcs(self, msg, total, total_success):
         msg.append('------------')
         msg.append('Srcname\tTotal\tSuccess')
-        keys = total.keys()
+        keys = list(total.keys())
         keys.sort()
         for srcname in keys:
             msg.append('%s\t%d\t%d' % (srcname, total[srcname], total_success[srcname]))
@@ -67,10 +69,70 @@ class Stats:
              msg.append('No updates from %s' % ', '.join(noupdate))
         return '\n'.join(msg)
 
+def create_zip(zipfile, filenames):
+    zipobj = ZipFile(zipfile, 'w')
+    for filename in filenames:
+        head, tail   = os.path.split(filename)
+        head1, tail1 = os.path.split(head)
+        dirpath = os.path.join(tail1, tail)
+        zipobj.write(filename, dirpath)
+    zipobj.close()
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    return [ atoi(c) for c in re.split('(\d+)', text) ]
+
+class Gvision:
+    def __init__(self, iadir, key_file):
+        self.client = get_google_client(key_file)
+        self.iadir  = iadir
+
+    def mkdir(self, path):
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+    def convert_to_jpg_abby(self, identifier, filepath):
+        path, filename  = os.path.split(filepath)
+        name, n = re.subn('.pdf$', '', filename)
+
+        item_path = os.path.join(self.iadir, identifier)
+        jpgdir    = os.path.join(item_path, name + '_jpg')
+        gocrdir   = os.path.join(item_path, name + '_gocr')
+        abbyfile  = os.path.join(item_path, name + '_abbyy.xml')
+
+        self.mkdir(item_path)
+        self.mkdir(jpgdir)
+        self.mkdir(gocrdir)
+
+        success = pdf_to_jpg(filepath, jpgdir, 300)
+        if not success:
+            self.logger.warn('Could not convert into jpg files %s', filepath)
+            return None, None
+
+        filenames = os.listdir(jpgdir)
+        filenames.sort(key=natural_keys)
+
+        outhandle = codecs.open(abbyfile, 'w', encoding = 'utf8')
+        to_abby(jpgdir, filenames, self.client, outhandle, gocrdir, 300)
+        outhandle.close()
+        
+        abbyfile_gz, n = re.subn('xml$', 'gz', abbyfile)
+        compress_abbyy(abbyfile, abbyfile_gz)
+
+
+        jpgzip   = jpgdir + '.zip'
+        jpgfiles = [os.path.join(jpgdir, x) for x in filenames]
+
+        create_zip(jpgzip, jpgfiles)
+        return jpgzip, abbyfile_gz
 
 
 class GazetteIA:
-    def __init__(self, file_storage, access_key, secret_key, loglevel, logfile):
+    def __init__(self, gvisionobj, file_storage, access_key, secret_key, \
+                 loglevel, logfile):
+        self.gvisionobj   = gvisionobj         
         self.file_storage = file_storage
         self.access_key   = access_key
         self.secret_key   = secret_key
@@ -86,7 +148,7 @@ class GazetteIA:
    
     def get_identifier(self, relurl, metainfo):
         srcname    = self.get_srcname(relurl)
-        relurl     = relurl.decode('ascii', 'ignore')
+        #relurl     = relurl.decode('ascii', 'ignore')
         identifier = None
 
         dateobj = metainfo.get_date()
@@ -100,7 +162,7 @@ class GazetteIA:
             identifier = re.sub('^central_weekly', 'central.w', identifier)
         elif srcname == 'bihar':
             num = relurl.split('/')[-1]
-            identifier = 'bih.gazette.%d.%s' % (dateobj.year, num)
+            identifier = 'bih.gazette.%s.%s' % (dateobj, num)
             prefix    = 'in.gov.' 
         elif srcname == 'delhi_weekly':    
             identifier = relurl.replace('/', '.')
@@ -134,6 +196,8 @@ class GazetteIA:
             identifier = 'madhya.%s.%s.%s'% (datestr, gznum, gztype)
         elif srcname == 'punjab':
             identifier = relurl.replace('/', '.')
+        elif srcname == 'punjabdsa':
+            identifier = relurl.replace('/', '.')
         elif srcname == 'uttarakhand':
             relurl, n  = re.subn('[()]', '', relurl)
             identifier = relurl.replace('/', '.')
@@ -160,7 +224,9 @@ class GazetteIA:
             prefix = 'in.goa.egaz.' 
             gznum  = metainfo['gznum']
             series = metainfo['series']
-            identifier = '%s.%s' % (gznum, series) 
+            identifier = '%s.%s' % (gznum, series)
+        else:
+            identifier = relurl.replace('/', '.')
          
         identifier = prefix + identifier 
         return identifier    
@@ -177,6 +243,20 @@ class GazetteIA:
             self.logger.warn('Could not get item %s. Error %s' , identifier, e) 
             item = None 
         return item
+
+    def ocr_files(self, identifier, to_upload):
+        final = []
+        for filepath in to_upload:
+            if re.search('pdf$', filepath):
+                jpgzip, abbyzip = self.gvisionobj.convert_to_jpg_abby(identifier, filepath)
+                if jpgzip:
+                    final.append(jpgzip)
+                if abbyzip:
+                    final.append(abbyzip)
+            else:
+                final.append(filepath)
+
+        return final
 
     def upload(self, relurl):
         metainfo = self.file_storage.get_metainfo(relurl)
@@ -226,6 +306,13 @@ class GazetteIA:
         if not to_upload:
             self.logger.info('No files need to be uploaded for %s', identifier)
             return False
+
+        if self.gvisionobj:
+            to_upload = self.ocr_files(identifier, to_upload)
+            if metadata == None:
+                metadata = {}
+            metadata['ocr'] = 'google-cloud-vision IndianKanoon 1.0'
+            metadata['fts-ignore-ingestion-lang-filter'] = 'true'
 
         count = 5
         while count > 0:
@@ -297,7 +384,7 @@ class GazetteIA:
         title = [category]
 
         if 'date' in metainfo:
-            title.append(u'%s' % metainfo['date'])
+            title.append('%s' % metainfo['date'])
 
         if 'gztype' in metainfo:
             title.append(metainfo['gztype'])
@@ -307,12 +394,12 @@ class GazetteIA:
             if re.search(r'\bPart\b', partnum):
                 title.append(partnum)
             else:    
-                title.append(u'Part %s' %partnum)
+                title.append('Part %s' %partnum)
 
         if 'gznum' in metainfo:
-            title.append(u'Number %s' % metainfo['gznum'])
+            title.append('Number %s' % metainfo['gznum'])
 
-        return u', '.join(title)
+        return ', '.join(title)
 
     def get_srcname(self, relurl):
        words    = relurl.split('/')
@@ -357,6 +444,7 @@ class GazetteIA:
          ('linknames',        'Gazette Links'), \
          ('url',              'Gazette Source'), \
          ('num',              'Number'), \
+         ('gazetteid',        'Gazette ID'), \
        ]
        for k, kdesc in keys:
            if k in metainfo:
@@ -383,9 +471,9 @@ class GazetteIA:
 
        known_keys = set([k for k, kdesc in keys])
 
-       for k, v in metainfo.iteritems():
+       for k, v in metainfo.items():
            if k not in known_keys and k not in ignore_keys:
-               if type(v) in types.StringTypes:
+               if type(v) in (str,):
                    v = v.strip()
                elif isinstance(v, list):
                    v = '%s' % v    
@@ -432,7 +520,7 @@ class GazetteIA:
         return True        
 
 def print_usage(progname):
-    print 'Usage: python %s [-l loglevel(critical, error, warn, info, debug)]' % progname + '''
+    print('Usage: python %s [-l loglevel(critical, error, warn, info, debug)]' % progname + '''
                         [-a access_key] [-k secret_key]
                         [-f logfile]
                         [-m (update_meta)]
@@ -441,6 +529,8 @@ def print_usage(progname):
                         [-i (relurls_from_stdin)]
                         [-d days_to_sync]
                         [-D gazette_directory]
+                        [-I internet_archive_directory]
+                        [-g google_gvision_key]
                         [-t start_time (%Y-%m-%d %H:%M:%S)]
                         [-T end_time (%Y-%m-%d %H:%M:%S)]
                         [-U gmail_user]
@@ -456,7 +546,7 @@ def print_usage(progname):
                          -s haryana     -s kerala      -s haryanaarchive
                          -s stgeorge    -s himachal    -s keralalibrary
                         ] 
-    '''                     
+    ''')                     
 
 def handle_relurl(gazette_ia, relurl, to_upload, to_update, stats):
     srcname = gazette_ia.get_srcname(relurl)
@@ -485,8 +575,10 @@ if __name__ == '__main__':
     gmail_user = None
     gmail_pwd  = None
     to_addrs   = []
+    key_file   = None
+    iadir      = None
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:hil:s:t:T:mr:uE:U:P:')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:g:hiI:l:s:t:T:mr:uE:U:P:')
     for o, v in optlist:
         if o == '-l':
             loglevel = v
@@ -525,6 +617,10 @@ if __name__ == '__main__':
             gmail_user = v
         elif o == '-P':
             gmail_pwd = v
+        elif o == '-I':
+            iadir = v
+        elif o == '-g':
+            key_file = v
         elif o == '-h':
             print_usage(progname)
             sys.exit(0)
@@ -538,30 +634,39 @@ if __name__ == '__main__':
                  'debug': logging.DEBUG}
 
     if loglevel not in leveldict:
-        print 'Unknown log level %s' % loglevel             
+        print('Unknown log level %s' % loglevel)             
         print_usage(progname)
         sys.exit(0)
 
     if not datadir:
-        print 'Directory not specified'
+        print('Directory not specified')
         print_usage(progname)
         sys.exit(0)
 
     if not to_update and not to_upload:
-        print 'Please specify whether to upload or update to internetarchive'
+        print('Please specify whether to upload or update to internetarchive')
         print_usage(progname)
         sys.exit(0)
 
     if not access_key or not secret_key:
-        print 'Please specify access and secret keys to internetarchive'
+        print('Please specify access and secret keys to internetarchive')
         print_usage(progname)
         sys.exit(0)
 
     if to_addrs and (not gmail_user or not gmail_pwd):
-        print 'To report through email, please specify gmail username and password'
+        print('To report through email, please specify gmail username and password')
         print_usage(progname)
         sys.exit(0)
 
+    if (key_file and not iadir) or (iadir and not key_file):
+        print('Please specify google key file and internetarchive directory both for using OCR while uploading files')
+        print_usage(progname)
+        sys.exit(0)
+
+    gvisionobj = None
+    if key_file and iadir:
+        gvisionobj = Gvision(iadir, key_file)
+        
     logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
     datefmt = '%Y-%m-%d %H:%M:%S'
 
@@ -586,9 +691,12 @@ if __name__ == '__main__':
 
 
     storage = FileManager(datadir, False, False)
-    gazette_ia = GazetteIA(storage, access_key, secret_key, loglevel, logfile)
-
+    gazette_ia = GazetteIA(gvisionobj, storage, access_key, secret_key, loglevel, logfile)
     stats        = Stats()
+
+    if len(srcnames) == 0:
+        srcnames = datasrcs.srcdict.keys()
+
     if relurls:
         for relurl in relurls:
             handle_relurl(gazette_ia, relurl, to_upload, to_update, stats)
