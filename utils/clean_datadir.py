@@ -16,7 +16,7 @@ def find_matching_dirs(dirname):
 def find_matching_files(dirname):
     for filename in os.listdir(dirname):
         filepath = os.path.join(dirname, filename)
-        if os.path.isfile(filepath) and re.search('_jp2\.zip', filename):
+        if os.path.isfile(filepath) and re.search('_(jp2|jpg)\.zip', filename):
             yield filepath
         elif os.path.isdir(filepath):
             for subfilepath in find_matching_files(filepath):
