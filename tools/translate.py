@@ -2,10 +2,17 @@ import argparse
 import os
 import codecs
 import re
+import cgi
+
+from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import Comment, Declaration, CData, ProcessingInstruction, Doctype
 
 from google.cloud import translate
 
 def translate_text(text, project_id, from_lang, to_lang):
+    if re.match('[\s,()=-]*$', text):
+        return text
+
     """Translating Text."""
 
     client = translate.TranslationServiceClient()
@@ -26,12 +33,14 @@ def translate_text(text, project_id, from_lang, to_lang):
         }
     )
 
-    return ''.join([t.translated_text for t in response.translations])
+    final = ''.join([t.translated_text for t in response.translations])
 
-if __name__ == '__main__':
+    return final
+
+def get_arg_parser():
     parser = argparse.ArgumentParser(description='Using Google API to translate text')
     parser.add_argument('-t', '--type', dest='input_type', action='store',\
-                       default='text', help='type of input file(text/')
+                       default='text', help='type of input file(text/sbv/html)')
     parser.add_argument('-l', '--input_lang', dest='input_lang', \
                         required= True,  \
                         action='store', help='Language of input text (https://cloud.google.com/translate/docs/languages)')
@@ -48,12 +57,107 @@ if __name__ == '__main__':
                          action='store', help='Google key file')
     parser.add_argument('-p', '--project', dest='project_id', required= True, \
                          action='store', help='Project ID')
-    args = parser.parse_args()
+    return parser                     
 
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = args.key_file
+def process_sbv(text, outhandle, project_id, from_lang, to_lang):
+    start = True
+    lines = []
+    for line in text.splitlines():
+        if start and re.match('\d{1,2}:\d\d:\d\d.\d+,\d{1,2}:\d\d:\d\d.\d+$', line):
+            outhandle.write(line)
+            outhandle.write('\n')
+            start = False
+            lines = []
+        elif not start and line == '':
+            para = '\n'.join(lines)
+            new_para = translate_text(para, project_id, from_lang, to_lang)
+            outhandle.write(new_para)
+            outhandle.write('\n\n')
+            start = True
+            lines = []
+        else:
+            lines.append(line)
+
+    if lines:
+        para = '\n'.join(lines)
+        new_para = translate_text(para, project_id, from_lang, to_lang)
+        outhandle.write(new_para)
+
+class HtmlProcessor:
+    def __init__(self, project_id, from_lang, to_lang):
+        self.project_id = project_id
+        self.from_lang  = from_lang
+        self.to_lang    = to_lang
+        self.ignoretypes =  [Comment, Declaration, CData, ProcessingInstruction]
+        self.linebreaks = ['br', 'p', 'div', 'dir']
+        self.ignoretags = ['script', 'style']
+
+    def process_html(self, text, outhandle):
+        d = BeautifulSoup(text, 'html5lib')
+        self.process_children(d, outhandle)
+
+    def translate(self, text):
+        translated_text = translate_text(text, self.project_id, \
+                                    self.from_lang, self.to_lang)
+        return translated_text
+
+    def is_attr_translate(self, tag, attr):
+        if (tag == 'img' and attr == 'alt') or \
+                (tag == 'meta' and attr == 'content'):
+            return True
+
+        return False
+
+    def process_children(self, d, outhandle):
+        for content in d.contents:
+            if type(content) == NavigableString:
+                text = '%s' % content
+                translated_text = self.translate(text)
+                if translated_text:
+                    outhandle.write(cgi.escape(translated_text))
+            elif type(content) in self.ignoretypes:
+                 outhandle.write('%s' % content)
+            elif isinstance(content, Doctype):
+                 outhandle.write('<!DOCTYPE %s>\n' % content)
+            elif type(content) == Tag:
+                 if content.name in self.ignoretags:
+                     outhandle.write('%s' % content)
+                     continue
+
+                 attrs = []
+                 for k, v in content.attrs.items():
+                     if isinstance(v, list):
+                          v = ' '.join(v)
+
+                     if self.is_attr_translate(content.name, k):
+                         v = self.translate(v)
+
+                     v = cgi.escape(v)
+                     attrs.append('%s="%s"' % (k, v))
+
+                 if attrs:
+                     outhandle.write('<%s %s>' % (content.name, ' '.join(attrs)))
+                 else:    
+                     outhandle.write('<%s>' % content.name)
+
+                 if content.name in self.linebreaks:
+                     outhandle.write('\n')
+
+                 self.process_children(content, outhandle)
+
+                 outhandle.write('</%s>' % content.name)
+                 if content.name in self.linebreaks:
+                     outhandle.write('\n')
+     
+
+if __name__ == '__main__':
+    parser = get_arg_parser()
+    args   = parser.parse_args()
+
     project_id = args.project_id
     from_lang  = args.input_lang
     to_lang    = args.output_lang
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = args.key_file
 
     inhandle = codecs.open(args.input_file, 'r', 'utf8')
     outhandle = codecs.open(args.output_file, 'w', 'utf-8')
@@ -68,27 +172,9 @@ if __name__ == '__main__':
 
 
     elif args.input_type == 'sbv':
-        start = True
-        lines = []
-        for line in text.splitlines():
-            if start and re.match('\d{1,2}:\d\d:\d\d.\d+,\d{1,2}:\d\d:\d\d.\d+$', line):
-                outhandle.write(line)
-                outhandle.write('\n')
-                start = False
-                lines = []
-            elif not start and line == '':
-                para = '\n'.join(lines)
-                new_para = translate_text(para, project_id, from_lang, to_lang)
-                outhandle.write(new_para)
-                outhandle.write('\n\n')
-                start = True
-                lines = []
-            else:
-                lines.append(line)
-
-        if lines:
-            para = '\n'.join(lines)
-            new_para = translate_text(para, project_id, from_lang, to_lang)
-            outhandle.write(new_para)
+        process_sbv(text, outhandle)
+    elif args.input_type == 'html':
+        htmlprocessor = HtmlProcessor(project_id, from_lang, to_lang)
+        htmlprocessor.process_html(text, outhandle)
       
     outhandle.close()
