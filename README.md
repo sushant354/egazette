@@ -64,6 +64,28 @@ todate is not specified then the default is your current date.
 
 Google API translation:
 
-usage: python translate.py [-h] [-t INPUT_TYPE] -l INPUT_LANG -L OUTPUT_LANG -i
+usage: translate.py [-h] [-t INPUT_TYPE] -l INPUT_LANG -L OUTPUT_LANG -i
                     INPUT_FILE -o OUTPUT_FILE -k KEY_FILE -p PROJECT_ID
+                    [-c IGNORE_CLASSES]
+
+Using Google API to translate text
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t INPUT_TYPE, --type INPUT_TYPE
+                        type of input file(text/sbv/html)
+  -l INPUT_LANG, --input_lang INPUT_LANG
+                        Language of input text
+                        (https://cloud.google.com/translate/docs/languages)
+  -L OUTPUT_LANG        Language of output text
+  -i INPUT_FILE, --infile INPUT_FILE
+                        Input File
+  -o OUTPUT_FILE, --outfile OUTPUT_FILE
+                        Output file
+  -k KEY_FILE, --key KEY_FILE
+                        Google key file
+  -p PROJECT_ID, --project PROJECT_ID
+                        Project ID
+  -c IGNORE_CLASSES, --ignoreclass IGNORE_CLASSES
+                        HTML classes to be ignored for translation
 

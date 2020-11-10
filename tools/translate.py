@@ -57,6 +57,9 @@ def get_arg_parser():
                          action='store', help='Google key file')
     parser.add_argument('-p', '--project', dest='project_id', required= True, \
                          action='store', help='Project ID')
+    parser.add_argument('-c', '--ignoreclass', dest='ignore_classes', \
+                         required=False, action='append', \
+                         help='HTML classes to be ignored for translation')
     return parser                     
 
 def process_sbv(text, outhandle, project_id, from_lang, to_lang):
@@ -84,13 +87,14 @@ def process_sbv(text, outhandle, project_id, from_lang, to_lang):
         outhandle.write(new_para)
 
 class HtmlProcessor:
-    def __init__(self, project_id, from_lang, to_lang):
+    def __init__(self, project_id, from_lang, to_lang, ignore_classes):
         self.project_id = project_id
         self.from_lang  = from_lang
         self.to_lang    = to_lang
         self.ignoretypes =  [Comment, Declaration, CData, ProcessingInstruction]
-        self.linebreaks = ['br', 'p', 'div', 'dir']
-        self.ignoretags = ['script', 'style']
+        self.linebreaks  = ['br', 'p', 'div', 'dir']
+        self.ignoretags  = ['script', 'style']
+        self.ignore_classes = set(ignore_classes)
 
     def process_html(self, text, outhandle):
         d = BeautifulSoup(text, 'html5lib')
@@ -120,7 +124,14 @@ class HtmlProcessor:
             elif isinstance(content, Doctype):
                  outhandle.write('<!DOCTYPE %s>\n' % content)
             elif type(content) == Tag:
-                 if content.name in self.ignoretags:
+                 classes = content.get('class')
+                 ignore  = False
+                 if classes:
+                     for c in classes:
+                         if c in self.ignore_classes:
+                             ignore = True
+
+                 if ignore or (content.name in self.ignoretags):
                      outhandle.write('%s' % content)
                      continue
 
@@ -157,6 +168,8 @@ if __name__ == '__main__':
     project_id = args.project_id
     from_lang  = args.input_lang
     to_lang    = args.output_lang
+    ignore_classes = args.ignore_classes
+
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = args.key_file
 
     inhandle = codecs.open(args.input_file, 'r', 'utf8')
@@ -165,16 +178,16 @@ if __name__ == '__main__':
     inhandle.close()
 
     if args.input_type == 'text':
-        translated_text =  translate_text(text, args.project_id, \
-                                          args.input_lang, args.output_lang)
+        translated_text =  translate_text(text, project_id, from_lang, to_lang)
         if translated_text:  
             outhandle.write(translated_text)
 
 
     elif args.input_type == 'sbv':
-        process_sbv(text, outhandle)
+        process_sbv(text, outhandle, project_id, from_lang, to_lang)
     elif args.input_type == 'html':
-        htmlprocessor = HtmlProcessor(project_id, from_lang, to_lang)
+        htmlprocessor = HtmlProcessor(project_id, from_lang, to_lang, \
+                                      ignore_classes)
         htmlprocessor.process_html(text, outhandle)
       
     outhandle.close()
