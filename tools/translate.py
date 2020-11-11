@@ -168,7 +168,11 @@ if __name__ == '__main__':
     project_id = args.project_id
     from_lang  = args.input_lang
     to_lang    = args.output_lang
-    ignore_classes = args.ignore_classes
+
+    if args.ignore_classes:
+        ignore_classes = args.ignore_classes
+    else:    
+        ignore_classes = [] 
 
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = args.key_file
 
