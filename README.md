@@ -89,3 +89,44 @@ optional arguments:
   -c IGNORE_CLASSES, --ignoreclass IGNORE_CLASSES
                         HTML classes to be ignored for translation
 
+usage: speechtotext.py [-h] [-t OUT_TYPE] [-d DATADIR] [-i INPUT_FILE]
+                       [-u GCS_URI] -o OUTPUT_FILE -k KEY_FILE -l LANGCODE
+                       [-g LOGLEVEL] [-f LOGFILE] [-b BUCKET_NAME]
+                       [-L BUCKET_LOCATION] [-c BUCKET_CLASS] [-w WORD_LIMIT]
+                       [-s MAX_SECS]
+
+Using Google SpeechToText API to generate subtitles/text
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t OUT_TYPE, --output-type OUT_TYPE
+                        sbv|srt|text
+  -d DATADIR, --data-dir DATADIR
+                        data-dir for caching and intermediate file
+  -i INPUT_FILE, --input INPUT_FILE
+                        filepath to input file
+  -u GCS_URI, --gcs-uri GCS_URI
+                        Google Cloud Storage URI
+  -o OUTPUT_FILE, --output OUTPUT_FILE
+                        filepath to output file
+  -k KEY_FILE, --key KEY_FILE
+                        Google key file
+  -l LANGCODE, --language LANGCODE
+                        language code in BCP-47
+                        (https://cloud.google.com/speech-to-
+                        text/docs/languages)
+  -g LOGLEVEL, --loglevel LOGLEVEL
+                        log level (debug|info|warn|error)
+  -f LOGFILE, --logfile LOGFILE
+                        log file
+  -b BUCKET_NAME, --bucket BUCKET_NAME
+                        bucket name in Gcloud
+  -L BUCKET_LOCATION, --bucket-location BUCKET_LOCATION
+                        bucket location
+  -c BUCKET_CLASS, --bucket-class BUCKET_CLASS
+                        storage class (STANDARD|NEARLINE|COLDLINE|ARCHIVE)
+  -w WORD_LIMIT, --maxwords WORD_LIMIT
+                        max words in a subtitle
+  -s MAX_SECS, --maxseconds MAX_SECS
+                        max duration of a subtitle (seconds)
+
