@@ -106,8 +106,7 @@ class HtmlProcessor:
         return translated_text
 
     def is_attr_translate(self, tag, attr):
-        if (tag == 'img' and attr == 'alt') or \
-                (tag == 'meta' and attr == 'content'):
+        if (tag == 'img' and attr == 'alt'):
             return True
 
         return False
@@ -136,15 +135,21 @@ class HtmlProcessor:
                      continue
 
                  attrs = []
+
                  for k, v in content.attrs.items():
                      if isinstance(v, list):
                           v = ' '.join(v)
 
                      if self.is_attr_translate(content.name, k):
                          v = self.translate(v)
+                     elif k == 'lang':
+                         v = self.to_lang 
 
                      v = cgi.escape(v)
                      attrs.append('%s="%s"' % (k, v))
+
+                 if 'lang' not in content.attrs and content.name == 'html':
+                     attrs.append('lang="%s"' % self.to_lang)
 
                  if attrs:
                      outhandle.write('<%s %s>' % (content.name, ' '.join(attrs)))
