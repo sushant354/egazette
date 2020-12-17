@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 from bs4 import Comment, Declaration, CData, ProcessingInstruction, Doctype
 
 from google.cloud import translate
+import srt
 
 def translate_text(text, project_id, from_lang, to_lang):
     if re.match('[\s,()=-]*$', text):
@@ -40,7 +41,7 @@ def translate_text(text, project_id, from_lang, to_lang):
 def get_arg_parser():
     parser = argparse.ArgumentParser(description='Using Google API to translate text')
     parser.add_argument('-t', '--type', dest='input_type', action='store',\
-                       default='text', help='type of input file(text/sbv/html)')
+                  default='text', help='type of input file(text/sbv/html/srt)')
     parser.add_argument('-l', '--input_lang', dest='input_lang', \
                         required= True,  \
                         action='store', help='Language of input text (https://cloud.google.com/translate/docs/languages)')
@@ -85,6 +86,21 @@ def process_sbv(text, outhandle, project_id, from_lang, to_lang):
         para = '\n'.join(lines)
         new_para = translate_text(para, project_id, from_lang, to_lang)
         outhandle.write(new_para)
+
+def process_srt(text, outhandle, project_id, from_lang, to_lang):
+    try:
+        subtitles = srt.parse(text)
+    except srt.SRTParseError as e:
+        print ('Unable to parse srt. Error: %s' % e, file=sys.stderr)
+        return
+
+    out_subtitles = []
+    for subtitle in subtitles:
+        out = translate_text(subtitle.content, project_id, from_lang, to_lang)
+        out_subtitles.append(srt.Subtitle(subtitle.index, subtitle.start, subtitle.end, out))
+    
+    out_srt = srt.compose(out_subtitles)
+    outhandle.write(out_srt)
 
 class HtmlProcessor:
     def __init__(self, project_id, from_lang, to_lang, ignore_classes):
@@ -194,6 +210,8 @@ if __name__ == '__main__':
 
     elif args.input_type == 'sbv':
         process_sbv(text, outhandle, project_id, from_lang, to_lang)
+    elif args.input_type == 'srt':
+        process_srt(text, outhandle, project_id, from_lang, to_lang)
     elif args.input_type == 'html':
         htmlprocessor = HtmlProcessor(project_id, from_lang, to_lang, \
                                       ignore_classes)
