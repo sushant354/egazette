@@ -6,6 +6,7 @@ import os
 from google.cloud import storage
 
 logger = logging.getLogger('storage')
+storage.blob._MAX_MULTIPART_SIZE = 3 * 1024* 1024
 
 def create_bucket(client, bucket_name, classname, location):
     """Create a new bucket in specific location with storage class"""
@@ -45,6 +46,7 @@ def upload_file(bucket, source_file):
         logger.info('Blob already exists. Skipping %s', dest_name)
     else:
         blob = bucket.blob(dest_name)
+        blob._chunk_size = 3 * 1024* 1024
         blob.upload_from_filename(source_file)
         logger.info('Uploaded %s to %s', source_file, dest_name)
     return dest_name 
