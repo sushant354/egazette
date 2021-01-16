@@ -1,4 +1,4 @@
-import cgi
+import html 
 
 class Node:
     def __init__(self, start, end, tag, parent, attrs):
@@ -48,7 +48,7 @@ def insert_markers(text, inserts):
     lastpos  = 0
     for pos, marker in inserts:
         if pos > lastpos:
-            sections.append(cgi.escape(text[lastpos:pos]))
+            sections.append(html.escape(text[lastpos:pos]))
         elif pos < lastpos:
              print ("INVALID MARKER", pos, marker, inserts)
              assert 0
@@ -56,7 +56,7 @@ def insert_markers(text, inserts):
         lastpos = pos
 
     if lastpos < len(text):
-        sections.append(cgi.escape(text[lastpos:]))
+        sections.append(html.escape(text[lastpos:]))
 
     return u''.join(sections)
 

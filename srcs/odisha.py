@@ -58,7 +58,7 @@ class Odisha(BaseGazette):
                             d = datetime.date(int(nums[2]), int(nums[1]), int(nums[0]))
                             metainfo['gzdate'] = d
                         except:
-                            self.logger.warn('Unable to form date for %s', txt)        
+                            self.logger.warning('Unable to form date for %s', txt)        
                 elif order[i] == 'download':
                     link = td.find('a')
                     if link and link.get('href'):
@@ -74,12 +74,12 @@ class Odisha(BaseGazette):
         postdata = self.get_post_data(dateobj)
         response = self.download_url(self.baseurl, postdata = postdata) 
         if not response or not response.webpage:
-            self.logger.warn('Unable to get result page for date %s', dateobj)
+            self.logger.warning('Unable to get result page for date %s', dateobj)
             return dls
 
         d = utils.parse_webpage(response.webpage, self.parser)
         if not d:     
-            self.logger.warn('Unable to parse result page for date %s', dateobj)
+            self.logger.warning('Unable to parse result page for date %s', dateobj)
             return dls
 
         result_table = None
@@ -92,7 +92,7 @@ class Odisha(BaseGazette):
                     break
                  
         if result_table == None:
-            self.logger.warn('Unable to find the result table for %s', dateobj)
+            self.logger.warning('Unable to find the result table for %s', dateobj)
             return dls
 
         minfos = []

@@ -58,7 +58,7 @@ class TamilNadu(BaseGazette):
         for metainfo in metainfos:
             if 'gztype' not in metainfo or 'gznum' not in metainfo or \
                     'url' not in metainfo:
-                self.logger.warn('No gznum or gztype in metainfo. Ignoring %s', metainfo)
+                self.logger.warning('No gznum or gztype in metainfo. Ignoring %s', metainfo)
                 continue
 
             filename = '%s_%s' % (metainfo['gztype'], metainfo['gznum'])
@@ -101,7 +101,7 @@ class TamilNadu(BaseGazette):
         url = urllib.parse.urljoin(self.baseurl, href)
         result_table = self.get_result_table(url)
         if result_table == None:
-            self.logger.warn('Unable to get result table for year %d', dateobj.year)
+            self.logger.warning('Unable to get result table for year %d', dateobj.year)
             return minfos
 
         order = None
@@ -155,7 +155,7 @@ class TamilNadu(BaseGazette):
                                               int(groupdict['day']))
                             metainfo.set_date(d)
                         except:
-                            self.logger.warn('Unable to create date from %s', txt)
+                            self.logger.warning('Unable to create date from %s', txt)
             
             i += 1
 
@@ -179,7 +179,7 @@ class TamilNadu(BaseGazette):
             else:
                 order.append('')
         if not found:
-            self.logger.warn('No order for ordinary gazette listing: %s', tr)
+            self.logger.warning('No order for ordinary gazette listing: %s', tr)
             return None        
 
         return order            
@@ -187,7 +187,7 @@ class TamilNadu(BaseGazette):
     def process_ordinary_listing(self, minfos, url, gznum, dateobj):
         result_table = self.get_result_table(url)
         if result_table == None:
-            self.logger.warn('Unable to fetch the ordinary gazette listing %s', url)
+            self.logger.warning('Unable to fetch the ordinary gazette listing %s', url)
             return
 
         order = None
@@ -284,7 +284,7 @@ class TamilNadu(BaseGazette):
                             d = datetime.date(int(ds[2]), int(ds[1]), int(ds[0]))
                             metainfo.set_date(d)
                         except:    
-                            self.logger.warn('Unable to create date from %s', txt)
+                            self.logger.warning('Unable to create date from %s', txt)
                 elif order[i] == 'partnum':
                     section = None
                     reobj = re.search('Part[\s-]*\w+', txt)

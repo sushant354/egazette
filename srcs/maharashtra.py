@@ -91,7 +91,7 @@ class Maharashtra(AndhraArchive):
   
             i += 1
         if 'download' not in metainfo:
-            self.logger.warn('No download link, ignoring: %s', tr)
+            self.logger.warning('No download link, ignoring: %s', tr)
         else:
             metainfos.append(metainfo)
             
@@ -100,13 +100,13 @@ class Maharashtra(AndhraArchive):
         dls = []
         for metainfo in metainfos:
             if 'download' not in metainfo or 'gztype' not in metainfo:
-                self.logger.warn('Required fields not present. Ignoring- %s' % metainfo) 
+                self.logger.warning('Required fields not present. Ignoring- %s' % metainfo) 
                 continue
 
             href = metainfo.pop('download')
             reobj = re.search('javascript:__doPostBack\(\'(?P<event_target>[^\']+)\'', href)
             if not reobj:
-                self.logger.warn('No event_target in the gazette link. Ignoring - %s' % metainfo)
+                self.logger.warning('No event_target in the gazette link. Ignoring - %s' % metainfo)
                 continue 
 
             groupdict    = reobj.groupdict()

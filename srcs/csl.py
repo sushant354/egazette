@@ -106,7 +106,7 @@ class CSLWeekly(CentralBase):
         newdownloads = []
         while fromdate <= todate:
             if event.is_set():
-                self.logger.warn('Exiting prematurely as timer event is set')
+                self.logger.warning('Exiting prematurely as timer event is set')
                 break
 
             dateobj   = fromdate.date()
@@ -130,7 +130,7 @@ class CSLWeekly(CentralBase):
         cookiejar  = CookieJar()
         response = self.download_url(self.baseurl, savecookies = cookiejar, loadcookies = cookiejar)
         if not response:
-            self.logger.warn('Could not fetch %s for the day %s', self.baseurl, dateobj)
+            self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
             return dls
         curr_url = response.response_url
         search_url = urllib.parse.urljoin(curr_url, self.search_endp)
@@ -164,13 +164,13 @@ class CSLWeekly(CentralBase):
         response = self.download_url(search_url, postdata = postdata, \
                                          loadcookies= cookiejar)
         if not response or not response.webpage:
-            self.logger.warn('Could not get the page for %s' % metainfo)
+            self.logger.warning('Could not get the page for %s' % metainfo)
             return None
 
         webpage = response.webpage.decode('utf-8', 'ignore')
         reobj = re.search(self.gazette_js, webpage)
         if not reobj:
-            self.logger.warn('Could not get url link for %s' % metainfo)
+            self.logger.warning('Could not get url link for %s' % metainfo)
             return None
 
         href  = reobj.groupdict()['href']
@@ -178,7 +178,7 @@ class CSLWeekly(CentralBase):
 
         reobj = re.search('(?P<gzid>[^/]+).pdf$', href)
         if not reobj:
-            self.logger.warn('Could not get gazette id in %s' % href)
+            self.logger.warning('Could not get gazette id in %s' % href)
             return None
 
         gzid = reobj.groupdict()['gzid']
@@ -235,7 +235,7 @@ class CSLWeekly(CentralBase):
                     try: 
                         dateobj = utils.to_dateobj(txt)
                     except:
-                        self.logger.warn('Unable to get date from %s', txt)
+                        self.logger.warning('Unable to get date from %s', txt)
                     if dateobj:
                         metainfo.set_date(dateobj)
             i += 1

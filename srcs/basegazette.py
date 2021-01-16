@@ -54,7 +54,7 @@ class Downloader:
         newdownloads = []
         while fromdate <= todate:
             if event.is_set():
-                self.logger.warn('Exiting prematurely as timer event is set')
+                self.logger.warning('Exiting prematurely as timer event is set')
                 break
 
             dateobj   = fromdate.date()

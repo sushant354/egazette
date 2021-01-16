@@ -68,23 +68,25 @@ def pdf_to_jpg(infile, jpgdir, ppi):
 
 def google_ocr(client, input_file, gocr_file):
     if gocr_file and os.path.exists(gocr_file):
-        pickle_in = open(gocr_file, 'rb')
-        return pickle.load(pickle_in)
-        
+        serialized = codecs.open(gocr_file, 'r', 'utf-8').read()
+        response = vision.AnnotateImageResponse()
+        return vision.AnnotateImageResponse.from_json(serialized)
+
     content = io.open(input_file, 'rb').read()
-    image = vision.types.Image(content=content)
+    image = vision.Image(content=content)
 
     try:
         response = client.document_text_detection(image=image)
     except Exception as e:
         logger = logging.getLogger('gvision.ocr')
-        logger.warn('Error in Google Vision API for %s %s', input_file, e)
+        logger.warning('Error in Google Vision API for %s %s', input_file, e)
         return None
 
     if gocr_file:
-        pickle_out = open(gocr_file, 'wb')
-        pickle.dump(response, pickle_out)
-        pickle_out.close()
+        serialized = vision.AnnotateImageResponse.to_json(response)
+        cache_out = codecs.open(gocr_file, 'w', 'utf-8')
+        cache_out.write(serialized)
+        cache_out.close()
 
     return response
 
@@ -352,7 +354,7 @@ def to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi):
         if response and response.full_text_annotation.pages:
             abby.handle_google_response(response, ppi)
         else:
-            logger.warn('No pages in %s', filename)
+            logger.warning('No pages in %s', filename)
             abby.write_page_header(None, None, ppi)
             abby.write_page_footer()
 
@@ -391,7 +393,7 @@ class IA:
                 fileobj.format == 'Image Container PDF':
             fileobj.delete(access_key = self.access_key, headers= self.headers,\
                            secret_key = self.secret_key)    
-            self.logger.warn('Old image pdf exists in %s. Deleted it', item)
+            self.logger.warning('Old image pdf exists in %s. Deleted it', item)
 
 
 
@@ -428,7 +430,7 @@ class IA:
             self.download_jp2(item, '*_jp2.zip')
                 
         if not os.path.exists(item_path):
-            self.logger.warn('Item path does not exist: %s', item_path)
+            self.logger.warning('Item path does not exist: %s', item_path)
             return [] 
 
         return self.find_jp2(item_path)
@@ -439,7 +441,7 @@ class IA:
         jp2_dir   = os.path.join(item_path, jp2_dir)
 
         if not zfile:        
-            self.logger.warn('JP2 zip file does not exist: %s', item)
+            self.logger.warning('JP2 zip file does not exist: %s', item)
             return None 
         
         if os.path.exists(jp2_dir):        
@@ -458,7 +460,7 @@ class IA:
 
     def convert_jp2(self, jp2_path):
         if not jp2_path:        
-            self.logger.warn('JP2 path does not exist: %s', jp2_path)
+            self.logger.warning('JP2 path does not exist: %s', jp2_path)
             return None
 
         jpg_path, n = re.subn('_jp2$', '_jpg', jp2_path)
@@ -504,7 +506,7 @@ class IA:
                             access_key = self.access_key, \
                             secret_key = self.secret_key)
         except Exception as e:
-            self.logger.warn('Could not  modify metadata %s. Error %s' , identifier, e)
+            self.logger.warning('Could not  modify metadata %s. Error %s' , identifier, e)
             return False
         return True
 
@@ -529,20 +531,20 @@ class IA:
                                  secret_key = self.secret_key, retries=100)
                 success = True                 
             except Exception as e:
-                self.logger.warn('Error in upload for %s: %s', ia_item, e)
+                self.logger.warning('Error in upload for %s: %s', ia_item, e)
                 success = False
                 time.sleep(120)
         return success   
 
 def process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi):
         if not update and ia.is_exist(ia_item):
-            logger.warn('Item already processed %s', ia_item)
+            logger.warning('Item already processed %s', ia_item)
             return
 
         zfiles = ia.fetch_jp2(ia_item, jp2_filter)
 
         if not zfiles:
-            logger.warn('Could not get JP2 files for %s', ia_item)
+            logger.warning('Could not get JP2 files for %s', ia_item)
             return 
 
         
@@ -555,14 +557,14 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi):
 
             jp2_path = ia.extract_jp2(ia_item, zfile)   
             if not jp2_path:
-                logger.warn('JP2 files not extracted %s', zfile)
+                logger.warning('JP2 files not extracted %s', zfile)
                 continue
             
             inter_files.append(('dir', jp2_path))
 
             jpgdir   = ia.convert_jp2(jp2_path)
             if not jpgdir:
-                logger.warn('Could not convert JP2 to JPG for %s', jp2_path)
+                logger.warning('Could not convert JP2 to JPG for %s', jp2_path)
                 continue
 
             inter_files.append(('dir', jpgdir))
@@ -702,7 +704,7 @@ if __name__ == '__main__':
     logger = logging.getLogger('gvision')
 
     if ia_item and check_dirs and is_processed(ia_item, check_dirs):
-        logger.warn('Item is already processed. Exiting %s', ia_item)
+        logger.warning('Item is already processed. Exiting %s', ia_item)
         sys.exit(0)
 
     ia = None
@@ -746,7 +748,7 @@ if __name__ == '__main__':
         success = pdf_to_jpg(input_file, jpgdir, ppi)
 
         if not success:
-            logger.warn('ghostscript on pdffile %s failed' % input_file)
+            logger.warning('ghostscript on pdffile %s failed' % input_file)
             sys.exit(0)
         outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
         process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi)

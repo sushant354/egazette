@@ -53,7 +53,7 @@ class StGeorge(Kerala):
                 onclick = nextpage.get('onclick')
                 postdata = self.next_page_post(onclick, year)
                 if not postdata:
-                    self.logger.warn('Unable to get postdata for next page from %s', onclick)
+                    self.logger.warning('Unable to get postdata for next page from %s', onclick)
                     break
 
                 response = self.download_url(self.date_url, postdata = postdata)
@@ -100,7 +100,7 @@ class StGeorge(Kerala):
 
         d = utils.parse_webpage(webpage, self.parser)
         if not d:
-            self.logger.warn('Unable to parse results page for year %d', year)
+            self.logger.warning('Unable to parse results page for year %d', year)
             return minfos
 
 

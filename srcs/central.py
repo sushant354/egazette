@@ -77,12 +77,12 @@ class CentralBase(BaseGazette):
 
     def get_search_form(self, webpage, dateobj):
         if webpage == None:
-            self.logger.warn('Unable to download the starting search page for day: %s', dateobj)
+            self.logger.warning('Unable to download the starting search page for day: %s', dateobj)
             return None 
 
         d = utils.parse_webpage(webpage, self.parser)
         if d == None:
-            self.logger.warn('Unable to parse the search page for day: %s', dateobj)
+            self.logger.warning('Unable to parse the search page for day: %s', dateobj)
             return None
 
         search_form = self.find_search_form(d)
@@ -91,7 +91,7 @@ class CentralBase(BaseGazette):
     def get_form_data(self, webpage, dateobj):
         search_form = self.get_search_form(webpage, dateobj)
         if search_form == None:
-            self.logger.warn('Unable to get the search form for day: %s', dateobj)
+            self.logger.warning('Unable to get the search form for day: %s', dateobj)
             return None 
 
         reobj  = re.compile('^(input|select)$')
@@ -147,13 +147,13 @@ class CentralBase(BaseGazette):
 
         d = utils.parse_webpage(webpage, self.parser)
         if not d:
-            self.logger.warn('Unable to parse search result page for %s', dateobj)
+            self.logger.warning('Unable to parse search result page for %s', dateobj)
             return metainfos, nextpage
 
         tables = d.find_all('table', {'id': self.result_table})
 
         if len(tables) != 1:
-            self.logger.warn('Could not find the result table for %s', dateobj)
+            self.logger.warning('Could not find the result table for %s', dateobj)
             return metainfos, nextpage
         
         order = None
@@ -266,13 +266,13 @@ class CentralBase(BaseGazette):
         response = self.download_url(search_url, postdata = postdata, \
                                          loadcookies= cookiejar)
         if not response or not response.webpage:
-            self.logger.warn('Could not get the page for %s' % metainfo)
+            self.logger.warning('Could not get the page for %s' % metainfo)
             return None
 
         webpage = response.webpage.decode('utf-8', 'ignore')
         reobj = re.search(self.gazette_js, webpage)
         if not reobj:
-            self.logger.warn('Could not get url link for %s' % metainfo)
+            self.logger.warning('Could not get url link for %s' % metainfo)
             return None
 
         href  = reobj.groupdict()['href']
@@ -296,7 +296,7 @@ class CentralBase(BaseGazette):
         cookiejar  = CookieJar()
         response = self.download_url(self.baseurl, savecookies = cookiejar, loadcookies = cookiejar)
         if not response:
-            self.logger.warn('Could not fetch %s for the day %s', self.baseurl, dateobj)
+            self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
             return dls
         curr_url = response.response_url
         search_url = urllib.parse.urljoin(curr_url, self.search_endp)
@@ -353,7 +353,7 @@ class CentralWeekly(CentralBase):
         cookiejar  = CookieJar()
         response = self.download_url(self.baseurl, savecookies = cookiejar, loadcookies = cookiejar)
         if not response:
-            self.logger.warn('Could not fetch %s for the day %s', self.baseurl, dateobj)
+            self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
             return dls
         curr_url = response.response_url
         search_url = urllib.parse.urljoin(curr_url, self.search_endp)
@@ -361,7 +361,7 @@ class CentralWeekly(CentralBase):
         response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar, referer = referer_url)
 
         if not response or not response.webpage:
-            self.logger.warn('Could not fetch %s for the day %s', search_url, dateobj)
+            self.logger.warning('Could not fetch %s for the day %s', search_url, dateobj)
             return dls
 
         postdata = self.get_form_data(response.webpage, dateobj)
@@ -373,11 +373,11 @@ class CentralWeekly(CentralBase):
                                    loadcookies = cookiejar, postdata = postdata)           
         search_form = self.get_search_form(response.webpage, dateobj)
         if not search_form:
-            self.logger.warn('Could not find the search form for the day %s', dateobj)
+            self.logger.warning('Could not find the search form for the day %s', dateobj)
             return dls
         partnum_tag = search_form.find('select', {'name': 'ddlPartSection'})
         if not partnum_tag:
-            self.logger.warn('Could not find the partnum tag for the day %s', dateobj)
+            self.logger.warning('Could not find the partnum tag for the day %s', dateobj)
             return dls
 
         for option in partnum_tag.find_all('option'):

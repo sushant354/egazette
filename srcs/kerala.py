@@ -21,7 +21,7 @@ class Kerala(BaseGazette):
         newdownloads = []
         while fromdate <= todate:
             if event.is_set():
-                self.logger.warn('Exiting prematurely as timer event is set')
+                self.logger.warning('Exiting prematurely as timer event is set')
                 break
 
             dateobj   = fromdate.date()
@@ -47,7 +47,7 @@ class Kerala(BaseGazette):
         dls = []
 
         if year < 2007:
-            self.logger.warn('Sorry no data for the year %s', year)
+            self.logger.warning('Sorry no data for the year %s', year)
             return dls
 
         href = self.year_href % year
@@ -59,11 +59,11 @@ class Kerala(BaseGazette):
         for url in urls:
             response = self.download_url(url)
             if not response or not response.webpage:
-                self.logger.warn('Unable to download %s. Skipping %s to %s', url, fromdate, todate)
+                self.logger.warning('Unable to download %s. Skipping %s to %s', url, fromdate, todate)
                 continue
             d = utils.parse_webpage(response.webpage, self.parser)
             if not d:
-                self.logger.warn('Unable to parse %s. Skipping %s to %s', url, fromdate, todate)
+                self.logger.warning('Unable to parse %s. Skipping %s to %s', url, fromdate, todate)
                 continue
 
             minfos = self.process_listing_page(url, d, fromdate, todate)
@@ -71,7 +71,7 @@ class Kerala(BaseGazette):
                 relurl = self.get_relurl(metainfo)
                 dateobj = metainfo.get_date()
                 if not relurl or not dateobj:
-                    self.logger.warn('Skipping. Could not get relurl/date for %s', metainfo)
+                    self.logger.warning('Skipping. Could not get relurl/date for %s', metainfo)
                     continue
 
                 relurl = os.path.join(relpath, dateobj.__str__(), relurl)
@@ -114,7 +114,7 @@ class Kerala(BaseGazette):
 
             dateobj = utils.get_date_from_title(txt)
             if not dateobj:
-                self.logger.warn('Unable to extract date from %s', txt)
+                self.logger.warning('Unable to extract date from %s', txt)
                 continue
 
             if dateobj < fromdate or dateobj > todate:
@@ -133,12 +133,12 @@ class Kerala(BaseGazette):
         response = self.download_url(url)
 
         if not response or not response.webpage:
-            self.logger.warn('Unable to download %s. Skipping', url)
+            self.logger.warning('Unable to download %s. Skipping', url)
             return minfos
 
         d = utils.parse_webpage(response.webpage, self.parser)
         if not d:
-            self.logger.warn('Unable to parse %s. Skipping.', url)
+            self.logger.warning('Unable to parse %s. Skipping.', url)
             return minfos
 
         partnum = None

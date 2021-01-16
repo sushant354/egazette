@@ -87,7 +87,7 @@ def get_arg_parser():
 def upload(bucket_name, bucket_class, bucket_location, filepath):
     if not filepath or not os.path.exists(filepath) or \
             not os.path.isfile(filepath):
-        logger.warn('File does not exist %s', filepath)
+        logger.warning('File does not exist %s', filepath)
         return None
 
     client = storage.Client()
@@ -97,14 +97,14 @@ def upload(bucket_name, bucket_class, bucket_location, filepath):
 
 def delete(bucket_name, blob_name):
     if not blob_name:
-        logger.warn('Need to specify blob_name to delete')
+        logger.warning('Need to specify blob_name to delete')
         return
 
     client = storage.Client()
     bucket = get_bucket(client, args.bucket_name)
 
     if bucket == None:
-        logger.warn('Bucket %s does not exist', bucket_name)
+        logger.warning('Bucket %s does not exist', bucket_name)
         return
 
     delete_blob(bucket, blob_name)

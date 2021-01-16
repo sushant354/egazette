@@ -79,12 +79,12 @@ class Uttarakhand(BaseGazette):
 
     def get_search_form(self, webpage, dateobj):
         if webpage == None:
-            self.logger.warn('Unable to download the starting search page for day: %s', dateobj)
+            self.logger.warning('Unable to download the starting search page for day: %s', dateobj)
             return None 
 
         d = utils.parse_webpage(webpage, self.parser)
         if d == None:
-            self.logger.warn('Unable to parse the search page for day: %s', dateobj)
+            self.logger.warning('Unable to parse the search page for day: %s', dateobj)
             return None
 
         search_form = self.find_search_form(d)
@@ -93,7 +93,7 @@ class Uttarakhand(BaseGazette):
     def get_form_data(self, webpage, dateobj):
         search_form = self.get_search_form(webpage, dateobj)
         if search_form == None:
-            self.logger.warn('Unable to get the search form for day: %s', dateobj)
+            self.logger.warning('Unable to get the search form for day: %s', dateobj)
             return None 
 
         reobj  = re.compile('^(input|select)$')
@@ -115,20 +115,20 @@ class Uttarakhand(BaseGazette):
         response = self.download_url(self.searchurl, savecookies = cookiejar, \
                                    loadcookies = cookiejar, postdata = postdata)
         if not response or not response.webpage:
-            self.logger.warn('Could not download search result for date %s', \
+            self.logger.warning('Could not download search result for date %s', \
                               dateobj)
             return dls
         
         d = utils.parse_webpage(response.webpage, self.parser)
         if not d:
-            self.logger.warn('Could not parse search result for date %s', \
+            self.logger.warning('Could not parse search result for date %s', \
                               dateobj)
             return dls
         
         minfos = self.get_metainfos(d, dateobj)
         for metainfo in minfos:
             if 'url' not in metainfo or 'notification_num' not in metainfo:
-                self.logger.warn('Ignoring %s', metainfo)
+                self.logger.warning('Ignoring %s', metainfo)
                 continue
             
             filename, n = re.subn('[\s/]+', '_', metainfo['notification_num'])

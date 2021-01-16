@@ -76,7 +76,7 @@ def parallel_download(gazetteobjs, agghosts, fromdate, todate, max_wait, all_dls
 
     if max_wait:       
         logger = logging.getLogger('crawler.controller')
-        logger.warn('Time expired. Setting the event and asking the crawlers to exit')
+        logger.warning('Time expired. Setting the event and asking the crawlers to exit')
         event.set()
         for t in tlist:
             if t.is_alive():

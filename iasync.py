@@ -108,7 +108,7 @@ class Gvision:
 
         success = pdf_to_jpg(filepath, jpgdir, 300)
         if not success:
-            self.logger.warn('Could not convert into jpg files %s', filepath)
+            self.logger.warning('Could not convert into jpg files %s', filepath)
             return None, None
 
         filenames = os.listdir(jpgdir)
@@ -240,7 +240,7 @@ class GazetteIA:
         try:
             item = get_item(identifier, archive_session = self.session)
         except Exception as e:
-            self.logger.warn('Could not get item %s. Error %s' , identifier, e) 
+            self.logger.warning('Could not get item %s. Error %s' , identifier, e) 
             item = None 
         return item
 
@@ -261,12 +261,12 @@ class GazetteIA:
     def upload(self, relurl):
         metainfo = self.file_storage.get_metainfo(relurl)
         if metainfo == None:
-            self.logger.warn('No metainfo, Ignoring upload for %s' % relurl) 
+            self.logger.warning('No metainfo, Ignoring upload for %s' % relurl) 
             return False
 
         identifier = self.get_identifier(relurl, metainfo)
         if identifier == None:
-            self.logger.warn('Could not form IA identifier. Ignoring upload for %s' % relurl) 
+            self.logger.warning('Could not form IA identifier. Ignoring upload for %s' % relurl) 
             return False
 
         while 1:
@@ -325,7 +325,7 @@ class GazetteIA:
         if success:
             self.logger.info('Successfully uploaded %s', identifier)
         else:    
-            self.logger.warn('Error in uploading %s', identifier)
+            self.logger.warning('Error in uploading %s', identifier)
         return success
 
     def ia_upload(self, identifier, metadata, to_upload, files, rawfile):
@@ -343,7 +343,7 @@ class GazetteIA:
                            retries=100)
             success = True
         except HTTPError as e:
-           self.logger.warn('Error in upload for %s: %s', identifier, e)
+           self.logger.warning('Error in upload for %s: %s', identifier, e)
            msg = '%s' % e
            if re.search('Syntax error detected in pdf data', msg) or \
                   re.search('error checking pdf file', msg):
@@ -351,7 +351,7 @@ class GazetteIA:
               success = True
 
         except Exception as e:
-           self.logger.warn('Error in upload for %s: %s', identifier, e)
+           self.logger.warning('Error in upload for %s: %s', identifier, e)
            success = False
         return success   
 
@@ -375,7 +375,7 @@ class GazetteIA:
             upload(identifier, [filepath], access_key = self.access_key, \
                    secret_key = self.secret_key)
         except Exception as e: 
-           self.logger.warn('Error in upload for %s: %s', filepath, e)
+           self.logger.warning('Error in upload for %s: %s', filepath, e)
            return False 
         return True   
 
@@ -487,7 +487,7 @@ class GazetteIA:
     def update_meta(self, relurl):
         metainfo = self.file_storage.get_metainfo(relurl)
         if metainfo == None:
-            self.logger.warn('No metainfo, Ignoring upload for %s' % relurl)
+            self.logger.warning('No metainfo, Ignoring upload for %s' % relurl)
             return False
 
         identifier = self.get_identifier(relurl, metainfo)
@@ -515,7 +515,7 @@ class GazetteIA:
                             access_key = self.access_key, \
                             secret_key = self.secret_key)
         except Exception as e:
-            self.logger.warn('Could not  modify metadata %s. Error %s' , identifier, e)
+            self.logger.warning('Could not  modify metadata %s. Error %s' , identifier, e)
             return False
         return True        
 

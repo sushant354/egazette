@@ -147,7 +147,7 @@ def get_arg_parser():
                        action='store', \
                        help='language code in BCP-47 (https://cloud.google.com/speech-to-text/docs/languages)')
     parser.add_argument('-g', '--loglevel', dest='loglevel', default='info',\
-                       action='store', help='log level (debug|info|warn|error)')
+                       action='store', help='log level (debug|info|warning|error)')
     parser.add_argument('-f', '--logfile', dest='logfile', default= None,\
                         action='store', help='log file')
 
@@ -174,7 +174,7 @@ def process_audio(data_dir, input_file):
     outfile  = os.path.join(data_dir, filename)
     if os.path.exists(outfile):
         logger = logging.getLogger('speechtotext')                            
-        logger.warn('FLAC already exists. Skipping %s', outfile)
+        logger.warning('FLAC already exists. Skipping %s', outfile)
     else:
         to_flac(input_file, outfile)
 
@@ -185,7 +185,7 @@ def upload_audio(audio_file, bucket_name, bucket_class, bucket_location):
                                 bucket_location, audio_file)
     if not blob_name:                            
         logger = logging.getLogger('speechtotext')                            
-        logger.warn('Unable to upload on Gstorage %s ',audio_file)
+        logger.warning('Unable to upload on Gstorage %s ',audio_file)
         return None                  
 
     return blob_name 

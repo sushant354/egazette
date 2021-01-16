@@ -19,20 +19,20 @@ class Goa(BaseGazette):
         searchurl = self.searchurl % (datestr, datestr)
         response = self.download_url(searchurl)
         if not response or not response.webpage:
-            self.logger.warn('Could not download search result for date %s', \
+            self.logger.warning('Could not download search result for date %s', \
                               dateobj)
             return dls
 
         d = utils.parse_webpage(response.webpage, self.parser)
         if not d:
-            self.logger.warn('Could not parse search result for date %s', \
+            self.logger.warning('Could not parse search result for date %s', \
                               dateobj)
             return dls
 
         minfos = self.parse_results(d, dateobj)
         for metainfo in minfos:
             if 'download' not in metainfo:
-                self.logger.warn('No link. Ignoring metainfo: %s', metainfo)
+                self.logger.warning('No link. Ignoring metainfo: %s', metainfo)
                 continue
             relurl = self.download_gazette(metainfo, searchurl, relpath)
             if relurl:
@@ -78,7 +78,7 @@ class Goa(BaseGazette):
         result_table = d.find('table', {'class': 'gazettes'})
 
         if result_table == None:
-            self.logger.warn('Did not get the result table for %s', dateobj)
+            self.logger.warning('Did not get the result table for %s', dateobj)
             return minfos
 
         order = None

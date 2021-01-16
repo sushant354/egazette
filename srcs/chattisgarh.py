@@ -161,7 +161,7 @@ class ChattisgarhWeekly(CentralBase):
     def download_gazette(self, relpath, search_url, postdata, metainfo, cookiejar):
         relurl = self.get_relurl(relpath, metainfo)
         if not relurl:
-            self.logger.warn('Not able to form relurl for %s', metainfo)
+            self.logger.warning('Not able to form relurl for %s', metainfo)
             return None
 
         newpost = []
@@ -174,7 +174,7 @@ class ChattisgarhWeekly(CentralBase):
         gzid = self.post_for_gzid(newpost)
 
         if not gzid:
-            self.logger.warn('Unable to get gazette id in the cookie for %s', relurl)
+            self.logger.warning('Unable to get gazette id in the cookie for %s', relurl)
             return None
         
         fileurl = self.file_url % gzid 

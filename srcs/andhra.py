@@ -86,12 +86,12 @@ class Andhra(BaseGazette):
         minfos = []
         d = utils.parse_webpage(webpage, self.parser)
         if not d:
-            self.logger.warn('Unable to parse results page for date %s', dateobj)
+            self.logger.warning('Unable to parse results page for date %s', dateobj)
             return minfos
 
         table = d.find('table', {'id': 'displaytable'})
         if not table:
-            self.logger.warn('Unable to find result table for date %s', dateobj)
+            self.logger.warning('Unable to find result table for date %s', dateobj)
             return minfos
         
         order = None
@@ -285,13 +285,13 @@ class AndhraArchive(CentralBase):
         dls = []
         for metainfo in metainfos:
             if 'download' not in metainfo or 'gznum' not in metainfo:
-                self.logger.warn('Required fields not present. Ignoring- %s' % metainfo) 
+                self.logger.warning('Required fields not present. Ignoring- %s' % metainfo) 
                 continue
 
             href = metainfo.pop('download')
             reobj = re.search('javascript:__doPostBack\(\'(?P<event_target>[^\']+)\',\'(?P<event_arg>[^\']+)\'\)', href)
             if not reobj:
-                self.logger.warn('No event_target or event_arg in the gazette link. Ignoring - %s' % metainfo)
+                self.logger.warning('No event_target or event_arg in the gazette link. Ignoring - %s' % metainfo)
                 continue 
 
             groupdict    = reobj.groupdict()

@@ -34,12 +34,12 @@ class MadhyaPradesh(BaseGazette):
             parturl = urllib.parse.urljoin(self.baseurl, parturl % dateobj.year)
             response = self.download_url(parturl)
             if not response or not response.webpage:
-                self.logger.warn('Unable to download Ordinary gazette list for Part %s, year %d', partnum, dateobj.year)
+                self.logger.warning('Unable to download Ordinary gazette list for Part %s, year %d', partnum, dateobj.year)
                 continue
 
             d = utils.parse_webpage(response.webpage, self.parser)
             if not d:    
-                self.logger.warn('Unable to parse Ordinary gazette list for Part %s, year %d', partnum, dateobj.year)
+                self.logger.warning('Unable to parse Ordinary gazette list for Part %s, year %d', partnum, dateobj.year)
                 continue
             
             minfos = self.parse_listing_webpage(parturl, d, dateobj, partnum, 'Ordinary')
@@ -50,12 +50,12 @@ class MadhyaPradesh(BaseGazette):
 
         response = self.download_url(ex_url)
         if not response or not response.webpage:
-            self.logger.warn('Unable to download Extraordinary gazette for year %d', dateobj.year)
+            self.logger.warning('Unable to download Extraordinary gazette for year %d', dateobj.year)
             return
 
         d = utils.parse_webpage(response.webpage, self.parser)
         if not d:    
-            self.logger.warn('Unable to parse Extraordinary gazette list for year %d', dateobj.year)
+            self.logger.warning('Unable to parse Extraordinary gazette list for year %d', dateobj.year)
             return
             
         if dateobj.year == 2010:
@@ -82,14 +82,14 @@ class MadhyaPradesh(BaseGazette):
 
                 nums = re.findall('\d+', txt)
                 if len(nums) < 4:
-                    self.logger.warn('Not able to parse. Ignoring %s', link)
+                    self.logger.warning('Not able to parse. Ignoring %s', link)
                     continue
 
                 gznum = ''.join(nums[:-3])
                 try:
                     date  = datetime.date(int(nums[-1]), int(nums[-2]), int(nums[-3]))    
                 except:
-                    self.logger.warn('Could not get date. Ignoring %s', txt)
+                    self.logger.warning('Could not get date. Ignoring %s', txt)
                     continue
                 
                 if date != dateobj:
@@ -126,7 +126,7 @@ class MadhyaPradesh(BaseGazette):
 
         result_table = self.find_result_table(d)
         if result_table == None:
-            self.loger.warn('Could not find result table for date %s', dateobj)
+            self.loger.warning('Could not find result table for date %s', dateobj)
             return minfos
 
         order = None
@@ -180,7 +180,7 @@ class MadhyaPradesh(BaseGazette):
             elif txt and order[i] == 'date':
                 nums = re.split('[./-]+', txt)
                 if len(nums) < 3:
-                    self.logger.warn('Couldn\'t get date from %s for extraordinary gazette list', txt)
+                    self.logger.warning('Couldn\'t get date from %s for extraordinary gazette list', txt)
                     i += 1
                     continue
 
@@ -190,7 +190,7 @@ class MadhyaPradesh(BaseGazette):
                 try:
                     metainfo.set_date(d)
                 except:
-                    self.logger.warn('Could not parse date %s', txt)
+                    self.logger.warning('Could not parse date %s', txt)
                     
             i += 1
         if metainfo.get_date() == dateobj:
@@ -203,7 +203,7 @@ class MadhyaPradesh(BaseGazette):
         for metainfo in minfos:
             if not 'gztype' in metainfo or not 'gznum' in metainfo or \
                     not 'url' in metainfo:
-                self.logger.warn('Ignoring as not enough info to download: %s', metainfo)
+                self.logger.warning('Ignoring as not enough info to download: %s', metainfo)
                 continue
 
             filename = '%s_%s' % (metainfo['gztype'], metainfo['gznum'])

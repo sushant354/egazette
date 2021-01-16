@@ -92,7 +92,7 @@ class Haryana(AndhraArchive):
             if d and not self.is_form_webpage(d):
                 break 
             else:   
-                self.logger.warn('Failed in solving captcha. Rerying.')
+                self.logger.warning('Failed in solving captcha. Rerying.')
                 cookiejar = CookieJar()
                 response = self.download_url(search_url, savecookies = cookiejar)
                 
@@ -124,7 +124,7 @@ class Haryana(AndhraArchive):
     def submit_captcha_form(self, search_url, webpage, cookiejar, dateobj): 
         captcha = self.download_captcha(search_url, webpage, cookiejar)
         if captcha == None or captcha.webpage == None:
-            self.logger.warn('Unable to download captcha')
+            self.logger.warning('Unable to download captcha')
             return None
 
         img = Image.open(io.BytesIO(captcha.webpage))
@@ -188,13 +188,13 @@ class Haryana(AndhraArchive):
         dls = []
         for metainfo in metainfos:
             if 'download' not in metainfo or 'notification_num' not in metainfo:
-                self.logger.warn('Required fields not present. Ignoring- %s' % metainfo) 
+                self.logger.warning('Required fields not present. Ignoring- %s' % metainfo) 
                 continue
 
             href = metainfo.pop('download')
             reobj = re.search('javascript:__doPostBack\(\'(?P<event_target>[^\']+)\'', href)
             if not reobj:
-                self.logger.warn('No event_target in the gazette link. Ignoring - %s' % metainfo)
+                self.logger.warning('No event_target in the gazette link. Ignoring - %s' % metainfo)
                 continue 
 
             groupdict    = reobj.groupdict()
@@ -211,12 +211,12 @@ class Haryana(AndhraArchive):
             response = self.download_url(search_url, postdata = newpost, \
                                          loadcookies= cookiejar)
             if not response or not response.webpage:
-                self.logger.warn('Could not get the page for %s' % metainfo)
+                self.logger.warning('Could not get the page for %s' % metainfo)
                 continue
             webpage = response.webpage.decode('utf-8', 'ignore') 
             reobj = re.search(self.gazette_js, webpage)
             if not reobj:
-                self.logger.warn('Could not get url link for %s' % metainfo)
+                self.logger.warning('Could not get url link for %s' % metainfo)
                 continue
             href  = reobj.groupdict()['href']
             gzurl = urllib.parse.urljoin(search_url, href)
@@ -344,7 +344,7 @@ class HaryanaArchive(Haryana):
     def get_form_data(self, webpage, dateobj, category):
         search_form = self.get_search_form(webpage, dateobj)
         if search_form == None:
-            self.logger.warn('Unable to get the search form for day: %s', dateobj)
+            self.logger.warning('Unable to get the search form for day: %s', dateobj)
             return None
 
         reobj  = re.compile('^(input|select)$')
@@ -375,7 +375,7 @@ class HaryanaArchive(Haryana):
                             dateobj, category):        
         captcha  = self.download_url(self.captcha_url, loadcookies=cookiejar)
         if captcha == None or captcha.webpage == None:
-            self.logger.warn('Unable to download captcha')
+            self.logger.warning('Unable to download captcha')
             return None
 
         img = Image.open(io.BytesIO(captcha.webpage))

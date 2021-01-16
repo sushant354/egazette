@@ -48,7 +48,7 @@ class Karnataka(BaseGazette):
 
         page_type = self.get_file_extension(response.webpage)
         if page_type != 'pdf':
-            self.logger.warn('Got a non-pdf page and we can\'t handle it for datte %s', dateobj)
+            self.logger.warning('Got a non-pdf page and we can\'t handle it for datte %s', dateobj)
             return dls
 
         links = []

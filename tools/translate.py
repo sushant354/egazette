@@ -2,7 +2,7 @@ import argparse
 import os
 import codecs
 import re
-import cgi
+import html 
 
 from bs4 import BeautifulSoup, NavigableString, Tag
 from bs4 import Comment, Declaration, CData, ProcessingInstruction, Doctype
@@ -133,7 +133,7 @@ class HtmlProcessor:
                 text = '%s' % content
                 translated_text = self.translate(text)
                 if translated_text:
-                    outhandle.write(cgi.escape(translated_text))
+                    outhandle.write(html.escape(translated_text))
             elif type(content) in self.ignoretypes:
                  outhandle.write('%s' % content)
             elif isinstance(content, Doctype):
@@ -161,7 +161,7 @@ class HtmlProcessor:
                      elif k == 'lang':
                          v = self.to_lang 
 
-                     v = cgi.escape(v)
+                     v = html.escape(v)
                      attrs.append('%s="%s"' % (k, v))
 
                  if 'lang' not in content.attrs and content.name == 'html':

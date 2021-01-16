@@ -35,20 +35,20 @@ class Punjab(BaseGazette):
         response = self.download_url(self.searchurl, postdata = postdata)
 
         if not response or not response.webpage:
-            self.logger.warn('Could not download search result for date %s', \
+            self.logger.warning('Could not download search result for date %s', \
                               dateobj)
             return dls
         
         d = utils.parse_webpage(response.webpage, self.parser)
         if not d:
-            self.logger.warn('Could not parse search result for date %s', \
+            self.logger.warning('Could not parse search result for date %s', \
                               dateobj)
             return dls
         
         minfos = self.get_metainfos(d, dateobj)
         for metainfo in minfos:
             if 'docid' not in metainfo:
-                self.logger.warn('Ignoring metainfo: %s', metainfo)
+                self.logger.warning('Ignoring metainfo: %s', metainfo)
                 continue
 
             filename = metainfo.pop('docid')
@@ -63,7 +63,7 @@ class Punjab(BaseGazette):
         minfos = []
         tables = d.find_all('table', {'id': 'tblData'})
         if len(tables) == 0:
-            self.logger.warn('Could not find the result table for %s', dateobj)
+            self.logger.warning('Could not find the result table for %s', dateobj)
             return minfos
 
         
@@ -164,14 +164,14 @@ class PunjabDSA(BaseGazette):
                                      encodepost = False, headers= accept_hdr)
 
         if not response or not response.webpage:
-            self.logger.warn('Could not download search result for date %s', \
+            self.logger.warning('Could not download search result for date %s', \
                               dateobj)
             return dls
 
         try:
             x = json.loads(response.webpage)
         except Exception as e:
-            self.logger.warn('Unable to parse json for %s', dateobj)
+            self.logger.warning('Unable to parse json for %s', dateobj)
             return dls
 
 
@@ -234,7 +234,7 @@ class PunjabDSA(BaseGazette):
         try:
             x = json.loads(doc)
         except Exception as e:
-            self.logger.warn('Error in parsing json on the request of %s', relurl)
+            self.logger.warning('Error in parsing json on the request of %s', relurl)
             return False
 
         updated = False
