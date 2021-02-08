@@ -88,7 +88,7 @@ h2==3.2.0
 hpack==3.0.0
 hstspreload==2020.4.24
 html5lib==1.0.1
-httplib2==0.14.0
+httplib2==0.19.0
 httpx==0.12.1
 hyperframe==5.2.0
 idna==2.8
