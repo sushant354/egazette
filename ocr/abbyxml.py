@@ -1,10 +1,11 @@
 from xml.sax import saxutils
 
 class Abby:
-    def __init__(self, outhandle):
+    def __init__(self, outhandle, langtags):
         self.outhandle = outhandle
         self.height    = 0
         self.width     = 0
+        self.langtags  = langtags
 
     def write_header(self):
         self.outhandle.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n')
@@ -28,7 +29,6 @@ class Abby:
     def write_word(self, word):
         for symbol in word.symbols:
             self.write_symbol(symbol)
-
 
     def write_symbol(self, symbol): 
         box = symbol.bounding_box
@@ -94,7 +94,11 @@ class Abby:
         baselines.sort( key = lambda x: baselinedict[x], reverse = True)
         baseline = baselines[0]
         self.outhandle.write('<line baseline="%d" l="%d" t="%d" r="%d" b="%d">\n<formatting>\n' % (baseline, l, t, r, b))    
-       
+    
+    def update_langtag(self, word):
+        for lang in word.property.detected_languages:
+            self.langtags.update(1, lang.language_code)
+
     def handle_words(self, words):
         lines = self.stitch_words(words)
 
@@ -108,6 +112,7 @@ class Abby:
                 if prevbox != None:
                     self.write_space(prevbox, box)
                 self.write_word(word)
+                self.update_langtag(word)
 
                 prevbox = box
             self.outhandle.write('</formatting>\n</line>\n')

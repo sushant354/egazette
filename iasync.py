@@ -115,7 +115,7 @@ class Gvision:
         filenames.sort(key=natural_keys)
 
         outhandle = codecs.open(abbyfile, 'w', encoding = 'utf8')
-        to_abby(jpgdir, filenames, self.client, outhandle, gocrdir, 300)
+        to_abby(jpgdir, filenames, self.client, outhandle, gocrdir, 300, None)
         outhandle.close()
         
         abbyfile_gz, n = re.subn('xml$', 'gz', abbyfile)

@@ -23,7 +23,9 @@ from google.cloud import vision
 
 FNULL = open(os.devnull, 'w')
 
-
+ia_lang_map = {'en': 'eng', 'hi': 'hin', 'te': 'tel', 'kn': 'kan', \
+               'mr': 'mar', 'ta': 'tam', 'or': 'ori', 'pa': 'pan', \
+               'ml': 'mal', 'pt': 'por'}
 def print_usage(progname):
     print('''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
                        [-D top_dir for InternetArchive mode]
@@ -39,6 +41,7 @@ def print_usage(progname):
                        [-I file with internetarchive_items]
                        [-i input_file] [-o output_file]
                        [-u (update)]
+                       [-U (update language)]
           ''' % progname)
 
 def get_google_client(key_file):
@@ -274,7 +277,7 @@ def atoi(text):
 def natural_keys(text):
     return [ atoi(c) for c in re.split('(\d+)', text) ]
 
-def process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi):
+def process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi, langtags):
     filenames = os.listdir(jpgdir)
     filenames.sort(key=natural_keys)
 
@@ -285,8 +288,7 @@ def process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi):
     elif out_format == 'djvu':   
         to_djvu(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'abby':   
-        to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi)
-
+        to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags)
 
 def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
     for filename in filenames:
@@ -339,9 +341,9 @@ def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
             djvu.handle_google_response(response)
     djvu.write_footer()
 
-def to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi):
+def to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags):
     logger = logging.getLogger('gvision')
-    abby= Abby(outhandle)
+    abby= Abby(outhandle, langtags)
     abby.write_header()
     for filename in filenames:
         infile    = os.path.join(jpgdir, filename)
@@ -367,11 +369,39 @@ def compress_abbyy(abby_file, compressed_file):
     f_out.close()
     f_in.close()
 
+class LangTags:
+    def __init__(self):
+       self.total    = 0
+       self.langdict = {}
+
+    def update(self, numchars, lang):
+       if lang not in self.langdict:
+           self.langdict[lang] = 0
+       
+       self.langdict[lang] += numchars
+       self.total += numchars
+    
+    def get_langs(self):
+       if self.total <= 0:
+           return []
+       
+       langs = []
+
+       for k, v in self.langdict.items():
+           if v * 100.0/self.total > 5:
+               langs.append(k)
+
+       langs.sort(key = lambda x: self.langdict[k], reverse = True)
+       return langs[:4]
+
 class IA:
-    def __init__(self, top_dir, access_key, secret_key, loglevel, logfile):
+    def __init__(self, top_dir, access_key, secret_key, loglevel, logfile, \
+                 update_lang):
         self.top_dir      = top_dir
         self.access_key   = access_key
         self.secret_key   = secret_key
+        self.update_lang  = update_lang
+
         self.headers      = {'x-archive-keep-old-version': '0'}
 
         session_data = {'access': access_key, 'secret': secret_key}
@@ -400,7 +430,7 @@ class IA:
     def find_jp2(self, item_path):
         zfiles = []
         for filename in os.listdir(item_path):
-            if re.search('_jp2.zip$', filename):
+            if re.search('_(jp2|jpg).zip$', filename):
                 zfiles.append(filename)
         return zfiles        
 
@@ -425,9 +455,9 @@ class IA:
         item_path = os.path.join(self.top_dir, item)
         if jp2_filter:
             for f in jp2_filter:
-                self.download_jp2(item, '%s*_jp2.zip' % f)
+                self.download_jp2(item, '%s*_(jp2|jpg).zip' % f)
         else:        
-            self.download_jp2(item, '*_jp2.zip')
+            self.download_jp2(item, '*_(jp2|jpg).zip')
                 
         if not os.path.exists(item_path):
             self.logger.warning('Item path does not exist: %s', item_path)
@@ -510,10 +540,24 @@ class IA:
             return False
         return True
 
-    def upload_abbyy(self, ia_item, abby_filelist):
+    def get_ia_langs(self, langs):
+        ia_langs = []
+        for lang in langs:
+           if lang in ia_lang_map: 
+               ia_langs.append(ia_lang_map[lang])
+        return ia_langs
+
+    def update_ik_metadata(self, ia_item, langs):
         metadata = {'ocr': 'google-cloud-vision IndianKanoon 1.0', \
                     'fts-ignore-ingestion-lang-filter': 'true'}
+         
+        archive_langs = self.get_ia_langs(langs)
+        if archive_langs:
+            metadata['language'] = archive_langs
 
+        self.update_metadata(ia_item, metadata)
+
+    def upload_abbyy(self, ia_item, abby_filelist):
         abby_files_gz = []
         for abby_file in abby_filelist:
             abby_file_gz, n = re.subn('xml$', 'gz', abby_file)
@@ -522,7 +566,6 @@ class IA:
             compress_abbyy(abby_file, abby_file_gz)
             abby_files_gz.append(abby_file_gz)
 
-        self.update_metadata(ia_item, metadata)
         success = False 
         while not success:
             try:
@@ -536,7 +579,8 @@ class IA:
                 time.sleep(120)
         return success   
 
-def process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi):
+def process_item(client, ia, ia_item, jp2_filter, out_format, \
+                 update, ppi):
         if not update and ia.is_exist(ia_item):
             logger.warning('Item already processed %s', ia_item)
             return
@@ -548,9 +592,11 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi):
             return 
 
         
+        langtags    = LangTags()
         inter_files = []
         abby_files  = []
         item_path   = os.path.join(ia.top_dir, ia_item)
+
 
         for zfile in zfiles:   
             inter_files.append(('file', os.path.join(item_path, zfile)))
@@ -562,10 +608,13 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi):
             
             inter_files.append(('dir', jp2_path))
 
-            jpgdir   = ia.convert_jp2(jp2_path)
-            if not jpgdir:
-                logger.warning('Could not convert JP2 to JPG for %s', jp2_path)
-                continue
+            if not re.search('_jpg$', jp2_path):
+                jpgdir   = ia.convert_jp2(jp2_path)
+                if not jpgdir:
+                    logger.warning('Could not convert JP2 to JPG: %s', jp2_path)
+                    continue
+            else:
+                jpgdir = jp2_path
 
             inter_files.append(('dir', jpgdir))
 
@@ -584,13 +633,15 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi):
 
             outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
             process(client, jpgdir, outhandle, out_format, gocr_dir, layout, \
-                    ppi)
+                    ppi, langtags)
             outhandle.close()
 
             if out_format == 'abby':
                 abby_files.append(out_file)
     
         if out_format == 'abby':
+            langs = langtags.get_langs()
+            ia.update_ik_metadata(ia_item, langs)
             ia.upload_abbyy(ia_item, abby_files)
             clean_datadir(inter_files)
 
@@ -627,8 +678,9 @@ if __name__ == '__main__':
     ppi        = 300
     ia_item_file = None
     check_dirs   = []
+    update_lang  = False
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:c:d:D:l:f:F:g:G:i:I:k:m:o:O:p:Lsu')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:c:d:D:l:f:F:g:G:i:I:k:m:o:O:p:LsuU')
 
     jpgdir = None
     for o, v in optlist:
@@ -670,6 +722,8 @@ if __name__ == '__main__':
             out_format = v
         elif o == '-u':
             update = True
+        elif o == '-U':
+            update_lang = True
 
     if key_file == None:
         print('Google Cloud API credentials are mising')
@@ -751,13 +805,15 @@ if __name__ == '__main__':
             logger.warning('ghostscript on pdffile %s failed' % input_file)
             sys.exit(0)
         outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
-        process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi)
+        langtags = LangTags()
+        process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi, langtags)
         outhandle.close()
 
         if tmpdir:
            os.system('rm -rf %s' % jpgdir)
     else:
-        ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], logfile)
+        ia = IA(top_dir, access_key, secret_key, leveldict[loglevel], \
+                logfile, update_lang)
         if ia_item:
             process_item(client, ia, ia_item, jp2_filter, out_format, update, ppi)
         elif ia_item_file:
