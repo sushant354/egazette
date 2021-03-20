@@ -100,7 +100,7 @@ internetarchive==1.8.5
 iotop==0.6
 jdcal==1.4.1
 jeepney==0.4.3
-Jinja2==2.11.2
+Jinja2==2.11.3
 joblib==0.14.1
 jsonpatch==1.24
 jsonpointer==2.0
