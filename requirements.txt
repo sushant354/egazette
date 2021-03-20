@@ -61,7 +61,7 @@ django-taggit==1.1.0
 django-taggit-serializer==0.1.7
 django-templated-email==2.3.0
 django-wkhtmltopdf==3.2.0
-djangorestframework==3.11.0
+djangorestframework==3.11.2
 djangorestframework-xml==2.0.0
 docopt==0.6.2
 docutils==0.16
