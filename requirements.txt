@@ -147,7 +147,7 @@ pyasn1-modules==0.2.7
 pycparser==2.20
 pyelftools==0.26
 pyflakes==2.2.0
-Pygments==2.6.1
+Pygments==2.7.4
 pynndescent==0.4.7
 pyOpenSSL==19.1.0
 pyparsing==2.4.7
