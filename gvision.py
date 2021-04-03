@@ -11,6 +11,7 @@ from zipfile import ZipFile
 import gzip
 import time
 import shutil
+from iso639 import languages
 
 from egazette.ocr.djvuxml import Djvu
 from egazette.ocr.abbyxml import Abby
@@ -570,8 +571,12 @@ class IA:
     def get_ia_langs(self, langs):
         ia_langs = []
         for lang in langs:
-           if lang in ia_lang_map: 
-               ia_langs.append(ia_lang_map[lang])
+           try:
+               l = languages.get(part1 = lang)
+           except KeyError:
+               continue
+
+           ia_langs.append(l.part3)
         return ia_langs
 
     def update_ik_metadata(self, ia_item, langs):

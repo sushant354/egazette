@@ -16,7 +16,7 @@ from egazette.utils.file_storage import FileManager
 from egazette.utils import reporting
 from egazette.srcs  import datasrcs 
 from egazette.utils import utils
-from egazette.gvision import get_google_client, to_abby, pdf_to_jpg, compress_abbyy
+from egazette.gvision import get_google_client, to_hocr, pdf_to_jpg, compress_file, LangTags
 
 class Stats:
     def __init__(self):
@@ -93,14 +93,14 @@ class Gvision:
         if not os.path.exists(path):
             os.mkdir(path)
 
-    def convert_to_jpg_abby(self, identifier, filepath):
+    def convert_to_jpg_hocr(self, identifier, filepath):
         path, filename  = os.path.split(filepath)
         name, n = re.subn('.pdf$', '', filename)
 
         item_path = os.path.join(self.iadir, identifier)
         jpgdir    = os.path.join(item_path, name + '_jpg')
         gocrdir   = os.path.join(item_path, name + '_gocr')
-        abbyfile  = os.path.join(item_path, name + '_abbyy.xml')
+        hocrfile  = os.path.join(item_path, name + '_chocr.html')
 
         self.mkdir(item_path)
         self.mkdir(jpgdir)
@@ -114,20 +114,19 @@ class Gvision:
         filenames = os.listdir(jpgdir)
         filenames.sort(key=natural_keys)
 
-        outhandle = codecs.open(abbyfile, 'w', encoding = 'utf8')
-        to_abby(jpgdir, filenames, self.client, outhandle, gocrdir, 300, None)
+        outhandle = codecs.open(hocrfile, 'w', encoding = 'utf8')
+        langtags  = LangTags()
+        to_hocr(jpgdir, filenames, self.client, outhandle, gocrdir, 300, langtags)
         outhandle.close()
         
-        abbyfile_gz, n = re.subn('xml$', 'gz', abbyfile)
-        compress_abbyy(abbyfile, abbyfile_gz)
-
+        hocrfile_gz =  hocrfile + '.gz'
+        compress_file(hocrfile, hocrfile_gz)
 
         jpgzip   = jpgdir + '.zip'
         jpgfiles = [os.path.join(jpgdir, x) for x in filenames]
 
         create_zip(jpgzip, jpgfiles)
-        return jpgzip, abbyfile_gz
-
+        return jpgzip, hocrfile_gz
 
 class GazetteIA:
     def __init__(self, gvisionobj, file_storage, access_key, secret_key, \
@@ -248,11 +247,11 @@ class GazetteIA:
         final = []
         for filepath in to_upload:
             if re.search('pdf$', filepath):
-                jpgzip, abbyzip = self.gvisionobj.convert_to_jpg_abby(identifier, filepath)
+                jpgzip, hocrzip = self.gvisionobj.convert_to_jpg_hocr(identifier, filepath)
                 if jpgzip:
                     final.append(jpgzip)
-                if abbyzip:
-                    final.append(abbyzip)
+                if hocrzip:
+                    final.append(hocrzip)
             else:
                 final.append(filepath)
 
