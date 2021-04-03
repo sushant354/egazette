@@ -7,7 +7,6 @@ import io
 import subprocess
 import tempfile
 import codecs
-import pickle
 from zipfile import ZipFile
 import gzip
 import time
@@ -15,6 +14,7 @@ import shutil
 
 from egazette.ocr.djvuxml import Djvu
 from egazette.ocr.abbyxml import Abby
+from egazette.ocr.hocr import HOCR
 from egazette.ocr.htmlmaker import HtmlMaker
 import internetarchive 
 from internetarchive import download, upload, get_session, modify_metadata
@@ -34,7 +34,7 @@ def print_usage(progname):
                        [-g google_ocr_output_directory]
                        [-f jp2_filter]
                        [-F logfile]
-                       [-O output_format(text|djvu|abby|html)]
+                       [-O output_format(text|djvu|abby|html|hocr)]
                        [-G google_key_file]
                        [-m internetarchive_item]
                        [-s (stdin for streaming internetarchive_items)]
@@ -289,6 +289,8 @@ def process(client, jpgdir, outhandle, out_format, gocr_dir, layout, ppi, langta
         to_djvu(jpgdir, filenames, client, outhandle, gocr_dir)
     elif out_format == 'abby':   
         to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags)
+    elif out_format == 'hocr':   
+        to_hocr(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags)
 
 def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
     for filename in filenames:
@@ -341,6 +343,28 @@ def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
             djvu.handle_google_response(response)
     djvu.write_footer()
 
+def to_hocr(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags):
+    logger = logging.getLogger('gvision')
+    hocr   = HOCR(outhandle, langtags)
+
+    hocr.write_header()
+    for filename in filenames:
+        infile    = os.path.join(jpgdir, filename)
+        if gocr_dir:
+            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file = os.path.join(gocr_dir, gocr_file)
+        else:
+            gocr_file = None
+        response  = google_ocr(client, infile, gocr_file)
+        if response and response.full_text_annotation.pages:
+            hocr.handle_google_response(response, ppi)
+        else:
+            logger.warning('No pages in %s', filename)
+            hocr.write_page_header(None, None, ppi)
+            hocr.write_page_footer()
+
+    hocr.write_footer()
+
 def to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags):
     logger = logging.getLogger('gvision')
     abby= Abby(outhandle, langtags)
@@ -362,8 +386,9 @@ def to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags):
 
     abby.write_footer()
 
-def compress_abbyy(abby_file, compressed_file):
-    f_in = open(abby_file, 'rb')
+
+def compress_file(infile, compressed_file):
+    f_in = open(infile, 'rb')
     f_out = gzip.open(compressed_file, 'wb')
     f_out.writelines(f_in)
     f_out.close()
@@ -455,9 +480,11 @@ class IA:
         item_path = os.path.join(self.top_dir, item)
         if jp2_filter:
             for f in jp2_filter:
-                self.download_jp2(item, '%s*_(jp2|jpg).zip' % f)
+                self.download_jp2(item, '%s*_jpg.zip' % f)
+                self.download_jp2(item, '%s*_jp2.zip' % f)
         else:        
-            self.download_jp2(item, '*_(jp2|jpg).zip')
+            self.download_jp2(item, '*_jp2.zip')
+            self.download_jp2(item, '*_jpg.zip')
                 
         if not os.path.exists(item_path):
             self.logger.warning('Item path does not exist: %s', item_path)
@@ -563,13 +590,27 @@ class IA:
             abby_file_gz, n = re.subn('xml$', 'gz', abby_file)
             self.delete_imagepdf(ia_item, abby_file_gz)
 
-            compress_abbyy(abby_file, abby_file_gz)
+            compress_file(abby_file, abby_file_gz)
             abby_files_gz.append(abby_file_gz)
 
+        return self.upload_files(ia_item, abby_files_gz)
+
+    def upload_chocr(self, ia_item, filelist):
+        files_gz = []
+        for chocr_file in filelist:
+            file_gz = chocr_file + '.gz'
+            #self.delete_imagepdf(ia_item, file_gz)
+
+            compress_file(chocr_file, file_gz)
+            files_gz.append(file_gz)
+
+        return self.upload_files(ia_item, files_gz)
+
+    def upload_files(self, ia_item, files_list):
         success = False 
         while not success:
             try:
-                success = upload(ia_item, abby_files_gz, headers=self.headers,\
+                success = upload(ia_item, files_list, headers=self.headers,\
                                  access_key = self.access_key, \
                                  secret_key = self.secret_key, retries=100)
                 success = True                 
@@ -595,6 +636,7 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
         langtags    = LangTags()
         inter_files = []
         abby_files  = []
+        hocr_files  = []
         item_path   = os.path.join(ia.top_dir, ia_item)
 
 
@@ -630,6 +672,8 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
                 out_file, n = re.subn('_jpg$', '.djvu', jpgdir)
             elif out_format == 'html':
                 out_file, n = re.subn('_jpg$', '.html', jpgdir)
+            elif out_format == 'hocr':
+                out_file, n = re.subn('_jpg$', '_chocr.html', jpgdir)
 
             outhandle = codecs.open(out_file, 'w', encoding = 'utf8')
             process(client, jpgdir, outhandle, out_format, gocr_dir, layout, \
@@ -638,11 +682,18 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
 
             if out_format == 'abby':
                 abby_files.append(out_file)
+            elif out_format == 'hocr':
+                hocr_files.append(out_file)
     
         if out_format == 'abby':
             langs = langtags.get_langs()
             ia.update_ik_metadata(ia_item, langs)
             ia.upload_abbyy(ia_item, abby_files)
+            clean_datadir(inter_files)
+        elif out_format == 'hocr':
+            langs = langtags.get_langs()
+            ia.update_ik_metadata(ia_item, langs)
+            ia.upload_chocr(ia_item, hocr_files)
             clean_datadir(inter_files)
 
 def clean_datadir(inter_files):
@@ -785,7 +836,7 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
-    if out_format not in ['text', 'djvu', 'abby', 'html']:
+    if out_format not in ['text', 'djvu', 'abby', 'html', 'hocr']:
         print('Unsupported output format %s. Output format should be text or djvu.' % out_format)
         print_usage(progname)
         sys.exit(0)
