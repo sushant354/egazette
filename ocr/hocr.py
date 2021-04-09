@@ -110,13 +110,13 @@ class HOCR:
         self.outhandle.write('</body>\n</html>\n')
 
 
-    def process_word(self, word, wordelem):
+    def process_word(self, word, wordelem, max_box):
         for symbol in word.symbols:
             charelem = etree.Element('span', attrib={'class': 'ocrx_cinfo'})
             charelem.text = symbol.text
 
             kv = {}
-            kv['x_bboxes'] = self.get_bbox(symbol.bounding_box)
+            kv['x_bboxes'] = self.get_bbox(symbol.bounding_box, max_box)
             kv['x_conf']   = '%6f' % (100 *symbol.confidence)
             charelem.attrib['title'] = assemble_hocr_title_element(kv)
             wordelem.append(charelem)
@@ -142,11 +142,11 @@ class HOCR:
 
         return lines 
 
-    def get_line_box(self, line):
+    def get_line_box(self, line, max_box):
         l = t = r = b  = None
         
         for word in line:
-            box = self.get_bbox(word.bounding_box)
+            box = self.get_bbox(word.bounding_box, max_box)
 
             box_l = box[0]
             box_t = box[1] 
@@ -183,14 +183,16 @@ class HOCR:
         for lang in word.property.detected_languages:
             self.langtags.update(1, lang.language_code)
 
-    def process_line(self, line, lineelem):
+    def process_line(self, line, lineelem, max_box):
         for word in line:
             wordelem = etree.Element('span', attrib={'class': 'ocrx_word'})
 
-            self.process_word(word, wordelem)
             self.update_langtag(word)
 
-            kv = {'bbox': self.get_bbox(word.bounding_box)}
+            bbox = self.get_bbox(word.bounding_box, max_box)
+            self.process_word(word, wordelem, bbox)
+
+            kv = {'bbox': bbox}
             kv['x_wconf'] = '%d' % int(100*word.confidence)
 
             wordelem.attrib['id'] = self.get_id('word')
@@ -202,20 +204,21 @@ class HOCR:
             lineelem.append(wordelem)
 
        
-    def process_para(self, words, paraelem):
+    def process_para(self, words, paraelem, max_box):
         lines = self.stitch_words(words)
 
         for line in lines:
             lineelem = etree.Element('span', attrib={'class': 'ocr_line'})
 
             kv = {}
-            kv['bbox'] = self.get_line_box(line)
+            bbox = self.get_line_box(line, max_box)
+            kv['bbox'] = bbox
 
-            cboxes = self.get_charboxes(line)
+            cboxes = self.get_charboxes(line, bbox)
             m, c = abbyy_baseline_from_charboxes(cboxes)
             kv['baseline'] = '%f %d' % (m, c)
 
-            self.process_line(line, lineelem)
+            self.process_line(line, lineelem, bbox)
 
             lineelem.attrib['title'] = assemble_hocr_title_element(kv)
             lineelem.attrib['id'] = self.get_id('line')
@@ -234,32 +237,37 @@ class HOCR:
         self.outhandle.write(s)
         self.pageno += 1
 
-    def get_bbox(self, box):
+    def get_bbox(self, box, max_box):
         v = box.vertices
         l = min(v[0].x, v[1].x, v[2].x, v[3].x)
         r = max(v[0].x, v[1].x, v[2].x, v[3].x)
         t = min(v[0].y, v[1].y, v[2].y, v[3].y)
         b = max(v[0].y, v[1].y, v[2].y, v[3].y)
 
-        if l < 0:
-           l = 0
+        if l < max_box[0]:
+           l = max_box[0]
         
-        if t < 0:
-           t = 0
+        if t < max_box[1]:
+           t = max_box[1]
         
-        if r < 0:
-           r = 0
+        if r > max_box[2]:
+           r = max_box[2]
 
-        if b < 0:
-           b = 0
+        if b > max_box[3]:
+           b = max_box[3]
+
+        if l > r:
+            l = r
+        if t > b:
+            t = b
 
         return [l, t, r, b]
 
-    def get_charboxes(self, line):
+    def get_charboxes(self, line, max_box):
         cboxes = []
         for word in line:
             for symbol in word.symbols:
-                box = self.get_bbox(symbol.bounding_box)
+                box = self.get_bbox(symbol.bounding_box, max_box)
                 cboxes.append([box[0], box[1], box[2], box[3]])
 
         return cboxes
@@ -269,9 +277,9 @@ class HOCR:
         kv['image']    = image_path
 
         if page:
-            kv['bbox'] = ['0', '0', page.width, page.height]
+            kv['bbox'] = [0, 0, page.width, page.height]
         else:    
-            kv['bbox'] = ['0', '0', '0', '0']
+            kv['bbox'] = [0, 0, 0, 0]
 
         kv['ppageno'] = '%d' % self.pageno
 
@@ -283,34 +291,36 @@ class HOCR:
                                       'title': assemble_hocr_title_element(kv)})
 
         if page and page.blocks:
-            self.handle_blocks(page.blocks, pageelem)
+            self.handle_blocks(page.blocks, pageelem, kv['bbox'])
 
         return pageelem
 
 
-    def handle_blocks(self, blocks, pageelem):
+    def handle_blocks(self, blocks, pageelem, max_box):
         for block in blocks:
             kv = {}
 
             blockelem = etree.Element('div', attrib={'class': 'ocr_carea'})
 
-            kv['bbox'] = self.get_bbox(block.bounding_box)
+            bbox = self.get_bbox(block.bounding_box, max_box)
+            kv['bbox'] = bbox
             blockelem.attrib['title'] = assemble_hocr_title_element(kv)
             blockelem.attrib['id']    = self.get_id('block')
 
-            self.process_block(block, blockelem)
+            self.process_block(block, blockelem, bbox)
             pageelem.append(blockelem)
 
         
-    def process_block(self, block, blockelem):
+    def process_block(self, block, blockelem, max_box):
         for paragraph in block.paragraphs:
             paraelem = etree.Element('p', attrib={'class': 'ocr_par'})
 
             paraelem.attrib['id'] = self.get_id('par')
-            self.process_para(paragraph.words, paraelem)
 
             kv = {}
-            kv['bbox'] = self.get_bbox(paragraph.bounding_box)
+            bbox = self.get_bbox(paragraph.bounding_box, max_box)
+            self.process_para(paragraph.words, paraelem, bbox)
+            kv['bbox'] = bbox 
 
             paraelem.attrib['title'] = assemble_hocr_title_element(kv)
             blockelem.append(paraelem)
