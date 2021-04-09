@@ -40,17 +40,6 @@ def assemble_hocr_title_element(keyvals):
 
     return r
 
-def get_charboxes(line):
-    cboxes = []
-    for word in line:
-        for symbol in word.symbols:
-            box = symbol.bounding_box
-            box_l = box.vertices[0].x
-            box_r = box.vertices[1].x
-            box_t = box.vertices[0].y
-            box_b = box.vertices[3].y
-            cboxes.append([box_l, box_t, box_r, box_b])
-    return cboxes      
 
 
 def abbyy_baseline_from_charboxes(charboxes):
@@ -94,7 +83,7 @@ class HOCR:
         self.height    = 0
         self.width     = 0
         self.langtags  = langtags
-        self.pageno    = 1
+        self.pageno    = 0 
 
     def write_header(self):
         self.outhandle.write('''<?xml version="1.0" encoding="UTF-8"?>
@@ -107,7 +96,7 @@ class HOCR:
     <meta name="ocr-capabilities" content="ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf ocrp_lang ocrp_dir ocrp_font ocrp_fsize" />
   </head>
   <body>''')
-        self.pageno    = 1 
+        self.pageno    = 0 
         self.iddict    = {'block': 1, 'par': 1, 'word': 1, 'line': 1}
 
     def get_id(self, name):
@@ -157,12 +146,12 @@ class HOCR:
         l = t = r = b  = None
         
         for word in line:
-            box = word.bounding_box
+            box = self.get_bbox(word.bounding_box)
 
-            box_l = box.vertices[0].x
-            box_r = box.vertices[1].x
-            box_t = box.vertices[0].y
-            box_b = box.vertices[3].y
+            box_l = box[0]
+            box_t = box[1] 
+            box_r = box[2]
+            box_b = box[3]
 
             if l == None or l > box_l:
                 l = box_l
@@ -175,7 +164,19 @@ class HOCR:
 
             if b == None or b < box_b:
                 b = box_b
-            
+
+        if l < 0:
+           l = 0
+        
+        if t < 0:
+           t = 0
+        
+        if r < 0:
+           r = 0
+
+        if b < 0:
+           b = 0
+   
         return [l, t, r, b]
     
     def update_langtag(self, word):
@@ -210,7 +211,7 @@ class HOCR:
             kv = {}
             kv['bbox'] = self.get_line_box(line)
 
-            cboxes = get_charboxes(line)
+            cboxes = self.get_charboxes(line)
             m, c = abbyy_baseline_from_charboxes(cboxes)
             kv['baseline'] = '%f %d' % (m, c)
 
@@ -221,26 +222,57 @@ class HOCR:
             paraelem.append(lineelem)
 
 
-    def handle_google_response(self, response, ppi):
+    def handle_google_response(self, response, ppi, image_path):
         for page in response.full_text_annotation.pages:
-             hocr_page = self.process_page(page, ppi)         
-             s = etree.tostring(hocr_page, pretty_print=True, method='xml', \
-                                encoding='utf-8').decode('utf-8')
+            self.handle_page(page, ppi, image_path)
 
-             self.outhandle.write(s)
-             self.pageno += 1
+    def handle_page(self, page, ppi, image_path):
+        hocr_page = self.process_page(page, ppi, image_path)
+        s = etree.tostring(hocr_page, pretty_print=True, method='xml', \
+                           encoding='utf-8').decode('utf-8')
+
+        self.outhandle.write(s)
+        self.pageno += 1
 
     def get_bbox(self, box):
-        l = box.vertices[0].x
-        t = box.vertices[0].y
-        r = box.vertices[1].x
-        b = box.vertices[2].y
+        v = box.vertices
+        l = min(v[0].x, v[1].x, v[2].x, v[3].x)
+        r = max(v[0].x, v[1].x, v[2].x, v[3].x)
+        t = min(v[0].y, v[1].y, v[2].y, v[3].y)
+        b = max(v[0].y, v[1].y, v[2].y, v[3].y)
+
+        if l < 0:
+           l = 0
+        
+        if t < 0:
+           t = 0
+        
+        if r < 0:
+           r = 0
+
+        if b < 0:
+           b = 0
 
         return [l, t, r, b]
 
-    def process_page(self, page, ppi):
+    def get_charboxes(self, line):
+        cboxes = []
+        for word in line:
+            for symbol in word.symbols:
+                box = self.get_bbox(symbol.bounding_box)
+                cboxes.append([box[0], box[1], box[2], box[3]])
+
+        return cboxes
+
+    def process_page(self, page, ppi, image_path):
         kv = {}
-        kv['bbox'] = ['0', '0', page.width, page.height]
+        kv['image']    = image_path
+
+        if page:
+            kv['bbox'] = ['0', '0', page.width, page.height]
+        else:    
+            kv['bbox'] = ['0', '0', '0', '0']
+
         kv['ppageno'] = '%d' % self.pageno
 
         kv['scan_res'] = '%s %s' % (ppi, ppi)
@@ -250,7 +282,14 @@ class HOCR:
                                       'id':  'page_%.06d' % self.pageno,\
                                       'title': assemble_hocr_title_element(kv)})
 
-        for block in page.blocks:
+        if page and page.blocks:
+            self.handle_blocks(page.blocks, pageelem)
+
+        return pageelem
+
+
+    def handle_blocks(self, blocks, pageelem):
+        for block in blocks:
             kv = {}
 
             blockelem = etree.Element('div', attrib={'class': 'ocr_carea'})
@@ -262,9 +301,7 @@ class HOCR:
             self.process_block(block, blockelem)
             pageelem.append(blockelem)
 
-        return pageelem
-
-
+        
     def process_block(self, block, blockelem):
         for paragraph in block.paragraphs:
             paraelem = etree.Element('p', attrib={'class': 'ocr_par'})

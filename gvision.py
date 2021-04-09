@@ -24,9 +24,6 @@ from google.cloud import vision
 
 FNULL = open(os.devnull, 'w')
 
-ia_lang_map = {'en': 'eng', 'hi': 'hin', 'te': 'tel', 'kn': 'kan', \
-               'mr': 'mar', 'ta': 'tam', 'or': 'ori', 'pa': 'pan', \
-               'ml': 'mal', 'pt': 'por'}
 def print_usage(progname):
     print('''Usage: %s [-l loglevel(critical, error, warn, info, debug)]
                        [-D top_dir for InternetArchive mode]
@@ -358,11 +355,10 @@ def to_hocr(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags):
             gocr_file = None
         response  = google_ocr(client, infile, gocr_file)
         if response and response.full_text_annotation.pages:
-            hocr.handle_google_response(response, ppi)
+            hocr.handle_google_response(response, ppi, filename)
         else:
             logger.warning('No pages in %s', filename)
-            hocr.write_page_header(None, None, ppi)
-            hocr.write_page_footer()
+            hocr.handle_page(None, ppi, filename)
 
     hocr.write_footer()
 
@@ -584,7 +580,7 @@ class IA:
                     'fts-ignore-ingestion-lang-filter': 'true'}
          
         archive_langs = self.get_ia_langs(langs)
-        if archive_langs:
+        if archive_langs and self.update_lang:
             metadata['language'] = archive_langs
 
         self.update_metadata(ia_item, metadata)
@@ -660,10 +656,10 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
                 if not jpgdir:
                     logger.warning('Could not convert JP2 to JPG: %s', jp2_path)
                     continue
+                inter_files.append(('dir', jpgdir))
             else:
                 jpgdir = jp2_path
 
-            inter_files.append(('dir', jpgdir))
 
             gocr_dir, n = re.subn('_jpg$', '_gocr', jpgdir)
             if not os.path.exists(gocr_dir):
