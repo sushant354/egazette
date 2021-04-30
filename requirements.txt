@@ -194,7 +194,7 @@ typing-extensions==3.7.4.3
 typing-inspect==0.6.0
 unicodecsv==0.14.1
 uritemplate==3.0.0
-urllib3==1.25.6
+urllib3==1.25.8
 webencodings==0.5.1
 whitenoise==4.1.4
 xlrd==1.2.0
