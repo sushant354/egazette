@@ -167,7 +167,7 @@ requests==2.22.0
 requests-oauthlib==1.2.0
 rfc3986==1.4.0
 rjsmin==1.1.0
-rsa==4.0
+rsa==4.7
 schema==0.7.1
 scikit-learn==0.22.2.post1
 scipy==1.4.1
