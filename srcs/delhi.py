@@ -2,6 +2,7 @@ import datetime
 import urllib.request, urllib.parse, urllib.error
 import re
 import os
+from http.cookiejar import CookieJar
 
 from .central import CentralBase
 from ..utils import utils
@@ -9,96 +10,69 @@ from ..utils import utils
 class DelhiWeekly(CentralBase):
     def __init__(self, name, storage):
         CentralBase.__init__(self, name, storage)
-        self.baseurl     = 'http://www.egazette.nic.in/DelhiGazette.aspx'
-        self.search_endp = 'SG_DL_Search.aspx'
-        self.result_table = 'dgGeneralUser'
+        self.baseurl     = 'https://www.egazette.nic.in'
         self.start_date   = datetime.datetime(2016, 5, 1)
 
-    def get_search_results(self, search_url, dateobj, cookiejar):
-        referer_url = urllib.parse.urljoin(search_url, self.search_endp)
-        response = self.download_url(search_url, savecookies = cookiejar, \
-                                  loadcookies=cookiejar, referer = referer_url)
+    def download_oneday(self, relpath, dateobj):
+        dls = []
+        response = self.download_url(self.baseurl)
+        if not response:
+            self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
+            return dls
 
-        postdata = self.get_form_data(response.webpage, dateobj)
-        if postdata == None:
-            return None
+        cookiejar  = CookieJar()
 
-        newdata = []
-        for k, v in postdata:
-            if k == '__EVENTTARGET':
-                v = 'ddlcate'
-            elif k == 'ddlcate':
-                v = self.gztype
+        curr_url = response.response_url
+        postdata = self.get_form_data(response.webpage, dateobj, 'default.aspx')
+        postdata.append(('ImgMessage_OK.x', 60))
+        postdata.append(('ImgMessage_OK.y', 21))
+        response = self.download_url(curr_url, referer = curr_url, postdata = postdata)
 
-            newdata.append((k, v))
 
-        response = self.download_url(search_url, savecookies = cookiejar, \
-                                   referer = search_url, \
-                                   loadcookies = cookiejar, postdata = newdata)
+        curr_url = response.response_url
+        state_url = urllib.parse.urljoin(curr_url, 'StateGazette.aspx')
+        response = self.download_url(state_url, referer = curr_url)
+        curr_url = urllib.parse.urljoin(curr_url, 'DelhiGazette.aspx')
+        response = self.download_url(curr_url, referer = state_url)
 
-        postdata = self.get_form_data(response.webpage, dateobj)
-        if postdata == None:
-            return None
-        response = self.download_url(search_url, savecookies = cookiejar, \
-                                   referer = search_url, \
-                                   loadcookies = cookiejar, postdata = postdata)
-        return response
+        state_url = curr_url
+        curr_url = urllib.parse.urljoin(curr_url, 'SearchCategory.aspx')
+        response = self.download_url(curr_url, referer = state_url)
+        postdata = self.get_form_data(response.webpage, dateobj, \
+                                     'SearchCategory.aspx')
+        response = self.download_url(curr_url, referer = curr_url, \
+                                     postdata = postdata)
+        postdata = self.get_form_data(response.webpage, dateobj, \
+                                     'SearchCategory.aspx')
+        postdata.append(('ImgSubmitDetails_Delhi.x', '76'))
+        postdata.append(('ImgSubmitDetails_Delhi.y', '20'))
+        response = self.download_url(curr_url, referer = curr_url, \
+                                     postdata = postdata)
 
-    def get_post_data(self, tags, dateobj):
-        datestr  = utils.get_egz_date(dateobj)
 
-        postdata = []
-        for tag in tags:
-            name  = None
-            value = None
+        pagenum = 1
+        while response != None and response.webpage != None:
+            curr_url = response.response_url
+            form_href = curr_url.split('/')[-1]
 
-            if tag.name == 'input':
-                name  = tag.get('name')
-                value = tag.get('value')
-                t     = tag.get('type')
-                if t == 'image' or name  == 'btn_Reset':
-                    continue
+            metainfos, nextpage = self.parse_search_results(response.webpage, \
+                                                            dateobj, pagenum)
 
-                if name == 'btnstd':
-                    value = 'Search' 
+            postdata = self.get_form_data(response.webpage, dateobj, form_href)
 
-                if name == 'txtDateIssueF' or name == 'txtDateIssueT':
-                    value = datestr
-            elif tag.name == 'select':        
-                name = tag.get('name')
-                if name == 'ddlcate':
-                    value = self.gztype
-                elif name == 'ddlPartSection':
-                    value = 'Select Part & Section'
-                elif name == 'ddlSubMinistry':
-                    value = 'Select Department'
-            if name:
-                if value == None:
-                    value = ''
-                postdata.append((name, value))
+            relurls = self.download_metainfos(relpath, metainfos, curr_url, \
+                                              postdata, cookiejar)
+            dls.extend(relurls)
+            if nextpage:
+                pagenum += 1
+                self.logger.info('Going to page %d for date %s', pagenum, dateobj)
+                response = self.download_nextpage(nextpage, curr_url, postdata, cookiejar)
+            else:
+                break
 
-        return postdata
+        return dls
 
-    def download_gazette(self, relpath, search_url, postdata, \
-                         metainfo, cookiejar):
-
-        if 'gazetteid' not in metainfo:
-            return None
-
-        gazetteid = metainfo['gazetteid']
-        reobj = re.search('(?P<num>\d+)\s*$', gazetteid)
-        if not reobj:
-            return None
-
-        filename = reobj.groupdict()['num']
-        relurl   = os.path.join(relpath, filename)
-
-        if self.save_gazette(relurl, search_url, metainfo, validurl = False, \
-                             postdata = postdata, cookiefile = cookiejar):
-            return relurl
-
-        return None     
-
+        
 class DelhiExtraordinary(DelhiWeekly):
     def __init__(self, name, storage):
         DelhiWeekly.__init__(self, name, storage)

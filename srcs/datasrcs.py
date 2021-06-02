@@ -161,7 +161,7 @@ srchierarchy = { \
                 'stgeorge', 'keralalibrary', 'goa', 'punjabdsa'] \
 }
 
-inactive_srcs = set(['punjab'])
+inactive_srcs = set(['punjab', 'csl_extraordinary', 'csl_weekly'])
 def get_srcobjs(srclist, storage):
     srcobjs = []
 
