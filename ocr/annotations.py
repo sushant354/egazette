@@ -1,5 +1,4 @@
-import html 
-
+from xml.sax.saxutils import escape
 class Node:
     def __init__(self, start, end, tag, parent, attrs):
         self.start  = start
@@ -48,7 +47,7 @@ def insert_markers(text, inserts):
     lastpos  = 0
     for pos, marker in inserts:
         if pos > lastpos:
-            sections.append(html.escape(text[lastpos:pos]))
+            sections.append(escape(text[lastpos:pos]))
         elif pos < lastpos:
              print ("INVALID MARKER", pos, marker, inserts)
              assert 0
@@ -56,7 +55,7 @@ def insert_markers(text, inserts):
         lastpos = pos
 
     if lastpos < len(text):
-        sections.append(html.escape(text[lastpos:]))
+        sections.append(escape(text[lastpos:]))
 
     return u''.join(sections)
 

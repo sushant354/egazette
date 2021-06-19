@@ -308,7 +308,7 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
 def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
     htmlmaker = HtmlMaker()
 
-    for filename in filenames:#[:100]:
+    for filename in filenames:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
             gocr_file, n =  re.subn('jpg$', 'pickle', filename)
