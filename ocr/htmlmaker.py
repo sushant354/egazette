@@ -4,7 +4,7 @@ import re
 from egazette.ocr.annotations import Node, annotate_doc
 from egazette.ocr.textmaker import TextMaker
 
-from egazette.ocr.gapi import Paragraph, PageBlock, LineWords 
+from egazette.ocr.gapi import Paragraph, PageBlock, LineWords, OrderedBlock 
 
 class HtmlMaker:
     def __init__(self):
@@ -12,6 +12,7 @@ class HtmlMaker:
         self.current_node = self.htmlroot
         self.pos  = 0
         self.text = []
+        self.last_para = None
         self.textmaker = TextMaker()
         self.abbreviation_re = re.compile(' (A\.D|a\.m|C\>?V|e\.?g|et al|etc|i\.e|p.a|p\.?m|P\.?S|Dr|Gen|Hon|Mr|Mrs|Ms|Prof|Rev|Sr|Jr|St|Assn|Ave|Dept|est|Fig|fig|hrs|Inc|Mt|No|oz|sq|st|vs|Vs|Sri|Shri|Smt|etc)\.$')
         self.pagenum  = 0
@@ -36,6 +37,10 @@ class HtmlMaker:
         for page in response.full_text_annotation.pages:
             self.footnotes = []
             if self.is_pre(page):
+                if self.last_para:
+                    self.process_para(self.last_para.words)
+                    self.last_para = None
+
                 self.process_pre(page)
             else:    
                 self.process_txt(page)
@@ -52,8 +57,8 @@ class HtmlMaker:
         blocks = self.fix_incorrect_blocks(page.blocks, width, height)
         ordered_blocks = self.order_blocks(blocks, width, height)  
             
-        for category, block in ordered_blocks:
-            self.process_block(category, block, height)
+        for oblock in ordered_blocks:
+            self.process_block(oblock.category, oblock.block, height, oblock.islast)
   
     def is_past_halfway(self, word, width):
         return word.bounding_box.vertices[0].x > width/2
@@ -135,8 +140,7 @@ class HtmlMaker:
     def is_sentence_end(self, para_text):
         para_text = para_text.strip()
         last = para_text[-1]
-        if last == '.' and self.abbreviation_re.search(para_text) == None or\
-               last == '\u0964':
+        if (last == '.' and self.abbreviation_re.search(para_text) == None): 
             return True
         return False
 
@@ -198,20 +202,34 @@ class HtmlMaker:
             return '2nd', 'right_column'
         return '1st', 'left_column'
 
+    def is_block_footnote(self, block1, block2, page_ht):
+        diff = block2.bounding_box.vertices[0].y  - block1.bounding_box.vertices[2].y
+        if diff > 55 and block2.bounding_box.vertices[0].y >= 0.85 * page_ht:
+            footnote = True
+        else:
+            footnote = False
+        return footnote    
+
     def order_blocks(self, blocks, width, height):
         blockdict = {}
         for block in blocks:
              order, category = self.classify_block(block, width, height)
              if order not in blockdict:
                  blockdict[order] = []
-             blockdict[order].append((category, block)) 
+             blockdict[order].append(OrderedBlock(block, category, False)) 
 
 
         ordered_blocks = []
         for order in ['1st', '2nd', '3rd']:
             if order in blockdict:
                 col = blockdict[order]
-                col.sort(key = lambda x: x[1].bounding_box.vertices[0].y)
+                col.sort(key = lambda x: x.block.bounding_box.vertices[0].y)
+
+                if len(col) >= 2 and self.is_block_footnote(col[-2].block, col[-1].block, height):
+                    col[-2].islast = True
+                else:
+                    col[-1].islast = True
+
                 ordered_blocks.extend(col)
 
         return ordered_blocks    
@@ -251,7 +269,7 @@ class HtmlMaker:
                #print (ht_diff, linewords.get_height(), ht_diff*1.0/ linewords.get_height(), self.get_para_text(linewords.words))
                if ht_diff > 1.3 * linewords.get_height():
                    last_allcaps = False
-                   #print ('PREV HT - NEW PARA', self.get_para_text(linewords.words))
+                   #print ('PREV HT - NEW PARA',  ht_diff*1.0/ linewords.get_height(), self.get_para_text(linewords.words))
                    is_new_para = True
            if  self.textmaker.is_all_capstart(linewords.words):
                if not last_allcaps:
@@ -271,11 +289,11 @@ class HtmlMaker:
                h1 = linewords.get_top_offset()
                h2 = prev_line.get_top_offset()
                ht_diff = (h1-h2)
-               #print (ht_diff * 100/linewords.get_height(), line_text)
+               #print ('HTDIFF', ht_diff * 100/linewords.get_height(), line_text)
                if ht_diff > 1.3 * linewords.get_height():
                    is_new_para = True
 
-           if is_new_para:       
+           if is_new_para:     
                paragraph = Paragraph()
                new_paras.append(paragraph)
 
@@ -299,7 +317,11 @@ class HtmlMaker:
 
         return footnote
 
-    def process_lines(self, lines, page_ht, width):
+    def process_lines(self, lines, page_ht, width, last_group):
+        for line in lines:
+            line_text = self.get_para_text(line.words)
+            #print (line_text)
+            #print ('-----------------------------')
         if len(lines) == 1 and self.textmaker.get_top_offset(lines[0]) > 0.87* page_ht:
             #print ('SINGLE', self.textmaker.get_top_offset(lines[0]) * 1.0/page_ht)
             self.footnotes.append(lines[0])
@@ -309,13 +331,51 @@ class HtmlMaker:
             self.footnotes.append(lines[-1])
             lines = lines[:-1]
 
+        if not lines:
+            return
+
+        '''
+        print ('------------------------------------------')
+        for line in lines:
+             print(self.get_para_text(line.words))
+             print ('***********************')
+        '''
         new_paras = self.split_paras(lines, width)
+        if self.last_para:
+            if new_paras:
+                p = new_paras[0]
+                line_text = self.get_para_text(p.words)
+                line_text = line_text.strip()
+
+                if self.textmaker.is_all_capstart(p.words) or \
+                       re.match('\w\)\s+', line_text) or \
+                       re.match('[\d\sA-Z]+$', line_text):
+                    new_paras.insert(0, self.last_para)
+                else:
+                    new_paras[0].preappend_words(self.last_para.words)
+            else:
+                new_paras = [self.last_para]
+            self.last_para = None    
+
+        nump = 0
+        for p in new_paras:
+            if  p.words:
+                nump += 1
+
+        count = 0
         for p in new_paras:
             if p.words:
+                if last_group and count == nump - 1:
+                    para_text = self.get_para_text(p.words)
+                    if not self.is_sentence_end(para_text):
+                        self.last_para = p
+                        break
+
                 self.process_para(p.words)
+                count += 1    
 
 
-    def process_block(self, category, block, page_ht):
+    def process_block(self, category, block, page_ht, islast):
         if category == 'center':
             center_node = Node(self.pos, None, 'center', self.current_node, None)
             self.current_node.add_child(center_node)
@@ -324,18 +384,20 @@ class HtmlMaker:
         box   =  block.bounding_box
         width = box.vertices[1].x  - box.vertices[0].x 
 
-        lines = []   
+        lines = [] 
+
         for para in block.paragraphs:
             para_text = self.get_para_text(para.words)
             new_lines = self.get_lines(para)
-            if self.is_sentence_end(para_text):
-                if lines:
-                    self.process_lines(lines, page_ht, width)
-                lines = []    
             lines.extend(new_lines)
+            if self.is_sentence_end(para_text):
+                #print ('SENTENCE ENDS', para_text)
+                if lines:
+                    self.process_lines(lines, page_ht, width, False)
+                lines = []    
 
         if lines:
-            self.process_lines(lines, page_ht, width)
+            self.process_lines(lines, page_ht, width, islast)
 
         if category == 'center':
             center_node.end = self.pos
@@ -625,7 +687,7 @@ class HtmlMaker:
 
         doc = ''.join(self.text)
         doc, segmentmap =  annotate_doc(doc, [self.htmlroot])
-        doc = '<!DOCTYPE HTML>\n<html>\n<head><meta charset="UTF-8"/></head>' \
+        doc = '<!DOCTYPE HTML>\n<html>\n<head><meta charset="UTF-8" /></head>' \
               + doc + '</html>'
         return doc
 
