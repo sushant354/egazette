@@ -9,20 +9,20 @@ from .basegazette import BaseGazette
 class CentralBase(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl     = 'http://egazette.nic.in/default.aspx?AcceptsCookies=yes'
+        self.baseurl     = 'http://egazette.nic.in'
         self.hostname    = 'egazette.nic.in'
         self.gztype      = 'Weekly'
         self.parser      = 'lxml'
         self.search_endp = 'SearchCategory.aspx'
-        self.result_table= 'gvGazette'
+        self.result_table= 'tbl_Gazette'
         self.gazette_js  = 'window.open\(\'(?P<href>[^\']+)'
 
-    def find_search_form(self, d):
+    def find_search_form(self, d, form_href):
         search_form = None
         forms = d.find_all('form')
         for form in forms:
             action = form.get('action')
-            if action == './%s' % self.search_endp or action == self.search_endp:
+            if action == './%s' % form_href or action == form_href:
                 search_form = form
                 break
 
@@ -49,7 +49,7 @@ class CentralBase(BaseGazette):
                 name  = tag.get('name')
                 value = tag.get('value')
                 t     = tag.get('type')
-                if t == 'image' or name == 'btnStandard':
+                if t == 'image' or name == 'btnStandard' or name == 'btn_Reforms' or name == 'btnHindi':
                     continue
 
                 if name == 'txtDateFrom' or name == 'txtDateTo':
@@ -75,7 +75,7 @@ class CentralBase(BaseGazette):
 
         return postdata
 
-    def get_search_form(self, webpage, dateobj):
+    def get_search_form(self, webpage, dateobj, form_href):
         if webpage == None:
             self.logger.warning('Unable to download the starting search page for day: %s', dateobj)
             return None 
@@ -85,11 +85,11 @@ class CentralBase(BaseGazette):
             self.logger.warning('Unable to parse the search page for day: %s', dateobj)
             return None
 
-        search_form = self.find_search_form(d)
+        search_form = self.find_search_form(d, form_href)
         return search_form
 
-    def get_form_data(self, webpage, dateobj):
-        search_form = self.get_search_form(webpage, dateobj)
+    def get_form_data(self, webpage, dateobj, form_href):
+        search_form = self.get_search_form(webpage, dateobj, form_href)
         if search_form == None:
             self.logger.warning('Unable to get the search form for day: %s', dateobj)
             return None 
@@ -104,14 +104,14 @@ class CentralBase(BaseGazette):
         referer_url = urllib.parse.urljoin(search_url, 'SearchMenu.aspx')
         response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar, referer = referer_url)
 
-        postdata = self.get_form_data(response.webpage, dateobj)
+        postdata = self.get_form_data(response.webpage, dateobj, self.search_endp)
         if postdata == None:
             return None
 
         response = self.download_url(search_url, savecookies = cookiejar, \
                                      referer = search_url, \
                                    loadcookies = cookiejar, postdata = postdata)
-        postdata = self.get_form_data(response.webpage, dateobj)
+        postdata = self.get_form_data(response.webpage, dateobj, self.search_endp)
 
         response = self.download_url(search_url, savecookies = cookiejar, \
                                      referer = search_url, \
@@ -289,7 +289,24 @@ class CentralBase(BaseGazette):
         if self.save_gazette(relurl, gzurl, metainfo): 
             return relurl
 
-        return None     
+        return None    
+
+    def replace_field(self, postdata, field_name, field_value):
+        newdata = []
+        for k, v in postdata:
+            if k == field_name:
+                newdata.append((field_name, field_value))
+            else:
+                newdata.append((k, v))
+        return newdata
+
+    def remove_fields(self, postdata, fields):
+        newdata = []
+        for k, v in postdata:
+            if k not in fields:
+                newdata.append((k, v))
+        return newdata
+
 
     def download_oneday(self, relpath, dateobj):
         dls = []
@@ -298,8 +315,11 @@ class CentralBase(BaseGazette):
         if not response:
             self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
             return dls
+
         curr_url = response.response_url
+        postdata = self.get_form_data(response.webpage, dateobj, self.search_endp)
         search_url = urllib.parse.urljoin(curr_url, self.search_endp)
+
         response = self.get_search_results(search_url, dateobj, cookiejar)
 
         pagenum = 1
@@ -307,7 +327,7 @@ class CentralBase(BaseGazette):
             metainfos, nextpage = self.parse_search_results(response.webpage, \
                                                             dateobj, pagenum)
 
-            postdata = self.get_form_data(response.webpage, dateobj)
+            postdata = self.get_form_data(response.webpage, dateobj, self.search_endp)
 
             relurls = self.download_metainfos(relpath, metainfos, search_url, \
                                               postdata, cookiejar)
@@ -356,76 +376,61 @@ class CentralWeekly(CentralBase):
             self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
             return dls
         curr_url = response.response_url
-        search_url = urllib.parse.urljoin(curr_url, self.search_endp)
-        referer_url = urllib.parse.urljoin(search_url, 'SearchMenu.aspx')
-        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar, referer = referer_url)
+        postdata = self.get_form_data(response.webpage, dateobj, 'default.aspx')
+        postdata.append(('ImgMessage_OK.x', 60))
+        postdata.append(('ImgMessage_OK.y', 21))
+        response = self.download_url(curr_url, savecookies = cookiejar, loadcookies=cookiejar, referer = curr_url, postdata = postdata)
+
+        postdata = self.get_form_data(response.webpage, dateobj, 'default.aspx')
+        postdata = self.replace_field(postdata, '__EVENTTARGET', 'sgzt')
+        postdata =self.replace_field(postdata, 'ddlkeyword', 'Select Keyword')
+        response = self.download_url(curr_url, savecookies = cookiejar, loadcookies=cookiejar, referer = curr_url, postdata = postdata)
 
         if not response or not response.webpage:
             self.logger.warning('Could not fetch %s for the day %s', search_url, dateobj)
             return dls
 
-        postdata = self.get_form_data(response.webpage, dateobj)
+        curr_url = response.response_url
+        postdata = self.get_form_data(response.webpage, dateobj, 'SearchMenu.aspx')
         if postdata == None:
             return None
 
-        response = self.download_url(search_url, savecookies = cookiejar, \
-                                     referer = search_url, \
+        postdata = self.remove_fields(postdata, set(['btnGazetteID', 'btnContentID', 'btnMinistry', 'btnBill', 'btnNotification', 'btnPublish']))
+
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                     referer = curr_url, \
                                    loadcookies = cookiejar, postdata = postdata)           
-        search_form = self.get_search_form(response.webpage, dateobj)
-        if not search_form:
-            self.logger.warning('Could not find the search form for the day %s', dateobj)
-            return dls
-        partnum_tag = search_form.find('select', {'name': 'ddlPartSection'})
-        if not partnum_tag:
-            self.logger.warning('Could not find the partnum tag for the day %s', dateobj)
-            return dls
-
-        for option in partnum_tag.find_all('option'):
-            val = option.get('value')
-            if not val or val == '31':
-                continue
-            self.logger.info('Date: %s, Partnum: %s', dateobj, val)
-            newdls = self.download_partnum(relpath, dateobj, search_url, val, cookiejar)
-            dls.extend(newdls)
-
-        return dls
-
-    def download_partnum(self, relpath, dateobj, search_url, partnum, cookiejar):
-        dls = []
-        referer_url = urllib.parse.urljoin(search_url, 'SearchMenu.aspx')
-        response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar, referer = referer_url)
-
-        postdata = self.get_form_data(response.webpage, dateobj)
-        if postdata == None:
-            return None
-
-        response = self.download_url(search_url, savecookies = cookiejar, \
-                                     referer = search_url, \
-                                   loadcookies = cookiejar, postdata = postdata)
-        postdata = self.get_form_data(response.webpage, dateobj)
-        postdata = self.modify_partnum(postdata, partnum)
-
-        postdata.append(('ImgSubmitDetails.x', '73'))
-        postdata.append(('ImgSubmitDetails.y', '19'))
-        response = self.download_url(search_url, savecookies = cookiejar, \
-                                     referer = search_url, \
-                                  loadcookies = cookiejar, postdata = postdata)
-
-
+        curr_url = response.response_url
+        form_href = curr_url.split('/')[-1]
+        postdata = self.get_form_data(response.webpage, dateobj, form_href)
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                     referer = curr_url, \
+                                   loadcookies = cookiejar, postdata = postdata)           
+        curr_url = response.response_url
+        form_href = curr_url.split('/')[-1]
+        postdata = self.get_form_data(response.webpage, dateobj, form_href)
+        postdata.append(('ImgSubmitDetails.x', '63'))
+        postdata.append(('ImgSubmitDetails.y', '22'))
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                     referer = curr_url, \
+                                   loadcookies = cookiejar, postdata = postdata)           
         pagenum = 1
         while response != None and response.webpage != None:
+            curr_url = response.response_url
+            form_href = curr_url.split('/')[-1]
+
             metainfos, nextpage = self.parse_search_results(response.webpage, \
                                                             dateobj, pagenum)
 
-            postdata = self.get_form_data(response.webpage, dateobj)
+            postdata = self.get_form_data(response.webpage, dateobj, form_href)
 
-            relurls = self.download_metainfos(relpath, metainfos, search_url, \
+            relurls = self.download_metainfos(relpath, metainfos, curr_url, \
                                               postdata, cookiejar)
             dls.extend(relurls)
             if nextpage:
                 pagenum += 1
                 self.logger.info('Going to page %d for date %s', pagenum, dateobj)
-                response = self.download_nextpage(nextpage, search_url, postdata, cookiejar)
+                response = self.download_nextpage(nextpage, curr_url, postdata, cookiejar)
             else:
                 break
  

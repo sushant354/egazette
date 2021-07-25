@@ -10,10 +10,13 @@ from .andhra import AndhraArchive
 from ..utils import utils
 from ..utils import decode_captcha
 
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 class Haryana(AndhraArchive):
     def __init__(self, name, storage):
         AndhraArchive.__init__(self, name, storage)
-        self.baseurl      = 'http://www.egazetteharyana.gov.in/home.aspx'
+        self.baseurl      = 'https://www.egazetteharyana.gov.in/home.aspx'
         self.hostname     = 'www.egazetteharyana.gov.in'
         self.search_endp  = 'home.aspx'
         self.result_table = 'ContentPlaceHolder1_GridView1'
@@ -133,7 +136,7 @@ class Haryana(AndhraArchive):
         captcha_val = self.solve_captcha(img)
         self.counter += 1
 
-        postdata = self.get_form_data(webpage, dateobj)
+        postdata = self.get_form_data(webpage, dateobj, self.search_endp)
         if postdata == None:
             return None
 
@@ -328,7 +331,7 @@ class HaryanaArchive(Haryana):
         while response != None and response.webpage != None:
             metainfos, nextpage = self.parse_search_results(response.webpage, \
                                                             dateobj, pagenum)
-            postdata = self.get_form_data(response.webpage, dateobj, category)
+            postdata = self.get_form_data(response.webpage, dateobj, category, self.search_endp)
 
             relurls = self.download_metainfos(relpath, metainfos, self.baseurl,\
                                               postdata, cookiejar)
@@ -341,8 +344,8 @@ class HaryanaArchive(Haryana):
                 break
         return dls
 
-    def get_form_data(self, webpage, dateobj, category):
-        search_form = self.get_search_form(webpage, dateobj)
+    def get_form_data(self, webpage, dateobj, category, form_href):
+        search_form = self.get_search_form(webpage, dateobj, form_href)
         if search_form == None:
             self.logger.warning('Unable to get the search form for day: %s', dateobj)
             return None
@@ -382,7 +385,7 @@ class HaryanaArchive(Haryana):
                     
         captcha_val = decode_captcha.haryana_captcha(img)
 
-        postdata = self.get_form_data(webpage, dateobj, category)
+        postdata = self.get_form_data(webpage, dateobj, category, self.search_endp)
         if postdata == None:
             return None
 

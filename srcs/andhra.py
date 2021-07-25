@@ -13,6 +13,7 @@ class Andhra(BaseGazette):
         self.baseurl   = 'https://apegazette.cgg.gov.in/eGazetteSearch.do'
         self.searchurl = self.baseurl
         self.hostname  = 'apegazette.cgg.gov.in'
+        self.result_table= 'gvGazette'
 
     def get_field_order(self, tr):
         i = 0
@@ -178,7 +179,7 @@ class AndhraArchive(CentralBase):
     def get_search_results(self, search_url, dateobj, cookiejar):
         response = self.download_url(search_url, savecookies = cookiejar, loadcookies=cookiejar)
 
-        postdata = self.get_form_data(response.webpage, dateobj)
+        postdata = self.get_form_data(response.webpage, dateobj, self.search_endp)
         if postdata == None:
             return None
         response = self.download_url(search_url, savecookies = cookiejar, \
