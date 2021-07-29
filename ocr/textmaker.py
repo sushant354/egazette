@@ -19,7 +19,7 @@ class TextMaker:
                 stext.append(symbol.text)
 
             if hasattr(symbol.property, 'detected_break'):
-                 t = symbol.property.detected_break.type 
+                 t = symbol.property.detected_break.type_ 
                  if t == 1:
                     stext.append(' ')
                  elif t == 5 and line_break:

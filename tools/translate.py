@@ -110,6 +110,9 @@ class HtmlProcessor:
         self.ignoretypes =  [Comment, Declaration, CData, ProcessingInstruction]
         self.linebreaks  = ['br', 'p', 'div', 'dir']
         self.ignoretags  = ['script', 'style']
+        self.self_closing= ['meta', 'link', 'br', 'img', 'area', 'base', \
+                            'col', 'hr', '', 'input', 'param', 'source', \
+                            'track', 'wbr']
         self.ignore_classes = set(ignore_classes)
 
     def process_html(self, text, outhandle):
@@ -166,11 +169,18 @@ class HtmlProcessor:
 
                  if 'lang' not in content.attrs and content.name == 'html':
                      attrs.append('lang="%s"' % self.to_lang)
+                 
+
 
                  if attrs:
-                     outhandle.write('<%s %s>' % (content.name, ' '.join(attrs)))
+                     outhandle.write('<%s %s' % (content.name, ' '.join(attrs)))
                  else:    
-                     outhandle.write('<%s>' % content.name)
+                     outhandle.write('<%s' % content.name)
+                 if content.name in self.self_closing:
+                     outhandle.write(' />\n')
+                     continue
+                 else:    
+                     outhandle.write('>')
 
                  if content.name in self.linebreaks:
                      outhandle.write('\n')

@@ -52,11 +52,15 @@ class Paragraph:
     def add_word(self, word):
         self.words.append(word)
 
+    def preappend_words(self, words):
+        self.words = words + self.words
+
 class PageBlock:
     def __init__(self):
         self.bounding_box = BoundingBox()
         self.paragraphs   = []
         self.current      = -1
+        self.last         = False
 
         
     def add_word(self, word, newpara):
@@ -154,4 +158,8 @@ def get_word_text(word):
             elif t == 5:
                  stext.append('\n')
     return ''.join(stext)
-
+class OrderedBlock:
+    def __init__(self, block, category, islast):
+        self.block    = block
+        self.category = category
+        self.islast   = islast
