@@ -21,6 +21,7 @@ import internetarchive
 from internetarchive import download, upload, get_session, modify_metadata
 
 from google.cloud import vision
+from google.protobuf.json_format import ParseError
 
 FNULL = open(os.devnull, 'w')
 
@@ -71,7 +72,11 @@ def google_ocr(client, input_file, gocr_file):
     if gocr_file and os.path.exists(gocr_file):
         serialized = codecs.open(gocr_file, 'r', 'utf-8').read()
         response = vision.AnnotateImageResponse()
-        return vision.AnnotateImageResponse.from_json(serialized)
+        try:
+            response = vision.AnnotateImageResponse.from_json(serialized)
+            return response
+        except ParseError:
+            pass
 
     content = io.open(input_file, 'rb').read()
     image = vision.Image(content=content)
