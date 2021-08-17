@@ -11,6 +11,7 @@ from zipfile import ZipFile
 import gzip
 import time
 import shutil
+import tarfile
 from iso639 import languages
 
 from egazette.ocr.djvuxml import Djvu
@@ -299,7 +300,7 @@ def to_text(jpgdir, filenames, client, outhandle, gocr_dir):
     for filename in filenames:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
-            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file, n =  re.subn('jpg$', 'json', filename)
             gocr_file = os.path.join(gocr_dir, gocr_file)
         else:
             gocr_file = None
@@ -316,7 +317,7 @@ def to_html(jpgdir, filenames, client, outhandle, gocr_dir):
     for filename in filenames:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
-            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file, n =  re.subn('jpg$', 'json', filename)
             gocr_file = os.path.join(gocr_dir, gocr_file)
         else:
             gocr_file = None
@@ -337,7 +338,7 @@ def to_djvu(jpgdir, filenames, client, outhandle, gocr_dir):
         infile    = os.path.join(jpgdir, filename)
 
         if gocr_dir:
-            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file, n =  re.subn('jpg$', 'json', filename)
             gocr_file = os.path.join(gocr_dir, gocr_file)
         else:
             gocr_file = None
@@ -354,7 +355,7 @@ def to_hocr(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags):
     for filename in filenames:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
-            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file, n =  re.subn('jpg$', 'json', filename)
             gocr_file = os.path.join(gocr_dir, gocr_file)
         else:
             gocr_file = None
@@ -374,7 +375,7 @@ def to_abby(jpgdir, filenames, client, outhandle, gocr_dir, ppi, langtags):
     for filename in filenames:
         infile    = os.path.join(jpgdir, filename)
         if gocr_dir:
-            gocr_file, n =  re.subn('jpg$', 'pickle', filename)
+            gocr_file, n =  re.subn('jpg$', 'json', filename)
             gocr_file = os.path.join(gocr_dir, gocr_file)
         else:
             gocr_file = None
@@ -420,6 +421,14 @@ class LangTags:
 
        langs.sort(key = lambda x: self.langdict[k], reverse = True)
        return langs[:4]
+
+
+def zip_gocr(dirpath, filename):
+    indir = os.path.join(dirpath, filename)
+    outfile = os.path.join(dirpath, filename + '.tar.gz')
+    tar = tarfile.open(outfile, "w:gz")
+    tar.add(indir, arcname=filename)
+    tar.close()
 
 class IA:
     def __init__(self, top_dir, access_key, secret_key, loglevel, logfile, \
@@ -667,6 +676,14 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
 
 
             gocr_dir, n = re.subn('_jpg$', '_gocr', jpgdir)
+            inter_files.append(('dir', gocr_dir))
+            if not os.path.exists(gocr_dir):
+                gocr_zip = gocr_dir + '.tar.gz'
+                if os.path.exists(gocr_zip):
+                    f = tarfile.open(gocr_zip)
+                    f.extractall(item_path)
+                    f.close()
+
             if not os.path.exists(gocr_dir):
                 os.mkdir(gocr_dir)
 
@@ -685,6 +702,7 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
             process(client, jpgdir, outhandle, out_format, gocr_dir, layout, \
                     ppi, langtags)
             outhandle.close()
+            zip_gocr(item_path, os.path.basename(gocr_dir))
 
             if out_format == 'abby':
                 abby_files.append(out_file)
@@ -695,12 +713,11 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
             langs = langtags.get_langs()
             ia.update_ik_metadata(ia_item, langs)
             ia.upload_abbyy(ia_item, abby_files)
-            clean_datadir(inter_files)
         elif out_format == 'hocr':
             langs = langtags.get_langs()
             ia.update_ik_metadata(ia_item, langs)
             ia.upload_chocr(ia_item, hocr_files)
-            clean_datadir(inter_files)
+        clean_datadir(inter_files)
 
 def clean_datadir(inter_files):
     for filetype, filepath in inter_files:

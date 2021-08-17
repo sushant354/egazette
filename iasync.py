@@ -126,6 +126,9 @@ class Gvision:
         jpgfiles = [os.path.join(jpgdir, x) for x in filenames]
 
         create_zip(jpgzip, jpgfiles)
+        if os.path.exists(jpgdir):
+            shutil.rmtree(jpgdir)
+
         return jpgzip, hocrfile_gz
 
 class GazetteIA:
@@ -325,6 +328,12 @@ class GazetteIA:
             self.logger.info('Successfully uploaded %s', identifier)
         else:    
             self.logger.warning('Error in uploading %s', identifier)
+
+        if self.gvisionobj and to_upload:
+            for filepath in to_upload:
+                os.remove(filepath)
+
+            
         return success
 
     def ia_upload(self, identifier, metadata, to_upload, files, rawfile):
