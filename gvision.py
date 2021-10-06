@@ -652,6 +652,7 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
         inter_files = []
         abby_files  = []
         hocr_files  = []
+        html_files  = []
         item_path   = os.path.join(ia.top_dir, ia_item)
 
 
@@ -694,7 +695,7 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
             elif out_format == 'djvu':
                 out_file, n = re.subn('_jpg$', '.djvu', jpgdir)
             elif out_format == 'html':
-                out_file, n = re.subn('_jpg$', '.html', jpgdir)
+                out_file, n = re.subn('_jpg$', '_gvision.html', jpgdir)
             elif out_format == 'hocr':
                 out_file, n = re.subn('_jpg$', '_chocr.html', jpgdir)
 
@@ -708,6 +709,8 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
                 abby_files.append(out_file)
             elif out_format == 'hocr':
                 hocr_files.append(out_file)
+            elif out_format == 'html':
+                html_files.append(out_file)
     
         if out_format == 'abby':
             langs = langtags.get_langs()
@@ -717,6 +720,9 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
             langs = langtags.get_langs()
             ia.update_ik_metadata(ia_item, langs)
             ia.upload_chocr(ia_item, hocr_files)
+        elif out_format == 'html':
+            ia.upload_files(ia_item, html_files)
+
         clean_datadir(inter_files)
 
 def clean_datadir(inter_files):
