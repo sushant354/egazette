@@ -3,7 +3,7 @@ AnyQt==0.0.10
 args==0.1.0
 arrow==0.15.2
 asgiref==3.2.10
-Babel==2.8.0
+Babel==2.9.1
 backports.csv==1.0.7
 baycomp==1.0.2
 beautifulsoup4==4.9.1
