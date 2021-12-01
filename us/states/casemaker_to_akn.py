@@ -80,10 +80,21 @@ class Akn30:
                 regulation = self.process_regulation(file_info, child_node)
                 num = regulation.get_num()
                 if num in regulations:
-                    regulations[num].merge(regulation)
+                    regulations[num] = self.merge(regulations[num], regulation)
                 else:
                     regulations[num] = regulation
 
+    def merge(self, reg1, reg2):
+        num1 = reg1.metadata.get_value('subnum')
+        num2 = reg2.metadata.get_value('subnum')
+
+        print (num1, num2)
+        if num1 < num2:
+            reg1.merge(reg2)
+            return reg1
+        else:
+            reg2.merge(reg1)
+            return reg2
 
     def process_regulation(self, file_info, node):
         body_akn    = create_node('body')
@@ -157,7 +168,6 @@ class Akn30:
                     text = ET.tostring(child, method="text", encoding = "unicode")
                     if text:
                        pnode.text += text
-                    
 
     def process_chapter(self, body_akn, node, regulation):
         chap_akn = create_node('chapter', body_akn, \
@@ -396,8 +406,58 @@ class Regulation:
         refnode = create_node('references', meta_node, {'source': '#this'})
         create_node('TLCOrganization', refnode, {'eId': 'council', 'showAs': author})
 
+    def update_chap_num(self, node):
+        node.set('eId', 'chap_%d' % self.chapnum)
+        self.chapnum += 1
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'section':
+                    self.update_section_num(child)
+                elif child.tag == 'part':
+                    self.update_part_num(child)
+        
+    def update_part_num(self, node):
+        node.set('eId', 'part_%d' % self.partnum)
+        self.partnum += 1
+        for child in node:
+            if ET.iselement(child) and child.tag == 'section':
+                self.update_section_num(child)
+
+    def update_section_num(self, node):
+        eId = 'sec_%d' % self.secnum
+        node.set('eId', eId) 
+        self.secnum += 1
+
+        subsection  = 1
+        content_num = 1
+        for child in node:
+            if ET.iselement(child):
+                print (child.tag)
+                if child.tag == 'subsection':
+                    subsection_eid = '%s__subsec_%d' % (eId, subsection)
+                    child.set('eId', subsection_eid)
+                    subsection += 1
+                elif child.tag == 'hcontainer':
+                    content_eid = '%s__hcontainer_%d' % (eId, content_num)
+                    child.set('eId', content_eid)
+                    content_num += 1
+
     def merge(self, other):
-        pass
+        if len(other.preface_akn) > 0:
+            self.body_akn.append(other.preface_akn)
+
+        for child in other.body_akn:
+            if ET.iselement(child):
+                if child.tag == 'chapter':
+                    self.update_chap_num(child)
+                elif child.tag == 'part':    
+                    self.update_part_num(child)
+                elif child.tag == 'section':    
+                    self.update_section_num(child)
+                else:
+                    self.logger.warn('Merge: Unknown tag %s', child.tag)
+
+            self.body_akn.append(child)
 
     def get_num(self):
         return self.metadata.get_value('regnum')
@@ -406,9 +466,11 @@ class Regulation:
         if  self.metadata.get_value('regnum'):
             return
 
-        reobj = re.search('\d+', text)
-        if reobj:
-            self.metadata.set_value('regnum',  text[reobj.start():reobj.end()])
+        nums = re.findall('\d+', text)
+        if nums:
+            self.metadata.set_value('regnum',  nums[0])
+            if len(nums) > 1:
+                 self.metadata.set_value('subnum', int(nums[1]))
 
     def set_title(self, title):
         self.metadata.set_value('title', title)
