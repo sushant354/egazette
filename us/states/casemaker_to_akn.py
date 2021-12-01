@@ -3,6 +3,19 @@ import sys
 import logging
 import os
 import re
+import datetime
+import calendar
+
+from egazette.us.states import states
+
+def month_to_num(month):
+    count = 0
+    month = month.lower()
+    for mth in calendar.month_name:
+        if mth.lower() == month:
+            return count
+        count += 1
+    return None
 
 class Metadata:
     def __init__(self):
@@ -33,66 +46,6 @@ class Akn30:
         self.localities = {'MI': 'michigan'}
         self.logger = logging.getLogger('akn30')
     
-    def get_header(self, metadata):
-        title       = metadata.get_value('title')
-        locality    = metadata.get_value('locality')
-        regyear     = metadata.get_value('regyear')
-        regnum      = metadata.get_value('regnum')
-        publishdate = metadata.get_value('publishdate')
-        passedby    = metadata.get_value('passedby')
-
-        frbr_uri = '/akn/us-%s/act/regulations/%s/%s' % (locality, regyear, regnum)
-
-        frbr_work = '''
-          <FRBRthis value="%s/!main" />
-          <FRBRuri value="%s"/>
-          <FRBRalias value="%s" name="title"/>
-          <FRBRdate date="%s" name="Generation"/>
-          <FRBRauthor href="#council"/>
-          <FRBRcountry value="us-%s"/>
-          <FRBRsubtype value="regulations"/>
-          <FRBRnumber value="%s"/>
-        ''' % (frbr_uri, frbr_uri, title, regyear, locality, regnum)
-
-        frbr_expr = '''
-          <FRBRthis value="%s/!main"/>
-          <FRBRuri value="%s/en@%s"/>
-          <FRBRdate date="%s" name="Generation"/>
-          <FRBRauthor href="%s"/>
-          <FRBRlanguage language="en"/>
-        ''' % (frbr_uri, frbr_uri, publishdate, publishdate, passedby)
-
-        frbr_manifest = '''
-          <FRBRthis value="%s/!main"/>
-          <FRBRuri value="%s/en@%s"/>
-          <FRBRdate date="%s" name="Generation"/>
-          <FRBRauthor href="#iklaws"/>
-        ''' % (frbr_uri, frbr_uri, publishdate, publishdate)
-
-        header = '''
-    <akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
-
-  <act contains="originalVersion" name="act">
-    <meta>
-      <identification source="#iklaws">
-        <FRBRWork>
-        %s
-        </FRBRWork>
-        <FRBRExpression>
-        %s
-        </FRBRExpression>
-        <FRBRManifestation>
-        %s
-        </FRBRManifestation>
-      </identification>
-      <publication number="" name="" showAs="" date="%s"/>
-    </meta>''' % (frbr_work, frbr_expr, frbr_manifest, publishdate)
-
-        return header
-
-
-        return metadata
-
 
     def process_casemaker(self, xml_file, regulations):
         regs      = []
@@ -125,7 +78,7 @@ class Akn30:
         for child_node in org_node:
             if ET.iselement(child_node) and child_node.tag == 'code':
                 regulation = self.process_regulation(file_info, child_node)
-                num = regulation.num
+                num = regulation.get_num()
                 if num in regulations:
                     regulations[num].merge(regulation)
                 else:
@@ -135,7 +88,7 @@ class Akn30:
     def process_regulation(self, file_info, node):
         body_akn    = create_node('body')
         preface_akn = create_node('preface')
-        regulation  = Regulation()
+        regulation  = Regulation(file_info.statecd, file_info.org_name)
 
         regulation.body_akn    = body_akn
         regulation.preface_akn = preface_akn
@@ -153,22 +106,26 @@ class Akn30:
                     elif codetype == 'Part':    
                         self.process_part(body_akn, child, regulation)
                 elif child.tag == 'name':
-                    regulation.name = child.text
+                    regulation.set_title(child.text)
                     pnode = create_node('p', preface_akn, {'class': 'title'})
                     title = create_node('shortTitle', pnode)
                     title.text = child.text
                 elif child.tag == 'content':
-                    self.process_preface(preface_akn, child)
+                    self.process_preface(preface_akn, child, regulation)
                 else:
                     pass
 
         return regulation
 
-    def process_preface(self, preface_akn, node):
+    def process_preface(self, preface_akn, node, regulation):
         for child in node:
             if ET.iselement(child):
                 if child.tag == 'codetext':
                     self.process_preface_codetext(preface_akn, child)
+                elif child.tag == 'currency':
+                    regulation.set_publish_date(child.text)
+                elif child.tag == 'notes':
+                    self.process_notes(preface_akn, child)
 
     def process_preface_codetext(self, preface_akn, node):
         for child in node:
@@ -178,7 +135,11 @@ class Akn30:
 
     def process_para(self, parent_akn, node):
         pnode = create_node('p', parent_akn)
-        pnode.text = node.text
+
+        if node.text:
+            pnode.text = node.text
+        else:
+            pnode.text = ''
 
         for  child in node:
             if ET.iselement(child):
@@ -192,6 +153,11 @@ class Akn30:
                     inode.text = child.text
                     if child.tail:
                        inode.tail = child.tail
+                else:
+                    text = ET.tostring(child, method="text", encoding = "unicode")
+                    if text:
+                       pnode.text += text
+                    
 
     def process_chapter(self, body_akn, node, regulation):
         chap_akn = create_node('chapter', body_akn, \
@@ -221,6 +187,53 @@ class Akn30:
                 elif child.tag == 'name':
                     self.process_heading(part_akn, child)
 
+    def add_comment_node(self, parent):
+        comment_node = create_node('remark', parent, {'status': 'editorial'})
+        return comment_node
+
+    def process_notes(self, parent_akn, node):
+        comment_node = self.add_comment_node(parent_akn)
+
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'notes-citeas':
+                    self.process_citeas_notes(comment_node, child)
+                elif child.tag == 'notes-history':
+                    self.process_notes_history(comment_node, child)
+                elif child.tag == 'notes-maint':
+                    self.process_notes_maint(comment_node, child)
+                elif child.tag == 'notes-std':    
+                    self.process_notes_std(comment_node, child)
+                else:    
+                    print (child.tag)
+
+    def process_notes_history(self, comment_node, node):
+        pass
+
+    def process_notes_maint(self, comment_node, node):
+        for child in node:
+            if ET.iselement(child) and child.tag == 'note':
+                para_node = create_node('p', comment_node)
+                text = ET.tostring(child, method = 'text', encoding = 'unicode')
+                para_node.text = text
+
+    def process_citeas_notes(self, comment_node, node):
+        text = ET.tostring(node, method = 'text', encoding = 'unicode')
+        citenode = create_node('neautralCitation', comment_node) 
+        citenode.text = text
+
+    def process_notes_std(self, comment_node, node):
+        for child in node:
+            if ET.iselement(child):
+               if child.tag == 'note':
+                   self.process_note(comment_node, child)
+                 
+    def process_note(self, comment_node, node):
+        for child in node:
+            if ET.iselement(child):
+               if child.tag == 'para':
+                   self.process_para(comment_node, child) 
+
     def process_number(self, parent_akn, node):
         number_node = create_node('num', parent_akn)
         number_node.text = node.text
@@ -240,6 +253,8 @@ class Akn30:
                     pass
                 elif child.tag == 'codetext':    
                     self.process_codetext(content_akn, child, section_akn, section_eid)
+                elif child.tag == 'notes':
+                    self.process_notes(content_akn, child)
                 elif child.tag == 'subsect':
                     subsection_eid = '%s__subsec_%d' % (eId, subsection)
                     subsection += 1
@@ -274,8 +289,7 @@ class Akn30:
                    self.process_subsection(section_akn, child, subsection_eid)
                 elif child.tag == 'number':
                    self.process_number(section_akn, child)
-                   if regulation.num == None:
-                       regulation.set_num(child.text)
+                   regulation.set_num(child.text)
                 elif child.tag == 'name':
                    self.process_heading(section_akn, child)
                 elif child.tag == 'content':
@@ -285,6 +299,8 @@ class Akn30:
                 elif child.tag == 'version':
                    # no idea what to do about the version tag
                    pass
+                elif child.tag == 'notes':
+                    self.process_notes(section_akn, child)
 
 
     def process_subsection(self, section_akn, node, eId):
@@ -318,30 +334,116 @@ class FileInfo:
         return 'root: %s, dept: %s, org: %s' % (self.root_name, self.dept_name, self.org_name)
 
 class Regulation:
-    def __init__(self):
+    def __init__(self, statecd, author):
         self.root = None
         self.dept = None
         self.name = None
-        self.statcd  = None
-        self.num     = None
+        self.locality  = states.locality[statecd]
         self.chapnum = 1
         self.secnum  = 1
         self.partnum = 1
         self.publish_date = None
         self.body_akn = None
 
+        self.metadata = Metadata()
+        self.metadata.set_value('locality', self.locality)
+        self.metadata.set_value('regyear', states.start_year[statecd])
+        self.metadata.set_value('author', author)
+
+
+    def add_header(self, meta_node):
+        title       = self.metadata.get_value('title')
+        locality    = self.metadata.get_value('locality')
+        regyear     = self.metadata.get_value('regyear')
+        regnum      = self.metadata.get_value('regnum')
+        publishdate = self.metadata.get_value('publishdate')
+        author      = self.metadata.get_value('author')
+        lang        = 'eng'
+        publishdate = publishdate.strftime('%Y-%m-%d')
+
+        frbr_uri = '/akn/us-%s/act/regulations/%s/%s' % (locality, regyear, regnum)
+
+        idnode = create_node('identification', meta_node, \
+                             {'source': '#casemaker'})
+        work_node = create_node('FRBRWork', idnode)
+        expr_node = create_node('FRBRExpression', idnode)
+        manifest_node = create_node('FRBRManifestation', idnode)
+
+        create_node('FRBRthis',  work_node, {'value': '%s/!main' % frbr_uri})
+        create_node('FRBRuri',   work_node, {'value': frbr_uri})
+        create_node('FRBRalias', work_node, {'value': title, 'name': 'title'})
+        create_node('FRBRdate',  work_node, {'date': regyear, 'name': 'Generation'})
+        create_node('FRBRauthor',  work_node, {'href': '#council'})
+        create_node('FRBRcountry', work_node, {'value': 'us-%s' % locality})
+        create_node('FRBRsubtype', work_node, {'value': 'regulations'})
+        create_node('FRBRnumber',  work_node, {'value': regnum})
+
+        expr_uri = '%s/%s@%s' % (frbr_uri, lang, publishdate)
+        create_node('FRBRthis', expr_node, {'value': '%s/!main' % expr_uri})
+        create_node('FRBRuri',  expr_node, {'value': expr_uri})
+        create_node('FRBRdate', expr_node, {'date': publishdate, 'name': 'Generation'})
+        create_node('FRBRauthor', expr_node, {'href': '#council'})
+        create_node('FRBRlanguage', expr_node, {'language': lang})
+
+
+        create_node('FRBRthis', manifest_node, {'value': '%s/!main' % expr_uri})
+        create_node('FRBRuri',  manifest_node, {'value': expr_uri})
+        create_node('FRBRdate', manifest_node, {'date': publishdate, 'name': 'Generation'})
+        create_node('FRBRauthor', manifest_node, {'href': '#council'})
+
+        create_node('publication', meta_node, \
+                 {'number': '', 'name': '', 'showAs': '', 'date': publishdate})
+        refnode = create_node('references', meta_node, {'source': '#this'})
+        create_node('TLCOrganization', refnode, {'eId': 'council', 'showAs': author})
+
     def merge(self, other):
         pass
 
+    def get_num(self):
+        return self.metadata.get_value('regnum')
+
     def set_num(self, text):
+        if  self.metadata.get_value('regnum'):
+            return
+
         reobj = re.search('\d+', text)
         if reobj:
-            self.num = text[reobj.start():reobj.end()]
+            self.metadata.set_value('regnum',  text[reobj.start():reobj.end()])
+
+    def set_title(self, title):
+        self.metadata.set_value('title', title)
+
+    def set_publish_date(self, currency_text):
+        if  self.metadata.get_value('publishdate'):
+            return
+
+        dateobj = self.extract_date(currency_text)
+        if dateobj:
+            self.metadata.set_value('publishdate', dateobj)
+
+
+    def extract_date(self, text):
+        monthre = 'january|february|march|april|may|june|july|august|september|october|november|december'
+        reobj = re.search('(?P<day>\d+)(st|nd|rd|th)?\s+(?P<month>%s)[\s,]+(?P<year>\d+)' % monthre, text, flags=re.IGNORECASE)
+
+
+        dateobj = None
+
+        if not reobj:
+            reobj = re.search('(?P<month>%s)\s+(?P<day>\d+)[\s,]+(?P<year>\d+)' % monthre, text, flags=re.IGNORECASE)
+
+        if reobj:
+            groups = reobj.groupdict()
+            dateobj = datetime.date(int(groups['year']),  month_to_num(groups['month']), int(groups['day']))
+        return dateobj
 
     def write_akn_xml(self, outfile):
-        akn_root = create_node('akomaNtoso', attribs = {'xmlns':'http://docs.oasis-open.org/legaldocml/ns/akn/3.0'})
-        act_node = create_node('act', akn_root, attribs = {'contains': "originalVersion", 'name': 'act'})
+        akn_root = create_node('akomaNtoso', attribs = \
+                  {'xmlns':'http://docs.oasis-open.org/legaldocml/ns/akn/3.0'})
+        act_node = create_node('act', akn_root, attribs = \
+                  {'contains': "originalVersion", 'name': 'act'})
         meta_node = create_node('meta', act_node)
+        self.add_header(meta_node)
 
         if self.preface_akn is not None:
            act_node.append(self.preface_akn)
