@@ -1,19 +1,18 @@
-import csv
-import datetime
 import os
 import logging
 import re
 import tarfile
-import logging
+from io import BytesIO
+import time
+import datetime
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.core.files.uploadedfile import UploadedFile
 from django.core.management.base import BaseCommand
 
 from internetarchive import download
-from indigo.plugins import plugins
 from indigo_api.models import Document, Language, Task, Work, Country, Locality, Commencement
+from egazette.us.states.casemaker_to_akn import Akn30
 
 class Command(BaseCommand):
     help = 'Imports new casemaker files.' \
@@ -42,9 +41,10 @@ class Command(BaseCommand):
         task.created_by_user = user
         task.save()
 
-    def import_akn_file(self, user, work, date, language, aknfile):
+    def import_akn_doc(self, user, work, date, language, akndoc):
+        docxml = akndoc.getvalue().decode('utf-8')
         document = Document()
-        document.document_xml = aknfile
+        document.document_xml = docxml
         document.work = work
         document.expression_date = date
         document.language = language
@@ -54,34 +54,37 @@ class Command(BaseCommand):
         document.save_with_revision(user)
         #self.create_review_task(document, user)
 
-    def get_frbr_uri(self, country, locality, actyear, actnum, doctype):
-        if doctype == 'act':
-            frbr_uri = '/akn/%s-%s/act/%s/%s' % (country, locality, actyear, actnum)
-        else:    
-            frbr_uri = '/akn/%s-%s/act/%s/%s/%s' % (country, locality, doctype, actyear, actnum)
-        return frbr_uri   
-
-    def add_file(self, country, locality, actyear, actnum, doctype, aknfile):
+    def add_akn(self, user, frbr_uri, country_name, locality_name, publishdate,\
+                actyear, actnum, doctype, title, akndoc):
+        country_name = country_name.upper()
+        locality_name = locality_name.lower()
         country  = Country.objects.get(country_id =  country_name)
         locality = Locality.objects.get(code = locality_name, \
                                         country = country)
 
         language = Language.objects.get(language_id='en')            
 
-        frbr_uri = self.get_frbr_uri(country, locality, actyear, actnum, doctype)
-        work = self.create_work(user, frbr_uri, row['title'], \
-                                publishdate, country, locality)
+        work = self.get_work(frbr_uri)
         if work == None:
-            print('Could not add the work:', frbr_uri)
-            return 
-                                    
-        self.import_akn_file(user, work, publishdate, language, aknfile)  
+            start_date = datetime.date(int(actyear), 1, 1)
+            work = self.create_work(user, frbr_uri, title, \
+                                    start_date, country, locality)
+        if work == None:
+            self.logger.warning('Could not add the work: %s', frbr_uri)
+            return
+        if  work.document_set.undeleted().filter(expression_date=publishdate, \
+                                                 language=language):    
+            self.logger.warning('Document for %s %s exists for language %s', \
+                               actyear, actnum, language)
+            return
+
+        self.import_akn_doc(user, work, publishdate, language, akndoc)  
 
     def get_work(self, frbr_uri):
         try:
             work = Work.objects.get(frbr_uri=frbr_uri)
         except Work.DoesNotExist:
-            return None
+            work = None
         return work
 
     def create_commencement(self, work, user, publishdate):
@@ -96,7 +99,7 @@ class Command(BaseCommand):
             },
         )
    
-    def create_work(self, user, frbr_uri, title, publishdate, country, locality):
+    def create_work(self, user, frbr_uri, title, start_date, country,locality):
 
         work = Work()
 
@@ -108,7 +111,7 @@ class Command(BaseCommand):
 
         work.created_by_user  = user
         work.updated_by_user  = user
-        work.publication_date = publishdate
+        work.publication_date = start_date 
 
         try:
             work.full_clean()
@@ -118,7 +121,7 @@ class Command(BaseCommand):
             logger.warning('Error in adding work for %s: %s', frbr_uri, e)
             return None
 
-        self.create_commencement(work, user, publishdate)
+        self.create_commencement(work, user, start_date)
         return work
 
     def get_user(self):
@@ -142,7 +145,7 @@ class Command(BaseCommand):
         destdir      = options['destdir']
         glob_pattern = options['globpattern']
 
-        self.download_item(item, glob_pattern, destdir)
+        #self.download_item(item, glob_pattern, destdir)
 
         user = self.get_user()
         dirpath = os.path.join(destdir, item)
@@ -175,13 +178,36 @@ class Command(BaseCommand):
              self.logger.warn('No XML directory found in %s', outpath)
              return
 
+         akn30 = Akn30()
+         regulations = {}
+
          for filename in os.listdir(xmldir):
+             if filename != 'mi-2021-admin-civilrights.xml':
+                 continue
              xmlpath = os.path.join(xmldir, filename)
              if not os.path.isdir(xmlpath):
-                 self.process_xml_file(xmlpath)
+                 akn30.process_casemaker(xmlpath, regulations)
+           
+         for num, regulation in regulations.items():
+             if num == None:
+                 self.logger.warn('No num found %s', regulation)
+                 continue
+ 
+             frbr_uri    = regulation.get_frbr_uri()
+             title       = regulation.get_title()
+             publishdate = regulation.get_publish_date()
+             country     = regulation.get_country()
+             locality    = regulation.get_locality()
+             regyear     = regulation.get_regyear()
+             regnum      = regulation.get_regnum()
 
-    def process_xml_file(self, xmlpath):
-        print (xmlpath)
+             akndoc   = BytesIO()
+             regulation.write_akn_xml(akndoc, xml_decl = False)
+
+             self.add_akn(user, frbr_uri, country, locality, publishdate, \
+                          regyear, regnum, 'regulation', title, akndoc)
+             break             
+
     def download_item(self, item, glob_pattern, destdir):
         success = False
         while not success:
