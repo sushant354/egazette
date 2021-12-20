@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand
 
 from internetarchive import download
-from indigo_api.models import Document, Language, Task, Work, Country, Locality, Commencement
+from indigo_api.models import Document, Language, Task, Work, Country, Locality, Commencement, ArbitraryExpressionDate
 from egazette.us.states.casemaker_to_akn import Akn30
 
 class Command(BaseCommand):
@@ -78,8 +78,18 @@ class Command(BaseCommand):
                                actyear, actnum, language)
             return
 
-        self.import_akn_doc(user, work, publishdate, language, akndoc)  
+        self.import_akn_doc(user, work, publishdate, language, akndoc) 
+        self.insert_consolidation_date(user, work, publishdate)
 
+    def insert_consolidation_date(self, user, work, publishdate):
+        expr_date = ArbitraryExpressionDate()
+        expr_date.date = publishdate
+        expr_date.work = work
+        expr_date.created_by_user = user
+        expr_date.updated_by_user = user
+        expr_date.save()
+
+    
     def get_work(self, frbr_uri):
         try:
             work = Work.objects.get(frbr_uri=frbr_uri)
@@ -206,7 +216,6 @@ class Command(BaseCommand):
 
              self.add_akn(user, frbr_uri, country, locality, publishdate, \
                           regyear, regnum, 'regulation', title, akndoc)
-             break             
 
     def download_item(self, item, glob_pattern, destdir):
         success = False
