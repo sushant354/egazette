@@ -8,6 +8,8 @@ import calendar
 
 from egazette.us.states import states
 
+STATIC_DIR = '/var/www/laws.indiankanoon.org/static/us-states/'
+
 def month_to_num(month):
     count = 0
     month = month.lower()
@@ -43,8 +45,9 @@ def create_node(tagname, parent = None, attribs = None):
 
 class DTDResolver(ET.Resolver):
     def resolve(self, url, public_id, context):
-        return self.resolve_filename('/home/indigo/usstates/DTD/entities/HTMLLat2.ent', context)
-        return self.resolve_string(ENTITIES, context)
+        dirname = os.getcwd()
+        filename = os.path.join(dirname, 'HTMLLat2.ent')
+        return self.resolve_filename(filename, context)
 
 class Akn30:
     def __init__(self):
@@ -86,8 +89,9 @@ class Akn30:
     def process_dept(self, node, file_info, regulations):   
         for child in node:
             if ET.iselement(child):
-                if child.tag == 'code':
-                    codetype = child.find('code').get('type')
+                child_code = child.find('code')
+                if child.tag == 'code' and child_code != None:
+                    codetype = child_code.get('type')
                     if codetype == 'Undesignated':
                         self.process_org(child, file_info, regulations)
                     else:    
@@ -95,7 +99,7 @@ class Akn30:
                 elif child.tag == 'name':
                     file_info.dept_name = child.text
                 else:
-                    self.logger.warn('Ignord element in dept %s', child.tag)
+                    self.logger.warning('Ignord element in dept %s', child.tag)
             else:       
                 self.logger.warning ('Ignored node in dept %s', child)
 
@@ -111,16 +115,26 @@ class Akn30:
         else:
             regulations[num] = regulation
 
+        return regulations[num] 
+
     def process_org(self, node, file_info, regulations):
+        regulation = None
         for child_node in node:
-            if ET.iselement(child_node) and child_node.tag == 'code':
-                self.process_code(child_node, file_info, regulations)
+            if ET.iselement(child_node):
+                if child_node.tag == 'code':
+                    codetype = child_node.get('type')
+                    if codetype == 'Undesignated':
+                        regulation = self.process_code(child_node, file_info, regulations)
+                    elif codetype == 'Part':    
+                        self.process_part(regulation.body_akn, child_node, regulation)
+                    else:
+                        self.logger.warning('Unknown codetype in org %s', codetype)
             elif ET.iselement(child_node) and child_node.tag == 'name':
                 file_info.org_name = child_node.text
             elif ET.iselement(child_node) and child_node.tag == 'version':
                 pass 
             else:       
-                self.logger.warning ('Ignored node in code %s', ET.tostring(child_node))
+                self.logger.warning ('Ignored node in org %s', ET.tostring(child_node))
 
     def merge(self, reg1, reg2):
         num1 = reg1.metadata.get_value('subnum')
@@ -178,7 +192,7 @@ class Akn30:
                     self.process_preface_codetext(preface_akn, child)
                 elif child.tag == 'currency':
                     comment_node = self.add_comment_node(preface_akn)
-                    comment_node.text = child.text
+                    self.copy_text(comment_node, child)
                     regulation.set_publish_date(child.text)
                 elif child.tag == 'notes':
                     self.process_notes(preface_akn, child)
@@ -197,36 +211,56 @@ class Akn30:
             else:       
                 self.logger.warning ('Ignored node in preface codetext %s', child)
 
-    def process_para(self, parent_akn, node):
+    def copy_text(self, akn_node, cm_node):
+        akn_node.text = cm_node.text
+        if cm_node.tail:
+            akn_node.tail = cm_node.tail
+
+    def process_superscript(self, parent_akn, node):
+        supnode = create_node('sup', parent_akn)
+        self.copy_text(supnode, node)
+
+    def process_underscore(self, parent_akn, node):
+        unode = create_node('u', parent_akn)
+        self.copy_text(unode, node)
+
+    def process_subscript(self, parent_akn, node):
+        subnode = create_node('sub', parent_akn)
+        self.copy_text(subnode, node)
+
+    def process_bold(self, parent_akn, node):
+        boldnode = create_node('b', parent_akn)
+        self.copy_text(boldnode, node)
+    
+    def process_italic(self, parent_akn, node):
+        inode = create_node('i', parent_akn)
+        self.copy_text(inode, node)
+
+    def process_para(self, parent_akn, node, section_akn = None, section_eid = None):
         pnode = create_node('p', parent_akn)
+        pnode.text = node.text
 
-        if node.text:
-            pnode.text = node.text
-        else:
-            pnode.text = ''
-
+        subsection = 1
         for  child in node:
             if ET.iselement(child):
                 if child.tag == 'bold':
-                    bnode = create_node('b', pnode)
-                    bnode.text = child.text
-                    if child.tail:
-                       bnode.tail = child.tail
+                    self.process_bold(pnode, child)
                 elif child.tag == 'italic':
-                    inode = create_node('i', pnode)
-                    inode.text = child.text
-                    if child.tail:
-                       inode.tail = child.tail
+                    self.process_italic(pnode, child)
                 elif child.tag == 'superscript':
-                    supnode = create_node('sup', pnode)
-                    supnode.text = child.text
-                    if child.tail:
-                       supnode.tail = child.tail
+                    self.process_superscript(pnode, child)
+                elif child.tag == 'subscript':
+                    self.process_subscript(pnode, child)
+                elif child.tag == 'subsect':
+                    subsection_eid = '%s__subsec_%d' % (section_eid, subsection)
+                    subsection += 1
+                    self.process_subsection(section_akn, child, subsection_eid)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(pnode, child)
                 elif child.tag == 'filelink':
                     filename = child.get('filename')
                     if filename and re.search('(png|jpg)$', filename):
+                        filename = STATIC_DIR + filename
                         imgnode = create_node('img', pnode, {'src': filename})
                         if child.tail:
                             imgnode.tail = child.tail
@@ -234,24 +268,89 @@ class Akn30:
                         self.logger('Unknown filelink: %s', ET.tostring(child))
                 elif child.tag == 'ulink':
                     anode = create_node('a', pnode, {'href': child.get('url')})
-                    anode.text = child.text
-                    if child.tail:
-                        anode.tail = child.tail 
+                    self.copy_text(anode, child)
                 elif child.tag == 'codecitation':
                     self.process_codecitation(pnode, child)
-                elif child.tag == 'subsect':
+                elif child.tag == 'underscore':
+                    self.process_underscore(pnode, child)
+                elif child.tag == 'actcitation':
+                    self.process_actcitation(pnode, child)
                 else:
                     self.logger.warning ('Ignored element in para %s', ET.tostring(child))
-                    '''
-                    text = ET.tostring(child, method="text", encoding = "unicode")
-                    if text:
-                       pnode.text += text
-                    '''
             else:       
                 self.logger.warning ('Ignored node in para %s', child)
 
     def process_table(self, parent_akn, node):
-        pass
+        table_akn = create_node('table', parent_akn, node.attrib)
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'tr' or child.tag == 'TR':
+                    self.process_tr(table_akn, child)
+                elif child.tag == 'td' or child.tag == 'TD':
+                    self.process_td(table_akn, child)
+                elif child.tag == 'tbody' or child.tag == 'TBODY':
+                    self.process_tbody(table_akn, child)
+                elif child.tag == 'table' or child.tag == 'TABLE':
+                    self.process_table(table_akn, child)
+                else:    
+                    self.logger.warning ('Ignored element in table %s', child.tag)
+            else:       
+                self.logger.warning ('Ignored node in table %s', child)
+
+    def process_tbody(self, parent_akn, node):
+        tbody_akn = create_node('tbody', parent_akn, node.attrib)
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'tr' or child.tag == 'TR':
+                    self.process_tr(tbody_akn, child)
+                elif child.tag == 'td' or child.tag == 'TD':
+                    self.process_td(tbody_akn, child)
+                elif child.tag == 'table' or child.tag == 'TABLE':
+                    self.process_table(tbody_akn, child)
+                else:    
+                    self.logger.warning ('Ignored element in tbody %s', child.tag)
+            else:       
+                self.logger.warning ('Ignored node in tbody %s', child)
+
+    def process_tr(self, parent_akn, node):
+        tr_akn = create_node('tr', parent_akn, node.attrib)
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'td' or child.tag == 'TD':
+                    self.process_td(tr_akn, child)
+                elif child.tag == 'table' or child.tag == 'TABLE':
+                    self.process_table(tr_akn, child)
+                else:    
+                    self.logger.warning ('Ignored element in tr %s', child.tag)
+            else:       
+                self.logger.warning ('Ignored node in tr %s', child)
+
+    def process_td(self, parent_akn, node):
+        td_akn = create_node('tr', parent_akn, node.attrib)
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'td' or child.tag == 'TD':
+                    self.process_td(td_akn, child)
+                elif child.tag == 'table' or child.tag == 'TABLE':
+                    self.process_table(td_akn, child)
+                elif child.tag == 'superscript':
+                    self.process_superscript(td_akn, child)
+                elif child.tag == 'para':
+                    self.process_para(td_akn, child)
+                elif child.tag == 'bold':
+                    self.process_bold(td_akn, child)
+                elif child.tag == 'subscript':
+                    self.process_subscript(td_akn, child)
+                elif child.tag == 'superscript':
+                    self.process_superscript(td_akn, child)
+                elif child.tag == 'underscore':
+                    self.process_underscore(td_akn, child)
+                elif child.tag == 'codecitation':
+                    self.process_codecitation(td_akn, child)
+                else:    
+                    self.logger.warning ('Ignored element in td %s', child.tag)
+            else:       
+                self.logger.warning ('Ignored node in td %s', child)
 
     def process_chapter(self, body_akn, node, regulation):
         chap_akn = create_node('chapter', body_akn, \
@@ -284,6 +383,10 @@ class Akn30:
                         self.process_chapter(body_akn, child, regulation)
                     elif codetype == 'Part':    
                         self.process_part(body_akn, child, regulation)
+                    elif codetype == 'Subpart':    
+                        subpart_eid = 'subpart_%d' % regulation.subpart
+                        regulation.subpart += 1   
+                        self.process_subpart(body_akn, subpart_eid, child, regulation)
                     elif codetype == 'Undesignated':
                         self.process_subcode(body_akn, child, regulation)
                     else:
@@ -371,6 +474,8 @@ class Akn30:
                     self.process_content(part_akn, child, content_eid, part_eid, regulation)
                 elif child.tag == 'code' and child.get('type')=='Undesignated':
                     self.process_part(body_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Chapter':
+                    self.process_chapter(part_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Subpart':
                     subpart_eid = '%s__subpart_%d' % (part_eid, subpart)
                     self.process_subpart(part_akn, subpart_eid, child, regulation)
@@ -386,6 +491,7 @@ class Akn30:
 
     def process_subpart(self, part_akn, subpart_eid, node, regulation):
         subpart_akn = create_node('subpart', part_akn,  {'eId': subpart_eid})
+        content_num = 1
         for child in node:
             if ET.iselement(child):
                 if child.tag == 'code' and child.get('type') == 'Section':
@@ -396,6 +502,10 @@ class Akn30:
                     self.process_heading(subpart_akn, child)
                 elif child.tag == 'code' and child.get('type')=='Undesignated':
                     self.process_part(subpart_akn, child, regulation)
+                elif child.tag == 'content':
+                    content_eid = '%s__hcontainer_%d' % (subpart_eid, content_num)
+                    content_num += 1
+                    self.process_content(subpart_akn, child, content_eid, subpart_eid, regulation)
                 else:    
                     self.logger.warning ('Ignored element in subpart %s', ET.tostring(child))
             else:       
@@ -427,7 +537,14 @@ class Akn30:
                 self.logger.warning ('Ignored node in notes %s', child)
 
     def process_notes_history(self, comment_node, node):
-        pass
+       for child in node:
+            if ET.iselement(child):
+                if child.tag == 'note':
+                    self.process_note(comment_node, child)
+                else:    
+                    self.logger.warning ('Ignored element in notes-history %s', child.tag)
+            else:       
+                self.logger.warning ('Ignored node in notes-history %s', child)
 
     def process_notes_maint(self, comment_node, node):
         for child in node:
@@ -456,9 +573,35 @@ class Akn30:
 
     def process_codecitation(self, parent_akn, node):
         citenode = create_node('ref', parent_akn, {'href': ''})
-        citenode.text = node.text
-        if node.tail:
-            citenode.tail = node.tail 
+        self.copy_text(citenode, node)
+
+    def process_actcitation(self, parent_akn, node):
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'actid':
+                    self.process_actid(parent_akn, node)
+                else:    
+                    self.logger.warning ('Ignored element in actcitation %s', child.tag)
+            else:       
+                 self.logger.warning ('Ignored node in actcitation %s', child)
+
+    def process_actid(self, parent_akn, node):
+        anode = create_node('a', parent_akn, {'href': ''})
+        self.copy_text(anode, node)
+
+    def get_akn_date(self, datestr):
+        ds = re.findall('\d+', datestr)
+        return '%s-%s-%s' % (ds[2], ds[0], ds[1])
+
+    def process_date(self, parent_akn, node, datestr, refersTo):
+        datenode = create_node('date', parent_akn, {'date': datestr, \
+                                                    'refersTo': refersTo})
+        self.copy_text(datenode, node)
+
+    def process_regcitation(self, parent_akn, node):
+        href = STATIC_DIR + node.get('filename')
+        anode = create_node('a', parent_akn, {'href': href})
+        self.copy_text(anode, node)
 
     def process_note(self, comment_node, node):
         for child in node:
@@ -466,12 +609,14 @@ class Akn30:
                 if child.tag == 'para':
                     self.process_para(comment_node, child) 
                 elif child.tag == 'italic':     
-                    inode = create_node('i', comment_node)
-                    inode.text = child.text
-                    if child.tail:
-                       inode.tail = child.tail
+                    self.process_italic(comment_node, child) 
                 elif child.tag == 'codecitation':
                      self.process_codecitation(comment_node, child)
+                elif child.tag == 'effectivedate':
+                     datestr = self.get_akn_date(child.get('use'))
+                     self.process_date(comment_node, child, datestr, '#effectivedate')
+                elif child.tag == 'regcitation':
+                     self.process_regcitation(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', child.tag)
             else:       
@@ -515,7 +660,7 @@ class Akn30:
         for child in node:
             if ET.iselement(child):
                 if child.tag == 'para':
-                    self.process_para(parent_akn, child)
+                    self.process_para(parent_akn, child, section_akn, section_eid)
                 elif child.tag == 'subsect':
                     subsection_eid = '%s__subsec_%d' % (section_eid, subsection)
                     subsection += 1
@@ -602,6 +747,7 @@ class Regulation:
         self.chapnum = 1
         self.secnum  = 1
         self.partnum = 1
+        self.subpart = 1
         self.contentnum = 1
         self.publish_date = None
         self.body_akn = None
@@ -668,7 +814,11 @@ class Regulation:
         create_node('publication', meta_node, \
                  {'number': '', 'name': '', 'showAs': '', 'date': publishdate})
         refnode = create_node('references', meta_node, {'source': '#this'})
-        create_node('TLCOrganization', refnode, {'eId': 'council', 'showAs': author})
+
+        refdict = {'eId': 'council'}
+        if author:
+            refdict['showAs'] = author
+        create_node('TLCOrganization', refnode, refdict)
 
     def update_chap_num(self, node):
         node.set('eId', 'chap_%d' % self.chapnum)
@@ -705,20 +855,39 @@ class Regulation:
                     child.set('eId', content_eid)
                     content_num += 1
 
+    def update_hcontainer_num(self, node):
+        eId = 'hcontainer_%d' % self.contentnum
+        node.set('eId', eId) 
+        self.contentnum += 1
+
+    def update_subpart_num(self, node):
+        eId = 'subpart_%d' % self.subpart
+        node.set('eId', eId) 
+        self.subpart += 1
+
+
     def merge(self, other):
         if len(other.preface_akn) > 0:
             self.body_akn.append(other.preface_akn)
 
         for child in other.body_akn:
             if ET.iselement(child):
+                num = child.get('eId')
+
                 if child.tag == 'chapter':
                     self.update_chap_num(child)
                 elif child.tag == 'part':    
                     self.update_part_num(child)
                 elif child.tag == 'section':    
                     self.update_section_num(child)
+                elif child.tag == 'hcontainer':    
+                    self.update_hcontainer_num(child)
+                elif child.tag == 'subpart':    
+                    self.update_subpart_num(child)
+                elif num == None:    
+                    pass
                 else:
-                    self.logger.warning('Merge: Unknown tag for updating num %s', child.tag)
+                    self.logger.warning('Merge: Unknown tag for updating num %s', ET.tostring(child))
 
             self.body_akn.append(child)
 
@@ -806,8 +975,8 @@ if __name__ == '__main__':
     regulations = {}
 
     for filename in os.listdir(indir):
-        if filename != 'mi-2021-admin-laborandeconomicopportunity.xml':
-            continue
+        #if filename != 'mi-2021-admin-environmentalquality.xml':
+        #    continue
         filepath = os.path.join(indir, filename)
         akn30.process_casemaker(filepath, regulations)
 
