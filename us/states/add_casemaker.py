@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand
 
 from internetarchive import download
 from indigo_api.models import Document, Language, Task, Work, Country, Locality, Commencement, ArbitraryExpressionDate
-from egazette.us.states.casemaker_to_akn import Akn30
+from egazette.us.states.casemaker_to_akn import Akn30, RefResolver
 
 class Command(BaseCommand):
     help = 'Imports new casemaker files.' \
@@ -23,6 +23,8 @@ class Command(BaseCommand):
                             help = 'item on internet-archive')
         parser.add_argument('-d', '--destdir', dest= 'destdir', action='store',\
                             help = 'dest dir for processing')
+        parser.add_argument('-m', '--mediaurl', dest= 'mediaurl', \
+                            action='store', help = 'URL prefix holding images')
         parser.add_argument('-g', '--globpattern', dest= 'globpattern', \
                            action='store', help = 'glob pattern for selecting files in an internetarchive item')
 
@@ -76,12 +78,18 @@ class Command(BaseCommand):
                                                  language=language):    
             self.logger.warning('Document for %s %s exists for language %s', \
                                actyear, actnum, language)
-            return
-
-        self.import_akn_doc(user, work, publishdate, language, akndoc) 
+        else:
+             self.import_akn_doc(user, work, publishdate, language, akndoc) 
         self.insert_consolidation_date(user, work, publishdate)
 
     def insert_consolidation_date(self, user, work, publishdate):
+        try:
+            expr_date = ArbitraryExpressionDate.objects.get(date = publishdate, work = work)
+            if expr_date != None:
+                return
+        except ArbitraryExpressionDate.DoesNotExist:
+            pass 
+
         expr_date = ArbitraryExpressionDate()
         expr_date.date = publishdate
         expr_date.work = work
@@ -153,21 +161,22 @@ class Command(BaseCommand):
         self.logger  = logging.getLogger('casemaker')
         item         = options['item']
         destdir      = options['destdir']
+        mediaurl     = options['mediaurl']
         glob_pattern = options['globpattern']
 
         #self.download_item(item, glob_pattern, destdir)
 
         user = self.get_user()
         dirpath = os.path.join(destdir, item)
-        self.process_recursive(user, dirpath)
+        self.process_recursive(user, dirpath, mediaurl)
 
-    def process_recursive(self, user, dirpath):    
+    def process_recursive(self, user, dirpath, mediaurl):    
         for filename in os.listdir(dirpath):
             filepath = os.path.join(dirpath, filename)
             if os.path.isdir(filepath):
-                self.process_recursive(user, filepath)
+                self.process_recursive(user, filepath, mediaurl)
             elif re.search('\.tar$', filepath):
-                self.process_state(user, filepath)
+                self.process_state(user, filepath, mediaurl)
 
     def find_xml_dir(self, dirpath):
         for filename in os.listdir(dirpath):
@@ -179,7 +188,7 @@ class Command(BaseCommand):
                     return self.find_xml_dir(filepath)
         return None           
 
-    def process_state(self, user, filepath):
+    def process_state(self, user, filepath, mediaurl):
          f = tarfile.open (filepath)
          outpath = re.sub('.tar$', '', filepath)
          f.extractall(outpath)
@@ -188,16 +197,27 @@ class Command(BaseCommand):
              self.logger.warn('No XML directory found in %s', outpath)
              return
 
-         akn30 = Akn30()
+         akn30 = Akn30(mediaurl)
          regulations = {}
 
          for filename in os.listdir(xmldir):
-             if filename != 'mi-2021-admin-civilrights.xml':
-                 continue
              xmlpath = os.path.join(xmldir, filename)
              if not os.path.isdir(xmlpath):
                  akn30.process_casemaker(xmlpath, regulations)
-           
+
+         refresolver = RefResolver()
+         for num, regulation in regulations.items():
+             if num == None:
+                 continue
+
+             refresolver.add_regulation(regulation)    
+
+         for num, regulation in regulations.items():
+             if num == None:
+                 continue
+
+             refresolver.resolve(regulation)    
+          
          for num, regulation in regulations.items():
              if num == None:
                  self.logger.warn('No num found %s', regulation)
@@ -210,6 +230,9 @@ class Command(BaseCommand):
              locality    = regulation.get_locality()
              regyear     = regulation.get_regyear()
              regnum      = regulation.get_regnum()
+
+             #if regnum not in ['37', '393', '247']:
+             #    continue
 
              akndoc   = BytesIO()
              regulation.write_akn_xml(akndoc, xml_decl = False)

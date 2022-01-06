@@ -8,8 +8,6 @@ import calendar
 
 from egazette.us.states import states
 
-STATIC_DIR = '/var/www/laws.indiankanoon.org/static/us-states/'
-
 def month_to_num(month):
     count = 0
     month = month.lower()
@@ -45,18 +43,80 @@ def create_node(tagname, parent = None, attribs = None):
 
 class DTDResolver(ET.Resolver):
     def resolve(self, url, public_id, context):
-        dirname = os.getcwd()
+        dirname = os.path.dirname(os.path.realpath(__file__))
         filename = os.path.join(dirname, 'HTMLLat2.ent')
         return self.resolve_filename(filename, context)
 
-class Akn30:
+class RefResolver:
     def __init__(self):
+        self.refids = {}
+        self.logger = logging.getLogger('refresolver')
+
+    def normalize_num(self, num):
+        return ' '.join(num.split())
+
+    def add_refid(self, num, uri, eid):
+        num = self.normalize_num(num)
+        if num in self.refids:
+            self.logger.warning('Refid already exists %s %s for (%s, %s)', num, self.refids[num], uri, eid)
+            return
+
+        self.refids[num] = (uri, eid)
+
+    def resolve_num(self, num):
+        num = self.normalize_num(num)
+        if num in self.refids:
+            return self.refids[num]
+
+        return None, None
+
+    def add_regulation(self, regulation):
+        uri = regulation.get_expr_uri()
+        self.add_sections(regulation.body_akn, uri)
+
+    def add_sections(self, akn, uri):    
+        for node in akn.iter('section'):
+            num = node.find('num').text
+            self.add_refid(num, uri, node.get('eId'))
+
+    def is_duplicate(self, node):
+        num = node.find('num').text
+        uri, eId = self.resolve_num(num)
+        if eId:
+           return num
+        return None   
+        
+    def resolve(self, regulation):
+        reguri = regulation.get_expr_uri()
+        for node in regulation.body_akn.iter('ref'):
+            text = node.get('use')
+            if not text:
+                self.logger.warning('Nothing to resolve here %s %s', ET.tostring(node), reguri)
+                continue
+
+            uri, eId = self.resolve_num(text)
+            if uri == None:
+                self.logger.warning('Could not resolve %s', text)
+                continue
+
+            if uri == reguri:
+                href = '#%s' % eId
+            else:
+                href = '%s#%s' % (uri, eId)
+
+            node.attrib['href'] = href
+            
+
+class Akn30:
+    def __init__(self, media_url):
+        self.media_url  = media_url
         self.localities = {'MI': 'michigan'}
-        self.logger = logging.getLogger('akn30')
+        self.logger     = logging.getLogger('akn30')
     
 
     def process_casemaker(self, xml_file, regulations):
         regs      = []
+
         file_info = FileInfo('us')
         parser = ET.XMLParser(load_dtd = True)
         parser.resolvers.add( DTDResolver())
@@ -236,6 +296,10 @@ class Akn30:
         inode = create_node('i', parent_akn)
         self.copy_text(inode, node)
 
+    def check_children(self, node):
+        if len(node) > 0:
+            print (ET.tostring(node))
+
     def process_para(self, parent_akn, node, section_akn = None, section_eid = None):
         pnode = create_node('p', parent_akn)
         pnode.text = node.text
@@ -259,16 +323,15 @@ class Akn30:
                     self.process_table(pnode, child)
                 elif child.tag == 'filelink':
                     filename = child.get('filename')
-                    if filename and re.search('(png|jpg)$', filename):
-                        filename = STATIC_DIR + filename
+                    if filename and re.search('(png|jpg|pdf)$', filename):
+                        filename = self.media_url + filename
                         imgnode = create_node('img', pnode, {'src': filename})
                         if child.tail:
                             imgnode.tail = child.tail
                     else:
-                        self.logger('Unknown filelink: %s', ET.tostring(child))
+                        self.logger.warning('Unknown filelink: %s', ET.tostring(child))
                 elif child.tag == 'ulink':
-                    anode = create_node('a', pnode, {'href': child.get('url')})
-                    self.copy_text(anode, child)
+                    self.process_ulink(pnode, child)
                 elif child.tag == 'codecitation':
                     self.process_codecitation(pnode, child)
                 elif child.tag == 'underscore':
@@ -279,6 +342,11 @@ class Akn30:
                     self.logger.warning ('Ignored element in para %s', ET.tostring(child))
             else:       
                 self.logger.warning ('Ignored node in para %s', child)
+        return pnode
+
+    def process_ulink(self, parent_akn, node):
+        anode = create_node('a', parent_akn, {'href': node.get('url')})
+        self.copy_text(anode, node)
 
     def process_table(self, parent_akn, node):
         table_akn = create_node('table', parent_akn, node.attrib)
@@ -326,7 +394,8 @@ class Akn30:
                 self.logger.warning ('Ignored node in tr %s', child)
 
     def process_td(self, parent_akn, node):
-        td_akn = create_node('tr', parent_akn, node.attrib)
+        td_akn = create_node('td', parent_akn, node.attrib)
+        self.copy_text(td_akn, node)
         for child in node:
             if ET.iselement(child):
                 if child.tag == 'td' or child.tag == 'TD':
@@ -347,6 +416,8 @@ class Akn30:
                     self.process_underscore(td_akn, child)
                 elif child.tag == 'codecitation':
                     self.process_codecitation(td_akn, child)
+                elif child.tag == 'italic':
+                    self.process_italic(td_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in td %s', child.tag)
             else:       
@@ -496,6 +567,8 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code' and child.get('type') == 'Section':
                     self.process_section(subpart_akn, child, regulation)
+                elif child.tag == 'version':
+                    pass
                 elif child.tag == 'number':
                     self.process_number(subpart_akn, child)
                 elif child.tag == 'name':
@@ -529,10 +602,12 @@ class Akn30:
                     self.process_notes_maint(comment_node, child)
                 elif child.tag == 'notes-std':    
                     self.process_notes_std(comment_node, child)
+                elif child.tag == 'notes-alert':    
+                    self.process_notes_std(comment_node, child)
                 elif child.tag == 'notes-editor':    
                     self.process_notes_std(comment_node, child)
                 else:    
-                    self.logger.warning ('Ignored element in notes %s', child.tag)
+                    self.logger.warning ('Ignored element in notes %s', ET.tostring(child))
             else:       
                 self.logger.warning ('Ignored node in notes %s', child)
 
@@ -570,20 +645,42 @@ class Akn30:
             else:       
                 self.logger.warning ('Ignored node in notes-std %s', child)
 
+ 
+    def process_codesec(self, parent_akn, node):
+        text = node.get('use')
+        citenode = create_node('ref', parent_akn, {'href': ''})
+        if text:
+            citenode.attrib['use'] = text
+        text = ET.tostring(node, method = 'text', encoding = 'unicode')
+        citenode.text = text
 
     def process_codecitation(self, parent_akn, node):
-        citenode = create_node('ref', parent_akn, {'href': ''})
-        self.copy_text(citenode, node)
-
-    def process_actcitation(self, parent_akn, node):
+        span_akn = create_node('span', parent_akn)
+        self.copy_text(span_akn, node)
         for child in node:
             if ET.iselement(child):
-                if child.tag == 'actid':
-                    self.process_actid(parent_akn, node)
+                if child.tag == 'codesec':
+                    self.process_codesec(span_akn, child)
                 else:    
-                    self.logger.warning ('Ignored element in actcitation %s', child.tag)
+                    self.logger.warning ('Ignored element in codesec %s', child.tag)
+            else:       
+                 self.logger.warning ('Ignored node in codesec %s', child)
+
+    def process_actcitation(self, parent_akn, node):
+        span_akn = create_node('span', parent_akn)
+        text = []
+        for child in node:
+            if ET.iselement(child):
+                if child.text:
+                    text.append(child.text)
+
+                if child.tail:
+                    text.append(child.tail)
             else:       
                  self.logger.warning ('Ignored node in actcitation %s', child)
+        span_akn.text = ''.join(text)
+        if node.tail:
+            span_akn.tail = node.tail
 
     def process_actid(self, parent_akn, node):
         anode = create_node('a', parent_akn, {'href': ''})
@@ -599,9 +696,13 @@ class Akn30:
         self.copy_text(datenode, node)
 
     def process_regcitation(self, parent_akn, node):
-        href = STATIC_DIR + node.get('filename')
+        href = self.media_url + node.get('filename')
         anode = create_node('a', parent_akn, {'href': href})
         self.copy_text(anode, node)
+
+    def process_strike(self, parent_akn, node):
+        delnode = create_node('del', parent_akn)
+        self.copy_text(delnode, node)
 
     def process_note(self, comment_node, node):
         for child in node:
@@ -624,11 +725,11 @@ class Akn30:
 
     def process_number(self, parent_akn, node):
         number_node = create_node('num', parent_akn)
-        number_node.text = node.text
+        number_node.text = ET.tostring(node, method='text', encoding='unicode', with_tail=False)
 
     def process_heading(self, parent_akn, node):
         heading_node = create_node('heading', parent_akn)
-        heading_node.text = node.text
+        heading_node.text = ET.tostring(node, method='text', encoding='unicode', with_tail=False)
 
     def process_content(self, section_akn, node, eId, section_eid, regulation):
         hcontent_akn = create_node('hcontainer', section_akn, {'eId': eId})
@@ -672,12 +773,17 @@ class Akn30:
                     
 
     def process_section(self, parent_akn, node, regulation):
+        namenode = node.find('name')
+        if namenode != None:
+            text = ET.tostring(namenode, method='text', encoding='unicode', with_tail=False)
+            if re.match('\s*\[?rescind', text, re.IGNORECASE):
+                return
+
         eId = 'sec_%d' % regulation.secnum
         regulation.secnum += 1
         content_num       = 1
         subsection        = 1
-        section_akn = create_node('section', parent_akn, \
-                                      {'eId': eId})
+        section_akn = create_node('section', parent_akn, {'eId': eId})
 
         for child in node:
             if ET.iselement(child):
@@ -705,6 +811,25 @@ class Akn30:
                 self.logger.warning ('Ignored node in section %s', child)
 
 
+    def add_text(self, akn, node):
+        if akn.text:
+            akn.text += node.text
+        else:
+            akn.text = node.text
+
+    def add_tail(self, akn, node):
+        if akn.tail:
+            akn.tail += node.tail
+        else:
+            akn.tail = node.tail
+
+    def print_text(self, node):
+        if node.text and node.text.strip():
+            print ('TEXT', node.text, ET.tostring(node))
+
+        if node.tail and node.tail.strip():
+            print ('TAIL', node.tail, ET.tostring(node))
+
     def process_subsection(self, section_akn, node, eId):
         subsection_akn = create_node('subsection', section_akn, {'eId': eId})
         content_akn    = None
@@ -714,17 +839,46 @@ class Akn30:
                 if child.tag == 'designator':
                     self.process_number(subsection_akn, child)
                     content_akn = create_node('content', subsection_akn)
+                    para_node = create_node('p', content_akn)
+                    if child.tail:
+                        para_node.text = child.tail
                 elif child.tag == 'subsect':
                     subsection_eid = '%s__subsec_%d' % (eId, subsection)
                     subsection += 1
                     self.process_subsection(subsection_akn, child, subsection_eid)
-                elif child.text and child.text.strip():
-                    para_node = create_node('p', content_akn)
-                    para_node.text = child.text
+                elif child.tag == 'codecitation':
+                    self.process_codecitation(para_node, child)
+                elif child.tag == 'para':
+                    para_node = self.process_para(content_akn, child, \
+                                section_akn = subsection_akn, section_eid = eId)
+                elif child.tag == 'ulink':
+                    self.process_ulink(para_node, child)
+                elif child.tag == 'actcitation':
+                    self.process_actcitation(para_node, child)
+                elif child.tag == 'superscript':
+                    self.process_superscript(para_node, child)
+                elif child.tag == 'subscript':
+                    self.process_subscript(para_node, child)
+                elif child.tag == 'bold':
+                    self.process_bold(para_node, child)
+                elif child.tag == 'underscore':
+                    self.process_underscore(para_node, child)
+                elif child.tag == 'italic':
+                    self.process_italic(para_node, child)
+                elif child.tag == 'strike':
+                    self.process_strike(para_node, child)
+                elif child.tag == 'actseccitation':
+                    self.process_actcitation(para_node, child)
+                else:    
+                    self.logger.warning ('Ignored element in subsection %s', ET.tostring(child))
+                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike']:
+                    if child.text:
+                        self.add_text(para_node, child)
 
-                if child.tail and child.tail.strip():
-                   para_node = create_node('p', content_akn)
-                   para_node.text = child.tail
+                    if child.tail:
+                        self.add_tail(para_node, child)
+
+
             else:       
                 self.logger.warning ('Ignored node in subsection %s', child)
 
@@ -758,6 +912,7 @@ class Regulation:
         self.metadata.set_value('locality', self.locality)
         self.metadata.set_value('regyear', states.start_year[statecd])
         self.metadata.set_value('author', author)
+        self.metadata.set_value('language', 'eng')
 
     def __repr__(self):
         return '%s' % self.metadata.d
@@ -770,6 +925,13 @@ class Regulation:
         frbr_uri = '/akn/%s-%s/act/regulations/%s/%s' % (country, locality, regyear, regnum)
         return frbr_uri
 
+    def get_expr_uri(self):
+        frbr_uri    = self.get_frbr_uri()
+        lang        = self.metadata.get_value('language')
+        publishdate = self.metadata.get_value('publishdate')
+        publishdate = publishdate.strftime('%Y-%m-%d')
+        return '%s/%s@%s' % (frbr_uri, lang, publishdate)
+
     def add_header(self, meta_node):
         title       = self.metadata.get_value('title')
         country     = self.metadata.get_value('country')
@@ -778,7 +940,7 @@ class Regulation:
         regnum      = self.metadata.get_value('regnum')
         publishdate = self.metadata.get_value('publishdate')
         author      = self.metadata.get_value('author')
-        lang        = 'eng'
+        lang        = self.metadata.get_value('language')
         publishdate = publishdate.strftime('%Y-%m-%d')
         frbr_uri    = self.get_frbr_uri()
 
@@ -798,7 +960,7 @@ class Regulation:
         create_node('FRBRsubtype', work_node, {'value': 'regulations'})
         create_node('FRBRnumber',  work_node, {'value': regnum})
 
-        expr_uri = '%s/%s@%s' % (frbr_uri, lang, publishdate)
+        expr_uri = self.get_expr_uri()
         create_node('FRBRthis', expr_node, {'value': '%s/!main' % expr_uri})
         create_node('FRBRuri',  expr_node, {'value': expr_uri})
         create_node('FRBRdate', expr_node, {'date': publishdate, 'name': 'Generation'})
@@ -870,6 +1032,19 @@ class Regulation:
         if len(other.preface_akn) > 0:
             self.body_akn.append(other.preface_akn)
 
+        refresolver = RefResolver()
+        refresolver.add_sections(self.body_akn, None)
+
+        duplicates = []
+        for node in other.body_akn.iter('section'):
+            dup = refresolver.is_duplicate(node)
+            if dup:
+                self.logger.warning('Duplicate found %s. Removing', dup)
+                duplicates.append(node)
+            
+        for node in duplicates:
+            node.getparent().remove(node)
+
         for child in other.body_akn:
             if ET.iselement(child):
                 num = child.get('eId')
@@ -888,7 +1063,6 @@ class Regulation:
                     pass
                 else:
                     self.logger.warning('Merge: Unknown tag for updating num %s', ET.tostring(child))
-
             self.body_akn.append(child)
 
     def get_num(self):
@@ -968,17 +1142,29 @@ class Regulation:
                  xml_declaration=xml_decl)
 
 if __name__ == '__main__':
-    indir  = sys.argv[1]
-    outdir = sys.argv[2]
+    indir    = sys.argv[1]
+    outdir   = sys.argv[2]
+    mediaurl = sys.argv[3]
 
-    akn30 = Akn30()
+    akn30 = Akn30(mediaurl)
     regulations = {}
 
     for filename in os.listdir(indir):
-        #if filename != 'mi-2021-admin-environmentalquality.xml':
-        #    continue
         filepath = os.path.join(indir, filename)
         akn30.process_casemaker(filepath, regulations)
+
+    refresolver = RefResolver()
+    for num, regulation in regulations.items():
+        if num == None:
+            continue
+
+        refresolver.add_regulation(regulation)    
+
+    for num, regulation in regulations.items():
+        if num == None:
+            continue
+
+        refresolver.resolve(regulation)    
 
     for num, regulation in regulations.items():
         if num == None:
