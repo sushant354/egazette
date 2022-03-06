@@ -164,10 +164,11 @@ class Command(BaseCommand):
         mediaurl     = options['mediaurl']
         glob_pattern = options['globpattern']
 
-        #self.download_item(item, glob_pattern, destdir)
+        self.download_item(item, glob_pattern, destdir)
 
+        dirname = glob_pattern.split('/')[0]
         user = self.get_user()
-        dirpath = os.path.join(destdir, item)
+        dirpath = os.path.join(destdir, item, dirname)
         self.process_recursive(user, dirpath, mediaurl)
 
     def process_recursive(self, user, dirpath, mediaurl):    
