@@ -2,6 +2,7 @@ import os
 import logging
 import re
 import tarfile
+import zipfile
 from io import BytesIO
 import time
 import datetime
@@ -176,7 +177,7 @@ class Command(BaseCommand):
             filepath = os.path.join(dirpath, filename)
             if os.path.isdir(filepath):
                 self.process_recursive(user, filepath, mediaurl)
-            elif re.search('\.tar$', filepath):
+            elif re.search('\.(tar|zip)$', filepath):
                 self.process_state(user, filepath, mediaurl)
 
     def find_xml_dir(self, dirpath):
@@ -186,12 +187,18 @@ class Command(BaseCommand):
                 if filename == 'XML':
                     return filepath
                 else:
-                    return self.find_xml_dir(filepath)
+                    fpath = self.find_xml_dir(filepath)
+                    if fpath != None:
+                        return fpath
         return None           
 
     def process_state(self, user, filepath, mediaurl):
-         f = tarfile.open (filepath)
-         outpath = re.sub('.tar$', '', filepath)
+         if filepath.endswith('tar'):
+             f = tarfile.open (filepath)
+         else:
+             f = zipfile.ZipFile(filepath, 'r') 
+
+         outpath = re.sub('\.(tar|zip)$', '', filepath)
          f.extractall(outpath)
          xmldir = self.find_xml_dir(outpath)
          if not xmldir:
@@ -218,7 +225,6 @@ class Command(BaseCommand):
                  continue
 
              refresolver.resolve(regulation)    
-          
          for num, regulation in regulations.items():
              if num == None:
                  self.logger.warn('No num found %s', regulation)
@@ -232,7 +238,7 @@ class Command(BaseCommand):
              regyear     = regulation.get_regyear()
              regnum      = regulation.get_regnum()
 
-             #if regnum not in ['37', '393', '247']:
+             #if regnum not in ['37']:
              #    continue
 
              akndoc   = BytesIO()

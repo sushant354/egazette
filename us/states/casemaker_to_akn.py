@@ -243,10 +243,14 @@ class Akn30:
                         self.process_division(body_akn, child, regulation)
                     elif codetype == 'Chapter':    
                         self.process_chapter(body_akn, child, regulation)
-                    elif codetype == 'Part':    
+                    elif codetype == 'Part' or codetype == 'Subpart':    
                         self.process_part(body_akn, child, regulation)
                     elif codetype == 'Undesignated':
                         self.process_subcode(body_akn, child, regulation)
+                    elif codetype == 'RegulationNo':
+                        self.process_division(body_akn, child, regulation)
+                    else:    
+                        self.logger.warning ('Ignored codetype in regulation %s', codetype)
                 elif child.tag == 'name':
                     regulation.set_title(child.text)
                     pnode = create_node('p', preface_akn, {'class': 'title'})
@@ -434,6 +438,9 @@ class Akn30:
                     self.process_actcitation(pnode, child)
                 elif child.tag == 'actseccitation':
                     self.process_actcitation(pnode, child)
+                elif child.tag == 'strike':
+                    if child.tail:
+                        pnode.text +=  child.tail
                 else:
                     self.logger.warning ('Ignored element in para %s', ET.tostring(child))
             else:       
@@ -1379,10 +1386,12 @@ class Regulation:
         for child in node:
             if ET.iselement(child) and child.tag == 'section':
                 self.update_section_num(child)
-            if ET.iselement(child) and child.tag == 'hcontainer':
+            elif ET.iselement(child) and child.tag == 'hcontainer':
                 self.update_hcontainer_num(child)
             elif child.tag in ['num', 'heading']:
                 pass
+            elif ET.iselement(child) and child.tag == 'subpart':
+                self.update_subpart_num(child)
             elif child.get('eId'):
                 self.logger.warning('Unable to update num in part %s', child.tag)
 
@@ -1466,6 +1475,8 @@ class Regulation:
                     self.update_part_num(child)
                 elif child.tag == 'article':
                     self.update_article_num(child)
+                elif child.tag == 'hcontainer':
+                    self.update_hcontainer_num(child)
                 elif child.tag in ['num', 'heading']:
                     pass
                 elif child.get('eId'):
@@ -1671,7 +1682,8 @@ if __name__ == '__main__':
         #    continue
 
         filepath = os.path.join(indir, filename)
-        akn30.process_casemaker(filepath, regulations)
+        if os.path.isfile(filepath):
+            akn30.process_casemaker(filepath, regulations)
 
     refresolver = RefResolver()
     for num, regulation in regulations.items():

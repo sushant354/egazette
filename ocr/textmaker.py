@@ -138,11 +138,12 @@ class TextMaker:
             else:
                 width -= min_left
 
-            num_spaces = self.get_num_spaces(width, char_width)
             prev_word = word
 
-            if num_spaces > 1:
-                line_text.append(' ' * (num_spaces -1))
+            if char_width > 0:
+                num_spaces = self.get_num_spaces(width, char_width)
+                if num_spaces > 1:
+                    line_text.append(' ' * (num_spaces -1))
 
             word_text = self.get_word_text(word, line_break = False)
             line_text.append(word_text)

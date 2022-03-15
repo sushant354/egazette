@@ -9,7 +9,7 @@ from .basegazette import BaseGazette
 class CentralBase(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl     = 'http://egazette.nic.in'
+        self.baseurl     = 'https://egazette.nic.in'
         self.hostname    = 'egazette.nic.in'
         self.gztype      = 'Weekly'
         self.parser      = 'lxml'
