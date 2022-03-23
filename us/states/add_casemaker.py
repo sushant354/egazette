@@ -224,8 +224,9 @@ class Command(BaseCommand):
              if num == None:
                  continue
 
-             refresolver.resolve(regulation)    
+             refresolver.resolve(regulation) 
          for num, regulation in regulations.items():
+
              if num == None:
                  self.logger.warn('No num found %s', regulation)
                  continue
@@ -238,7 +239,7 @@ class Command(BaseCommand):
              regyear     = regulation.get_regyear()
              regnum      = regulation.get_regnum()
 
-             #if regnum not in ['37']:
+             #if regnum not in ['5']:
              #    continue
 
              akndoc   = BytesIO()

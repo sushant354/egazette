@@ -55,38 +55,76 @@ class RefResolver:
     def normalize_num(self, num):
         return ' '.join(num.split())
 
-    def add_refid(self, num, uri, eid):
+    def add_refid(self, num, uri, eid, version, regs_title):
+        if regs_title:
+            if regs_title not in self.refids:
+                 self.refids[regs_title] = {}
+
+            refids = self.refids[regs_title]
+        else:
+            refids = self.refids
+
         num = self.normalize_num(num)
-        if num in self.refids:
-            self.logger.warning('Refid already exists %s %s for (%s, %s)', num, self.refids[num], uri, eid)
-            return
+        if num in refids:
+            oldver = refids[num][2]
+            if version <= oldver:
+                self.logger.warning('Refid already exists %s %s for (%s, %s, %s)', num, refids[num], uri, eid, version)
+                return
+            else:
+                self.logger.warning('Refid replacement of %s %s with (%s, %s, %s)', num, refids[num], uri, eid, version)
+                
+        refids[num] = (uri, eid, version)
 
-        self.refids[num] = (uri, eid)
-
-    def resolve_num(self, num):
+    def resolve_num(self, title, num):
         num = self.normalize_num(num)
-        if num in self.refids:
-            return self.refids[num]
 
-        return None, None
+        if title:
+            if title in self.refids:
+                refids = self.refids[title]
+            else:    
+                return None, None, None
+        else:
+            refids = self.refids
+
+        if num in refids:
+            return refids[num]
+
+        return None, None, None
 
     def add_regulation(self, regulation):
         uri = regulation.get_expr_uri()
-        self.add_sections(regulation.body_akn, uri)
+        regs_title = None 
+        if regulation.statecd == 'CA':
+            num = regulation.get_num()
+            if not num:
+                self.logger.warning ('RefResolver: NO NUM %s', regulation)
+                return
 
-    def add_sections(self, akn, uri):    
+            regs_title = num
+        self.add_sections(regulation.body_akn, uri, regs_title)
+
+    def add_sections(self, akn, uri, regs_title):    
         for node in akn.iter('section'):
             numnode = node.find('num')
             if numnode == None:
                 continue
 
+            version = node.find('version')
+            if version != None:
+                version = int(version.text)
+
             num =  numnode.text
-            self.add_refid(num, uri, node.get('eId'))
+            self.add_refid(num, uri, node.get('eId'), version, regs_title)
 
     def is_duplicate(self, node):
         num = node.find('num').text
-        uri, eId = self.resolve_num(num)
+
+        uri, eId, version = self.resolve_num(None, num)
         if eId:
+           newver = node.find('version')
+           if newver != None: 
+               newver = int(newver.text)
+
            return num
         return None   
         
@@ -94,6 +132,7 @@ class RefResolver:
         reguri = regulation.get_expr_uri()
         for node in regulation.body_akn.iter('ref'):
             text = node.get('use')
+            title = node.get('title')
             if not text:
                 text = node.text
 
@@ -101,9 +140,10 @@ class RefResolver:
                 self.logger.warning('Nothing to resolve here %s %s', ET.tostring(node), reguri)
                 continue
 
-            uri, eId = self.resolve_num(text)
+            d  = self.resolve_num(title, text)
+            uri, eId, version = d 
             if uri == None:
-                self.logger.warning('Could not resolve %s', text)
+                self.logger.warning('Could not resolve %s %s', title, text)
                 continue
 
             if uri == reguri:
@@ -119,6 +159,7 @@ class Akn30:
         self.media_url  = media_url
         self.localities = {'MI': 'michigan'}
         self.logger     = logging.getLogger('akn30')
+        self.statecd    = None
     
 
     def process_casemaker(self, xml_file, regulations):
@@ -133,6 +174,7 @@ class Akn30:
 
         codeheader = element_tree.getroot()
         file_info.statecd  = codeheader.get('statecd')
+        self.statecd       = codeheader.get('statecd')
 
         root_node = codeheader.find("code[@type='Root']")
         if root_node == None:
@@ -871,25 +913,42 @@ class Akn30:
                 self.logger.warning ('Ignored node in notes-std %s', child)
 
  
-    def process_codesec(self, parent_akn, node):
-        text = node.get('use')
+    def process_codesec(self, parent_akn, node, state, title):
+        if state == 'MI':
+            text = node.get('use')
+        else:
+            text = node.text
+
         citenode = create_node('ref', parent_akn, {'href': ''})
         if text:
             citenode.attrib['use'] = text
+
+        if state == 'CA':
+            citenode.attrib['title'] = title
+
         text = ET.tostring(node, method = 'text', encoding = 'unicode')
         citenode.text = text
 
     def process_codecitation(self, parent_akn, node):
         span_akn = create_node('span', parent_akn)
-        self.copy_text(span_akn, node)
-        for child in node:
-            if ET.iselement(child):
-                if child.tag == 'codesec':
-                    self.process_codesec(span_akn, child)
-                else:    
-                    self.logger.warning ('Ignored element in codesec %s', child.tag)
-            else:       
-                 self.logger.warning ('Ignored node in codesec %s', child)
+
+        datatype = node.get('datatype')
+        state = node.get('statecd')
+        title = node.get('title')
+        if datatype == 'D' and (state != 'CA' or title != None ) and state == self.statecd:
+            self.copy_text(span_akn, node)
+
+            for child in node:
+                if ET.iselement(child):
+                    if child.tag == 'codesec':
+                        self.process_codesec(span_akn, child, state, title)
+                    else:    
+                        self.logger.warning ('Ignored element in codesec %s', child.tag)
+                else:       
+                    self.logger.warning ('Ignored node in codesec %s', child)
+        else:
+            span_akn.text =  ET.tostring(node, method = 'text', encoding = 'unicode')
+            span_akn.tail = node.tail
 
     def process_actcitation(self, parent_akn, node):
         span_akn = create_node('span', parent_akn)
@@ -961,6 +1020,8 @@ class Akn30:
                      self.process_regcitation(comment_node, child)
                 elif child.tag == 'linebreak':
                      create_node('br', comment_node)
+                elif child.tag == 'subscript':
+                    self.process_subscript(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', ET.tostring(child))
             else:       
@@ -1053,6 +1114,7 @@ class Akn30:
         article_akn = create_node('article', parent_akn, {'eId': eId})
 
         subarticle = 1
+        subchap = 1
         for child in node:
             if ET.iselement(child):
                 if child.tag == 'number':
@@ -1090,6 +1152,10 @@ class Akn30:
                     self.process_notes(article_akn, child)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(article_akn, child)
+                elif child.tag == 'code' and child.get('type') == 'Subchapter':
+                    subchap_eId = '%s_subchap_%d' % (eId, subchap)
+                    subchap += 1
+                    self.process_subchapter(article_akn, child, regulation, subchap_eId)
                 else:    
                     self.logger.warning ('Ignored element in article %s', ET.tostring(child))
             else:       
@@ -1165,10 +1231,12 @@ class Akn30:
                    self.process_content(section_akn, child, content_eid, eId, regulation)
                    content_num += 1
                 elif child.tag == 'version':
-                   # no idea what to do about the version tag
-                   pass
+                   version_node = create_node('version', section_akn)
+                   version_node.text = child.text
                 elif child.tag == 'notes':
                     self.process_notes(section_akn, child)
+                elif child.tag == 'code' and child.get('type')=='Appendix':
+                    self.process_appendix(section_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in section %s', ET.tostring(child))
             else:       
@@ -1271,7 +1339,8 @@ class Regulation:
         self.root = None
         self.dept = None
         self.name = None
-        self.locality  = states.locality[statecd]
+        self.statecd = statecd
+        self.locality= states.locality[statecd]
         self.chapnum = 1
         self.secnum  = 1
         self.partnum = 1
@@ -1550,7 +1619,7 @@ class Regulation:
             self.body_akn.append(other.preface_akn)
 
         refresolver = RefResolver()
-        refresolver.add_sections(self.body_akn, None)
+        refresolver.add_sections(self.body_akn, None, None)
 
         duplicates = []
         for node in other.body_akn.iter('section'):
@@ -1651,6 +1720,10 @@ class Regulation:
             dateobj = datetime.date(int(groups['year']),  month_to_num(groups['month']), int(groups['day']))
         return dateobj
 
+    def remove_version(self):
+        for version in self.body_akn.iter('version'):
+            version.getparent().remove(version)
+
     def write_akn_xml(self, outfile, xml_decl = True):
         akn_root = create_node('akomaNtoso', attribs = \
                   {'xmlns':'http://docs.oasis-open.org/legaldocml/ns/akn/3.0'})
@@ -1663,6 +1736,7 @@ class Regulation:
            act_node.append(self.preface_akn)
 
         if self.body_akn is not None:
+           self.remove_version()
            act_node.append(self.body_akn)
         
         et = ET.ElementTree(akn_root)
@@ -1690,7 +1764,7 @@ if __name__ == '__main__':
         if num == None:
             continue
 
-        refresolver.add_regulation(regulation)    
+        refresolver.add_regulation(regulation) 
 
     for num, regulation in regulations.items():
         if num == None:
