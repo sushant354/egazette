@@ -213,7 +213,7 @@ class Akn30:
                 elif child.tag == 'name':
                     file_info.dept_name = child.text
                 else:
-                    self.logger.warning('Ignord element in dept %s', child.tag)
+                    self.logger.warning('Ignord element in dept %s', ET.tostring(child))
             else:       
                 self.logger.warning ('Ignored node in dept %s', child)
 
@@ -223,6 +223,10 @@ class Akn30:
         if not num:
             self.logger.warning ('NO NUM %s', regulation)
             return
+
+        if regulation.get_locality() == 'california':
+            title = regulation.get_title()
+            regulation.set_title('Title %s: %s' % (num, title))
 
         if num in regulations:
             regulations[num] = self.merge(regulations[num], regulation)
@@ -483,6 +487,10 @@ class Akn30:
                 elif child.tag == 'strike':
                     if child.tail:
                         pnode.text +=  child.tail
+                elif child.tag == 'effectivedate':
+                    self.process_effective_date(pnode, child)
+                elif child.tag == 'regcitation':
+                     self.process_regcitation(pnode, child)
                 else:
                     self.logger.warning ('Ignored element in para %s', ET.tostring(child))
             else:       
@@ -988,6 +996,20 @@ class Akn30:
         delnode = create_node('del', parent_akn)
         self.copy_text(delnode, node)
 
+    def process_effective_date(self, parent_akn, node):
+        d = node.get('use')
+        if d == None:
+            d = node.text
+        datestr = self.get_akn_date(d)
+        self.process_date(parent_akn, node, datestr, '#effectivedate')
+
+    def process_operational_date(self, parent_akn, node):
+        d = node.get('use')
+        if d == None:
+            d = node.text
+        datestr = self.get_akn_date(d)
+        self.process_date(parent_aln, node, datestr, '#operationaldate')
+
     def process_note(self, comment_node, node):
         for child in node:
             if ET.iselement(child):
@@ -1004,24 +1026,17 @@ class Akn30:
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(comment_node, child)
                 elif child.tag == 'effectivedate':
-                     d = child.get('use')
-                     if d == None:
-                         d = child.text
-                     datestr = self.get_akn_date(d)
-                     self.process_date(comment_node, child, datestr, '#effectivedate')
+                    self.process_effective_date(comment_node, child)
                 elif child.tag == 'operationaldate':
-                     d = child.get('use')
-                     if d == None:
-                         d = child.text
-                     datestr = self.get_akn_date(d)
-                     self.process_date(comment_node, child, datestr, '#operationaldate')
-
+                    self.process_operational_date(comment_node, child)
                 elif child.tag == 'regcitation':
                      self.process_regcitation(comment_node, child)
                 elif child.tag == 'linebreak':
                      create_node('br', comment_node)
                 elif child.tag == 'subscript':
                     self.process_subscript(comment_node, child)
+                elif child.tag == 'notetext':    
+                    self.process_para(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', ET.tostring(child))
             else:       
@@ -1101,6 +1116,8 @@ class Akn30:
                     subsection_eid = '%s__subsec_%d' % (section_eid, subsection)
                     subsection += 1
                     self.process_subsection(section_akn, child, subsection_eid)
+                elif child.tag == 'TABLE':
+                    self.process_table(parent_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in codetext %s', child.tag)
             else:       
@@ -1311,6 +1328,8 @@ class Akn30:
                     self.process_filelink(para_node, child)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(para_node, child)
+                elif child.tag == 'literallayout':
+                    self.process_pre(para_node, child)
                 else:    
                     self.logger.warning ('Ignored element in subsection %s', ET.tostring(child))
                 if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike']:
@@ -1319,10 +1338,14 @@ class Akn30:
 
                     if child.tail:
                         self.add_tail(para_node, child)
-
-
             else:       
                 self.logger.warning ('Ignored node in subsection %s', child)
+
+    def process_pre(self, parent_akn, node):
+        txtlines = node.text.splitlines()
+        for txt in txtlines:
+            p = create_node('p', parent_akn)
+            p.text = txt
 
 class FileInfo:
     def __init__(self, country):
@@ -1362,12 +1385,20 @@ class Regulation:
     def __repr__(self):
         return '%s' % self.metadata.d
 
+    def get_doctype(self, locality):
+        if locality == 'california':
+            doctype = 'title'
+        else:
+            doctype = 'regulations'
+        return doctype    
+
     def get_frbr_uri(self):
         locality    = self.metadata.get_value('locality')
         country     = self.metadata.get_value('country')
         regyear     = self.metadata.get_value('regyear')
         regnum      = self.metadata.get_value('regnum')
-        frbr_uri = '/akn/%s-%s/act/regulations/%s/%s' % (country, locality, regyear, regnum)
+        doctype     = self.get_doctype(locality)
+        frbr_uri = '/akn/%s-%s/act/%s/%s/%s' % (country, locality, doctype, regyear, regnum)
         return frbr_uri
 
     def get_expr_uri(self):
@@ -1660,7 +1691,7 @@ class Regulation:
         if  self.metadata.get_value('regnum'):
             return
 
-        nums = re.findall('\d+', text)
+        nums = re.findall('[\w\d]+', text)
         if nums:
             self.metadata.set_value('regnum',  nums[0])
             if len(nums) > 1:

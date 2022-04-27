@@ -225,6 +225,7 @@ class Command(BaseCommand):
                  continue
 
              refresolver.resolve(regulation) 
+         return    
          for num, regulation in regulations.items():
 
              if num == None:

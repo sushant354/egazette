@@ -54,4 +54,5 @@ locality = {\
 start_year = {
 'MI': '1970', \
 'CA': '1988',
+'FL': '1974'
 }

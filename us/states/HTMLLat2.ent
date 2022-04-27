@@ -37,3 +37,8 @@
 <!ENTITY Agrave "&#192;">
 <!ENTITY para   "&#182;">
 <!ENTITY Iacute "&#205;">
+<!ENTITY pound  "&#163;">
+<!ENTITY acute  "&#180;">
+<!ENTITY not    "&#172;">
+<!ENTITY ograve "&#242;">
+<!ENTITY uacute "&#250;">
