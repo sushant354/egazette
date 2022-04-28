@@ -42,3 +42,8 @@
 <!ENTITY not    "&#172;">
 <!ENTITY ograve "&#242;">
 <!ENTITY uacute "&#250;">
+<!ENTITY sup2   "&#178;">
+<!ENTITY sup3   "&#179;">
+<!ENTITY times  "&#215;">
+<!ENTITY ordf   "&#170;">
+<!ENTITY ccedil "&#231;">
