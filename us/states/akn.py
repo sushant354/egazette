@@ -53,7 +53,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code':
                     codetype = child.get('type')
-                    if codetype == 'Title':
+                    if codetype == 'Title' or  file_info.statecd == 'GA':
                         self.process_code(child, file_info, regulations)
                     else:
                         self.process_dept(child, file_info, regulations)
@@ -76,6 +76,8 @@ class Akn30:
                         self.process_org(child, file_info, regulations)
                     else:    
                         self.process_code(child, file_info, regulations)
+                elif child.tag == 'code' and child.get('type') == 'Undesignated':
+                    self.process_code(child, file_info, regulations)
                 elif child.tag == 'name':
                     file_info.dept_name = child.text
                 else:
@@ -94,7 +96,6 @@ class Akn30:
             title = regulation.get_title()
             regulation.set_title('Title %s: %s' % (num, title))
 
-        print (file_info, num)
         if num in regulations:
             regulations[num] = self.merge(regulations[num], regulation)
         else:
@@ -150,7 +151,7 @@ class Akn30:
                     regulation.set_num(child.text)
                 elif child.tag == 'code':
                     codetype =  child.get('type') 
-                    if codetype == 'Section' or codetype == 'Rule':
+                    if codetype == 'Section' or codetype == 'GARule':
                         self.process_section(body_akn, child, regulation)
                     elif codetype == 'Division':    
                         self.process_division(body_akn, child, regulation)
@@ -165,7 +166,7 @@ class Akn30:
                     else:    
                         self.logger.warning ('Ignored codetype in regulation %s', codetype)
                 elif child.tag == 'name':
-                    regulation.set_title(child.text)
+                    regulation.set_title(self.get_name(child))
                     pnode = create_node('p', preface_akn, {'class': 'title'})
                     title = create_node('shortTitle', pnode)
                     title.text = child.text
@@ -177,6 +178,16 @@ class Akn30:
                 self.logger.warning ('Ignored node in regulation %s', child)
 
         return regulation
+
+    def get_name(self, node):
+        name = node.text
+        for child in node:
+            if child.tail:
+                if name:
+                    name += child.tail
+                else:
+                    name = child.tail
+        return name
 
     def process_division(self, parent_akn, node, regulation):
         eId = 'division_%d' % regulation.divnum
@@ -312,6 +323,10 @@ class Akn30:
             imgnode = create_node('img', parent_akn, {'src': filename})
             if node.tail:
                 imgnode.tail = node.tail
+        elif filename and re.search('\.doc$', filename):
+            url  = self.media_url + filename
+            linknode = create_node('a', parent_akn, {'href': url})
+            self.copy_text(linknode, node)
         else:
             self.logger.warning('Unknown filelink: %s', ET.tostring(node))
 
@@ -353,11 +368,26 @@ class Akn30:
                     self.process_actcitation(pnode, child)
                 elif child.tag == 'strike':
                     if child.tail:
-                        pnode.text +=  child.tail
+                        if pnode.text:
+                            pnode.text +=  child.tail
+                        else:
+                            pnode.text = child.tail
+
                 elif child.tag == 'effectivedate':
                     self.process_effective_date(pnode, child)
                 elif child.tag == 'regcitation':
                      self.process_regcitation(pnode, child)
+                elif child.tag == 'linebreak':    
+                    create_node('br', pnode)
+                elif child.tag == 'li':
+                     if child.text:
+                         self.add_text(pnode, child)
+                     if child.tail:
+                         if pnode.text:
+                             pnode.text += child.tail
+                         else:
+                             pnode.text = child.tail
+
                 else:
                     self.logger.warning ('Ignored element in para %s', ET.tostring(child))
             else:       
@@ -381,6 +411,8 @@ class Akn30:
                     self.process_table_content(trnode, child)
                 elif child.tag == 'tbody' or child.tag == 'TBODY':
                     self.process_tbody(table_akn, child)
+                elif child.tag == 'thead' or child.tag == 'THEAD':
+                    self.process_thead(table_akn, child)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(table_akn, child)
                 elif child.tag in ['number', 'name']:
@@ -392,6 +424,18 @@ class Akn30:
                     self.logger.warning ('Ignored element in table %s', ET.tostring(child))
             else:       
                 self.logger.warning ('Ignored node in table %s', child)
+
+    def process_thead(self, parent_akn, node):
+        tbody_akn = create_node('thead', parent_akn, node.attrib)
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'tr' or child.tag == 'TR':
+                    self.process_tr(tbody_akn, child)
+                else:    
+                    self.logger.warning ('Ignored element in thead %s', child.tag)
+            else:       
+                self.logger.warning ('Ignored node in thead %s', child)
+
 
     def process_tbody(self, parent_akn, node):
         tbody_akn = create_node('tbody', parent_akn, node.attrib)
@@ -414,12 +458,20 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'td' or child.tag == 'TD':
                     self.process_td(tr_akn, child)
+                elif child.tag == 'th' or child.tag == 'TH':
+                    self.process_th(tr_akn, child)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(tr_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in tr %s', child.tag)
             else:       
                 self.logger.warning ('Ignored node in tr %s', child)
+
+    def process_th(self, parent_akn, node):
+        th_akn = create_node('th', parent_akn, node.attrib)
+        self.copy_text(th_akn, node)
+        for child in node:
+            self.logger.warning ('Ignored node in th %s', child)
 
     def process_td(self, parent_akn, node):
         td_akn = create_node('td', parent_akn, node.attrib)
@@ -452,6 +504,8 @@ class Akn30:
                     self.process_italic(td_akn, child)
                 elif child.tag == 'filelink':
                     self.process_filelink(td_akn, child)
+                elif child.tag == 'linebreak':    
+                    create_node('br', td_akn)
                 else:    
                     self.logger.warning ('Ignored element in td %s', child.tag)
             else:       
@@ -494,6 +548,10 @@ class Akn30:
                     self.process_content(chap_akn, child, content_eid, eId, regulation)
                 elif child.tag == 'code' and child.get('type')=='Group':
                     self.process_group(chap_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Rule':
+                    self.process_section(chap_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Subject':
+                    self.process_part(chap_akn, child, regulation)
                 else:    
                    self.logger.warning ('Ignored element in chapter %s', ET.tostring(child))
             else:       
@@ -556,7 +614,14 @@ class Akn30:
                 elif child.tag == 'number':
                     self.process_number(content_akn, child)
                 elif child.tag == 'name':
-                   self.process_heading(content_akn, child)
+                    self.process_heading(content_akn, child)
+                elif child.tag == 'version':
+                    pass
+                elif child.tag == 'content':
+                    content_eid = 'hcontainer_%s' % regulation.contentnum
+                    regulation.contentnum += 1
+                    self.process_content(content_akn, child, content_eid, '', regulation)
+                    
                 else:    
                    self.logger.warning ('Ignored element in group %s', ET.tostring(child))
             else:       
@@ -675,7 +740,7 @@ class Akn30:
                     self.process_number(part_akn, child)
                 elif child.tag == 'name':
                     self.process_heading(part_akn, child)
-                elif child.tag == 'content':
+                elif child.tag == 'content' or (child.tag == 'code' and child.get('type')=='Exhibit'):
                     content_eid = '%s__hcontainer_%d' % (part_eid, content_num)
                     content_num += 1
                     self.process_content(part_akn, child, content_eid, part_eid, regulation)
@@ -691,6 +756,10 @@ class Akn30:
                     self.process_appendix(part_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Article':
                     self.process_article(part_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Rule':
+                    self.process_section(part_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Form':
+                    self.process_group(part_akn, child, regulation)
                 elif child.tag == 'version':
                     pass
                 else:    
@@ -748,6 +817,8 @@ class Akn30:
                     self.process_notes_std(comment_node, child)
                 elif child.tag == 'notes-cr':    
                     self.process_notes_std(comment_node, child)
+                elif child.tag == 'notes-auth':    
+                    self.process_notes_std(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in notes %s', ET.tostring(child))
             else:       
@@ -789,7 +860,7 @@ class Akn30:
 
  
     def process_codesec(self, parent_akn, node, state, title):
-        if state == 'MI':
+        if state in ['MI', 'GA']:
             text = node.get('use')
         else:
             text = node.text
@@ -847,11 +918,16 @@ class Akn30:
 
     def get_akn_date(self, datestr):
         ds = re.findall('\d+', datestr)
+        if len(ds) != 3:
+            self.logger.warn('Not able to get date from %s', datestr)
+            return None
+
         return '%s-%s-%s' % (ds[2], ds[0], ds[1])
 
     def process_date(self, parent_akn, node, datestr, refersTo):
-        datenode = create_node('date', parent_akn, {'date': datestr, \
-                                                    'refersTo': refersTo})
+        datenode = create_node('date', parent_akn, {'refersTo': refersTo})
+        if datestr:
+                datenode.set('date', datestr)
         self.copy_text(datenode, node)
 
     def process_regcitation(self, parent_akn, node):
@@ -867,7 +943,6 @@ class Akn30:
         d = node.get('use')
         if d == None:
             d = node.text
-        self.logger.warn('date: %s', d)
         datestr = self.get_akn_date(d)
         self.process_date(parent_akn, node, datestr, '#effectivedate')
 
@@ -1114,7 +1189,7 @@ class Akn30:
                    regulation.set_num(child.text)
                 elif child.tag == 'name':
                    self.process_heading(section_akn, child)
-                elif child.tag == 'content':
+                elif child.tag == 'content' or (child.tag == 'code' and child.get('type')=='Exhibit'):
                    content_eid = '%s__hcontainer_%d' % (eId, content_num)
                    self.process_content(section_akn, child, content_eid, eId, regulation)
                    content_num += 1

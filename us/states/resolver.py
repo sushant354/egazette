@@ -97,7 +97,7 @@ class RefResolver:
             d  = self.resolve_num(title, text)
             uri, eId, version = d 
             if uri == None:
-                self.logger.warning('Could not resolve %s %s', title, text)
+                self.logger.warning('Could not resolve %s %s', ET.tostring(node), reguri)
                 continue
 
             if uri == reguri:
