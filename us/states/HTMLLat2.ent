@@ -47,3 +47,7 @@
 <!ENTITY times  "&#215;">
 <!ENTITY ordf   "&#170;">
 <!ENTITY ccedil "&#231;">
+<!ENTITY brvbar "&#166;">
+<!ENTITY laquo  "&#171;">
+<!ENTITY szlig  "&#223;">
+<!ENTITY Aacute "&#193;">

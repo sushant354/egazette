@@ -53,7 +53,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code':
                     codetype = child.get('type')
-                    if codetype == 'Title' or  file_info.statecd == 'GA':
+                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA']:
                         self.process_code(child, file_info, regulations)
                     else:
                         self.process_dept(child, file_info, regulations)
@@ -151,7 +151,7 @@ class Akn30:
                     regulation.set_num(child.text)
                 elif child.tag == 'code':
                     codetype =  child.get('type') 
-                    if codetype == 'Section' or codetype == 'GARule':
+                    if codetype == 'Section' or codetype == 'Rule':
                         self.process_section(body_akn, child, regulation)
                     elif codetype == 'Division':    
                         self.process_division(body_akn, child, regulation)
@@ -163,6 +163,10 @@ class Akn30:
                         self.process_subcode(body_akn, child, regulation)
                     elif codetype == 'RegulationNo':
                         self.process_division(body_akn, child, regulation)
+                    elif codetype == 'Article':
+                        self.process_article(body_akn, child, regulation)
+                    elif codetype == 'Appendix':
+                        self.process_appendix(body_akn, child, regulation)
                     else:    
                         self.logger.warning ('Ignored codetype in regulation %s', codetype)
                 elif child.tag == 'name':
@@ -271,7 +275,7 @@ class Akn30:
                     self.copy_text(comment_node, child)
                     regulation.set_publish_date(child.text)
                 elif child.tag == 'notes':
-                    self.process_notes(preface_akn, child)
+                    self.process_notes(preface_akn, child, None)
                 else:    
                     self.logger.warning ('Ignored element in preface %s', child.tag)
             else:       
@@ -518,6 +522,7 @@ class Akn30:
 
         subchap     = 1
         content_num = 1
+        subpart     = 1
 
         for child in node:
             if ET.iselement(child):
@@ -552,6 +557,10 @@ class Akn30:
                     self.process_section(chap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Subject':
                     self.process_part(chap_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Subpart':
+                    subpart_eid = '%s__subpart_%d' % (eId, subpart)
+                    self.process_subpart(chap_akn, subpart_eid, child, regulation)
+                    subpart += 1
                 else:    
                    self.logger.warning ('Ignored element in chapter %s', ET.tostring(child))
             else:       
@@ -586,12 +595,16 @@ class Akn30:
                     self.process_number(subchap_akn, child)
                 elif child.tag == 'name':
                    self.process_heading(subchap_akn, child)
-                elif child.tag == 'content':
+                elif child.tag == 'content' or (child.tag == 'code' and child.get('type')=='Exhibit'):
                     content_eid = '%s__hcontainer_%d' % (eId, content_num)
                     content_num += 1
                     self.process_content(subchap_akn, child, content_eid, eId, regulation)
+                elif child.tag == 'code' and child.get('type') in ['Rule', 'Canon']:
+                    self.process_section(subchap_akn, child, regulation)
                 elif child.tag == 'version':
                     pass
+                elif child.tag == 'code' and child.get('type')=='Unprefixed':
+                    self.process_part(subchap_akn, child, regulation)
                 else:    
                    self.logger.warning ('Ignored element in subchapter %s', ET.tostring(child))
             else:       
@@ -684,6 +697,10 @@ class Akn30:
                     self.process_appendix_content(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(hcontent_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') in ['Form', 'Chart']:
+                    self.process_group(hcontent_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') in ['Rule', 'Section']:
+                    self.process_section(hcontent_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in appendix %s', ET.tostring(child))
             else:
@@ -704,7 +721,7 @@ class Akn30:
                 elif child.tag == 'codetext':    
                     self.process_appendix_codetext(content_akn, child, eId)
                 elif child.tag == 'notes':
-                    self.process_notes(content_akn, child)
+                    self.process_notes(content_akn, child, eId)
                 else:    
                     self.logger.warning ('Ignored element in appendix_content %s', child.tag)
             else:       
@@ -720,6 +737,8 @@ class Akn30:
                     subsection_eid = '%s_subsect_%d' % (eId, subsection)
                     subsection += 1
                     self.process_subsection(content_akn, child, subsection_eid)
+                elif child.tag == 'table' or child.tag == 'TABLE':
+                    self.process_table(content_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in appendix_codetext %s', child.tag)
             else:       
@@ -748,7 +767,7 @@ class Akn30:
                     self.process_part(body_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Chapter':
                     self.process_chapter(part_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type')=='Subpart':
+                elif child.tag == 'code' and child.get('type') in ['Subpart', 'Unprefixed', 'Part']:
                     subpart_eid = '%s__subpart_%d' % (part_eid, subpart)
                     self.process_subpart(part_akn, subpart_eid, child, regulation)
                     subpart += 1
@@ -786,6 +805,12 @@ class Akn30:
                     content_eid = '%s__hcontainer_%d' % (subpart_eid, content_num)
                     content_num += 1
                     self.process_content(subpart_akn, child, content_eid, subpart_eid, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Chapter':    
+                    self.process_chapter(subpart_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Article':
+                    self.process_article(subpart_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Rule':
+                    self.process_section(subpart_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in subpart %s', ET.tostring(child))
             else:       
@@ -796,13 +821,13 @@ class Akn30:
         comment_node = create_node('remark', parent, {'status': 'editorial'})
         return comment_node
 
-    def process_notes(self, parent_akn, node):
+    def process_notes(self, parent_akn, node, eId):
         comment_node = self.add_comment_node(parent_akn)
 
         for child in node:
             if ET.iselement(child):
                 if child.tag == 'notes-citeas':
-                    self.process_citeas_notes(parent_akn, child)
+                    self.process_citeas_notes(parent_akn, child, eId)
                 elif child.tag == 'notes-history':
                     self.process_notes_history(comment_node, child)
                 elif child.tag == 'notes-maint':
@@ -843,9 +868,29 @@ class Akn30:
             else:       
                 self.logger.warning ('Ignored node in notes-maint %s', child)
 
-    def process_citeas_notes(self, comment_node, node):
+    def process_citeas_notes(self, comment_node, node, eId):
+        for child in node:
+            if ET.iselement(child) and child.tag == 'note':
+                self.process_citeas(comment_node, child, eId)
+            else:
+                self.logger.warning ('Ignored node in notes-citeas %s', ET.tostring(child))
+
+    def process_citeas(self, comment_node, node, eId):
         text = ET.tostring(node, method = 'text', encoding = 'unicode')
-        citenode = create_node('neutralCitation', comment_node) 
+        primaryid = node.find('primaryidcodenumber')
+
+        d = {}
+        if primaryid != None:
+            d['title'] = primaryid.text
+
+        codesec = node.find('codesec')
+        if codesec != None:
+            d['num'] = codesec.text
+
+        if eId:
+            d['secid'] = eId
+
+        citenode = create_node('neutralCitation', comment_node, d) 
         citenode.text = text
 
     def process_notes_std(self, comment_node, node):
@@ -869,7 +914,7 @@ class Akn30:
         if text:
             citenode.attrib['use'] = text
 
-        if state == 'CA':
+        if state in ['CA', 'PA']:
             citenode.attrib['title'] = title
 
         text = ET.tostring(node, method = 'text', encoding = 'unicode')
@@ -1010,13 +1055,14 @@ class Akn30:
                 if child.tag == 'currency':
                     comment_node = self.add_comment_node(content_akn)
                     comment_node.text = child.text
-                    regulation.set_publish_date(child.text)
+                    if regulation:
+                        regulation.set_publish_date(child.text) 
                 elif child.tag == 'codetext':    
                     self.process_codetext(content_akn, child, section_akn, section_eid)
                 elif child.tag == 'number':    
                    self.process_number(content_akn, child)
                 elif child.tag == 'notes':
-                    self.process_notes(content_akn, child)
+                    self.process_notes(content_akn, child, section_eid)
                 elif child.tag == 'subsect':
                     subsection_eid = '%s__subsec_%d' % (eId, subsection)
                     subsection += 1
@@ -1043,7 +1089,7 @@ class Akn30:
                     comment_node = self.add_comment_node(content_akn)
                     comment_node.text = child.text
                 elif child.tag == 'notes':
-                    self.process_notes(content_akn, child)
+                    self.process_notes(content_akn, child, None)
                 elif child.tag == 'codetext':
                     self.process_codetext(content_akn, child, content_akn, None)
                 else:    
@@ -1112,13 +1158,17 @@ class Akn30:
                    # no idea what to do about the version tag
                    pass
                 elif child.tag == 'notes':
-                    self.process_notes(article_akn, child)
+                    self.process_notes(article_akn, child, eId)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(article_akn, child)
                 elif child.tag == 'code' and child.get('type') == 'Subchapter':
                     subchap_eId = '%s_subchap_%d' % (eId, subchap)
                     subchap += 1
                     self.process_subchapter(article_akn, child, regulation, subchap_eId)
+                elif child.tag == 'code' and child.get('type') == 'Chapter':    
+                    self.process_chapter(article_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Rule':
+                    self.process_section(article_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in article %s', ET.tostring(child))
             else:       
@@ -1157,7 +1207,7 @@ class Akn30:
                    # no idea what to do about the version tag
                    pass
                 elif child.tag == 'notes':
-                    self.process_notes(content_akn, child)
+                    self.process_notes(content_akn, child, eId)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(content_akn, child)
                 else:    
@@ -1180,7 +1230,9 @@ class Akn30:
 
         for child in node:
             if ET.iselement(child):
-                if child.tag == 'subsect':
+                if child.tag == 'subsect' or \
+                       (child.tag == 'code' and \
+                        child.get('type') in ['Rule', 'Undesignated']):
                    subsection_eid = '%s__subsec_%d' % (eId, subsection)
                    subsection += 1
                    self.process_subsection(section_akn, child, subsection_eid)
@@ -1197,9 +1249,11 @@ class Akn30:
                    version_node = create_node('version', section_akn)
                    version_node.text = child.text
                 elif child.tag == 'notes':
-                    self.process_notes(section_akn, child)
+                    self.process_notes(section_akn, child, eId)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(section_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')  == 'Form':
+                    self.process_group(section_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in section %s', ET.tostring(child))
             else:       
@@ -1232,15 +1286,16 @@ class Akn30:
         content_akn    = None
         subsection     = 1
         para_node      = None
+        content_num    = 1
         for child in node:
             if ET.iselement(child):
-                if child.tag == 'designator':
+                if child.tag in ['designator', 'number']:
                     self.process_number(subsection_akn, child)
                     content_akn = create_node('content', subsection_akn)
                     para_node = create_node('p', content_akn)
                     if child.tail:
                         para_node.text = child.tail
-                elif child.tag == 'subsect':
+                elif child.tag == 'subsect' or (child.tag == 'code' and child.get('type') == 'Rule'):
                     subsection_eid = '%s__subsec_%d' % (eId, subsection)
                     subsection += 1
                     self.process_subsection(subsection_akn, child, subsection_eid)
@@ -1276,9 +1331,21 @@ class Akn30:
                     self.process_table(para_node, child)
                 elif child.tag == 'literallayout':
                     self.process_pre(para_node, child)
+                elif child.tag == 'version': 
+                    pass
+                elif child.tag == 'name':
+                    self.process_heading(subsection_akn, child)
+                elif child.tag == 'content':    
+                    content_eid = '%s__hcontainer_%d' % (eId, content_num)
+                    content_num += 1
+                    self.process_content(subsection_akn, child, content_eid, eId, None)
                 else:    
                     self.logger.warning ('Ignored element in subsection %s', ET.tostring(child))
-                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike']:
+                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code']:
+                    if para_node == None:
+                        print ('Unknown subsection child', child.tag)
+                        #print (ET.tostring(node))
+
                     if child.text:
                         self.add_text(para_node, child)
 
