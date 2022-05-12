@@ -51,3 +51,5 @@
 <!ENTITY laquo  "&#171;">
 <!ENTITY szlig  "&#223;">
 <!ENTITY Aacute "&#193;">
+<!ENTITY Icirc  "&#206;"> 
+<!ENTITY shy    "&#173;">

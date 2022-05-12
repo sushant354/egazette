@@ -52,7 +52,7 @@ class RefResolver:
     def add_regulation(self, regulation):
         uri = regulation.get_expr_uri()
         regs_title = None 
-        if regulation.statecd in ['CA', 'PA']:
+        if regulation.statecd in ['CA', 'PA', 'NY']:
             num = regulation.get_num()
             if not num:
                 self.logger.warning ('RefResolver: NO NUM %s', regulation)
