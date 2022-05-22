@@ -92,7 +92,7 @@ class Akn30:
             self.logger.warning ('NO NUM %s', regulation)
             return
 
-        if regulation.get_locality() == 'california':
+        if regulation.get_locality() in ['california', 'pennsylvania', 'newyork', 'georgia']:
             title = regulation.get_title()
             regulation.set_title('Title %s - %s' % (num, title))
 
