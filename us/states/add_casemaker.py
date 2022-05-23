@@ -144,8 +144,6 @@ class Command(BaseCommand):
         return work
 
     def get_user(self):
-        return User.objects.get(id=1)
-
         for user in User.objects.all().order_by('id'):
             print('{}: {} {}'.format(user.id, user.first_name, user.last_name))
         while True:
