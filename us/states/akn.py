@@ -53,7 +53,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code':
                     codetype = child.get('type')
-                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY']:
+                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI']:
                         self.process_code(child, file_info, regulations)
                     else:
                         self.process_dept(child, file_info, regulations)

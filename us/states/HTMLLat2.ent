@@ -53,3 +53,6 @@
 <!ENTITY Aacute "&#193;">
 <!ENTITY Icirc  "&#206;"> 
 <!ENTITY shy    "&#173;">
+<!ENTITY atilde "&#227;">
+<!ENTITY igrave "&#236;">
+<!ENTITY Auml   "&#196;">

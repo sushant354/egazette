@@ -376,11 +376,12 @@ class Regulation:
         if  self.metadata.get_value('regnum'):
             return
 
-        nums = re.findall('[\w\d]+', text)
+        nums = re.findall('\d[\w\d]*', text)
         if nums:
             self.metadata.set_value('regnum',  nums[0])
             if len(nums) > 1:
-                 self.metadata.set_value('subnum', int(nums[1]))
+                print (nums, text)
+                self.metadata.set_value('subnum', int(nums[1]))
 
     def set_subnum(self, text):
         if (not self.metadata.get_value('regnum')) or \
