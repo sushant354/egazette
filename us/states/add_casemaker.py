@@ -144,8 +144,6 @@ class Command(BaseCommand):
         return work
 
     def get_user(self):
-        return User.objects.get(id=1)
-
         for user in User.objects.all().order_by('id'):
             print('{}: {} {}'.format(user.id, user.first_name, user.last_name))
         while True:
@@ -167,10 +165,10 @@ class Command(BaseCommand):
 
         self.download_item(item, glob_pattern, destdir)
 
-        dirname = glob_pattern.split('/')[0]
+        #dirname = glob_pattern.split('/')[0]
         user = self.get_user()
-        dirpath = os.path.join(destdir, item, dirname)
-        self.process_recursive(user, dirpath, mediaurl)
+        dirpath = os.path.join(destdir, item, glob_pattern)
+        self.process_state(user, dirpath, mediaurl)
 
     def process_recursive(self, user, dirpath, mediaurl):    
         for filename in os.listdir(dirpath):
@@ -193,13 +191,16 @@ class Command(BaseCommand):
         return None           
 
     def process_state(self, user, filepath, mediaurl):
-         if filepath.endswith('tar'):
-             f = tarfile.open (filepath)
-         else:
-             f = zipfile.ZipFile(filepath, 'r') 
-
          outpath = re.sub('\.(tar|zip)$', '', filepath)
-         f.extractall(outpath)
+
+         if not os.path.exists(outpath):
+             if filepath.endswith('tar'):
+                 f = tarfile.open (filepath)
+             else:
+                 f = zipfile.ZipFile(filepath, 'r') 
+
+             f.extractall(outpath)
+
          xmldir = self.find_xml_dir(outpath)
          if not xmldir:
              self.logger.warn('No XML directory found in %s', outpath)
@@ -225,7 +226,6 @@ class Command(BaseCommand):
                  continue
 
              refresolver.resolve(regulation) 
-         return    
          for num, regulation in regulations.items():
 
              if num == None:

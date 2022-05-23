@@ -378,7 +378,7 @@ class Regulation:
 
         nums = re.findall('\d[\w\d]*', text)
         if nums:
-            self.metadata.set_value('regnum',  nums[0])
+            self.metadata.set_value('regnum',  nums[0].lower())
             if len(nums) > 1:
                 print (nums, text)
                 self.metadata.set_value('subnum', int(nums[1]))
