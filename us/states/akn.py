@@ -159,7 +159,7 @@ class Akn30:
                         self.process_chapter(body_akn, child, regulation)
                     elif codetype == 'Part' or codetype == 'Subpart':    
                         self.process_part(body_akn, child, regulation)
-                    elif codetype == 'Undesignated':
+                    elif codetype in ['Undesignated', 'Unprefixed']:
                         self.process_subcode(body_akn, child, regulation)
                     elif codetype == 'RegulationNo':
                         self.process_division(body_akn, child, regulation)
@@ -718,6 +718,8 @@ class Akn30:
                     self.process_part(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Table':
                     self.process_group(hcontent_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Chapter':
+                    self.process_chapter(hcontent_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in appendix %s', ET.tostring(child))
             else:
@@ -832,6 +834,8 @@ class Akn30:
                     self.process_article(subpart_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Rule':
                     self.process_section(subpart_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Unprefixed':
+                    self.process_group(subpart_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in subpart %s', ET.tostring(child))
             else:       
@@ -930,6 +934,11 @@ class Akn30:
             text = node.get('use')
         else:
             text = node.text
+
+        if state in ['WI']:
+            text = node.get('use')
+            if not text:
+                text = node.text
 
         citenode = create_node('ref', parent_akn, {'href': ''})
         if text:
@@ -1052,6 +1061,8 @@ class Akn30:
                     span_node = create_node('span', comment_node)
                     self.copy_text(span_node, child)
                 elif child.tag == 'ordercitation':
+                    self.process_filelink(comment_node, child)
+                elif child.tag == 'filelink':
                     self.process_filelink(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', ET.tostring(child))
