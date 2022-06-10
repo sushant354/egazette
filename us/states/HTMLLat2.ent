@@ -53,3 +53,8 @@
 <!ENTITY Aacute "&#193;">
 <!ENTITY Icirc  "&#206;"> 
 <!ENTITY shy    "&#173;">
+<!ENTITY ecirc  "&#234;">
+<!ENTITY rsquo  "&#8217;">
+<!ENTITY ndash  "&#8211;">
+<!ENTITY Uuml   "&#220;">
+<!ENTITY AMP    "&#38;#38;">

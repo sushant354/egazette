@@ -58,6 +58,7 @@ class Regulation:
         self.articlenum = 1
         self.publish_date = None
         self.body_akn = None
+        self.notes    = []
         self.logger = logging.getLogger('regulation')
 
         self.metadata = Metadata()
@@ -146,7 +147,9 @@ class Regulation:
         create_node('TLCOrganization', refnode, refdict)
 
     def update_chap_num(self, node):
-        node.set('eId', 'chap_%d' % self.chapnum)
+        eId = 'chap_%d' % self.chapnum
+        self.update_citation(node, node.get('eId'), eId)
+        node.set('eId', eId)
         self.chapnum += 1
         for child in node:
             if ET.iselement(child):
@@ -166,7 +169,9 @@ class Regulation:
                     self.logger.warning('Unable to update num in chapter %s', child.tag)
         
     def update_part_num(self, node):
-        node.set('eId', 'part_%d' % self.partnum)
+        eId = 'part_%d' % self.partnum
+        self.update_citation(node, node.get('eId'), eId)
+        node.set('eId', eId)
         self.partnum += 1
         for child in node:
             if ET.iselement(child) and child.tag == 'section':
@@ -201,6 +206,7 @@ class Regulation:
     def update_article_num(self, node):
         eId = 'article_%d' % self.articlenum
         self.articlenum += 1
+        self.update_citation(node, node.get('eId'), eId)
         node.set('eId', eId) 
 
         for child in node:
@@ -216,8 +222,18 @@ class Regulation:
                 elif child.get('eId'):
                     self.logger.warning('Unable to update num in article %s %s', child.tag, child.get('eId'))
 
+    def update_citation(self, node, oldId, newId):
+        if oldId == None or newId == None:
+            return
+
+        for e in node.iter('neutralCitation'):
+            eId = e.get('secid')
+            if eId == oldId:
+                e.set('secid', newId)
+
     def update_section_num(self, node):
         eId = 'sec_%d' % self.secnum
+        self.update_citation(node, node.get('eId'), eId)
         node.set('eId', eId) 
         self.secnum += 1
 
@@ -237,6 +253,7 @@ class Regulation:
 
     def update_division_num(self, node):
         eId = 'division_%d' % self.divnum
+        self.update_citation(node, node.get('eId'), eId)
         node.set('eId', eId) 
         self.divnum += 1
 
@@ -297,6 +314,7 @@ class Regulation:
 
     def update_hcontainer_num(self, node):
         eId = 'hcontainer_%d' % self.contentnum
+        self.update_citation(node, node.get('eId'), eId)
         node.set('eId', eId) 
         self.contentnum += 1
         for child in node:
@@ -316,6 +334,7 @@ class Regulation:
 
     def update_subpart_num(self, node):
         eId = 'subpart_%d' % self.subpart
+        self.update_citation(node, node.get('eId'), eId)
         node.set('eId', eId) 
         self.subpart += 1
         for child in node:
@@ -376,11 +395,23 @@ class Regulation:
         if  self.metadata.get_value('regnum'):
             return
 
-        nums = re.findall('[\w\d]+', text)
+        nums = re.findall('\w+', text)
         if nums:
-            self.metadata.set_value('regnum',  nums[0].lower())
-            if len(nums) > 1:
-                 self.metadata.set_value('subnum', int(nums[1]))
+            subnum = None
+            if nums[0] == 'R':
+                regnum = nums[1]
+                if len(nums) > 2:
+                    subnum = nums[2]
+            else:
+                regnum = nums[0]
+                if len(nums) > 1:
+                    subnum = nums[1]
+
+            self.metadata.set_value('regnum',  regnum.lower())
+            if subnum:
+                 reobj = re.match('\d+', subnum)
+                 subnum = int(subnum[:reobj.end()] )
+                 self.metadata.set_value('subnum', subnum)
 
     def set_subnum(self, text):
         if (not self.metadata.get_value('regnum')) or \
@@ -440,6 +471,11 @@ class Regulation:
         for version in self.body_akn.iter('version'):
             version.getparent().remove(version)
 
+    def add_notes(self, meta_node):
+        notes_akn = create_node('notes', meta_node)
+        for note in self.notes:
+            notes_akn.append(note)
+
     def write_akn_xml(self, outfile, xml_decl = True):
         akn_root = create_node('akomaNtoso', attribs = \
                   {'xmlns':'http://docs.oasis-open.org/legaldocml/ns/akn/3.0'})
@@ -447,6 +483,8 @@ class Regulation:
                   {'contains': "originalVersion", 'name': 'act'})
         meta_node = create_node('meta', act_node)
         self.add_header(meta_node)
+        #if self.notes:
+        #    self.add_notes(meta_node)
 
         if self.preface_akn is not None:
            act_node.append(self.preface_akn)

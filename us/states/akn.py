@@ -277,7 +277,7 @@ class Akn30:
                     self.copy_text(comment_node, child)
                     regulation.set_publish_date(child.text)
                 elif child.tag == 'notes':
-                    self.process_notes(preface_akn, child, None)
+                    self.process_notes(preface_akn, child, None, regulation)
                 else:    
                     self.logger.warning ('Ignored element in preface %s', child.tag)
             else:       
@@ -393,7 +393,8 @@ class Akn30:
                              pnode.text += child.tail
                          else:
                              pnode.text = child.tail
-
+                elif child.tag == 'footnoteref':
+                    self.process_footnoteref(pnode, child)
                 else:
                     self.logger.warning ('Ignored element in para %s', ET.tostring(child))
             else:       
@@ -738,7 +739,7 @@ class Akn30:
                 elif child.tag == 'codetext':    
                     self.process_appendix_codetext(content_akn, child, eId)
                 elif child.tag == 'notes':
-                    self.process_notes(content_akn, child, eId)
+                    self.process_notes(content_akn, child, eId, regulation)
                 else:    
                     self.logger.warning ('Ignored element in appendix_content %s', child.tag)
             else:       
@@ -842,7 +843,7 @@ class Akn30:
         comment_node = create_node('remark', parent, {'status': 'editorial'})
         return comment_node
 
-    def process_notes(self, parent_akn, node, eId):
+    def process_notes(self, parent_akn, node, eId, regulation):
         comment_node = self.add_comment_node(parent_akn)
 
         for child in node:
@@ -865,6 +866,8 @@ class Akn30:
                     self.process_notes_std(comment_node, child)
                 elif child.tag == 'notes-auth':    
                     self.process_notes_std(comment_node, child)
+                elif child.tag == 'notes-footnotes':    
+                    self.process_notes_footnotes(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in notes %s', ET.tostring(child))
             else:       
@@ -1085,7 +1088,7 @@ class Akn30:
                 elif child.tag == 'number':    
                    self.process_number(content_akn, child)
                 elif child.tag == 'notes':
-                    self.process_notes(content_akn, child, section_eid)
+                    self.process_notes(content_akn, child, section_eid, regulation)
                 elif child.tag == 'subsect':
                     subsection_eid = '%s__subsec_%d' % (eId, subsection)
                     subsection += 1
@@ -1112,7 +1115,7 @@ class Akn30:
                     comment_node = self.add_comment_node(content_akn)
                     comment_node.text = child.text
                 elif child.tag == 'notes':
-                    self.process_notes(content_akn, child, None)
+                    self.process_notes(content_akn, child, None, None)
                 elif child.tag == 'codetext':
                     self.process_codetext(content_akn, child, content_akn, None)
                 else:    
@@ -1135,6 +1138,8 @@ class Akn30:
                     self.process_table(parent_akn, child)
                 elif child.tag == 'literallayout':
                     self.process_pre(parent_akn, child)
+                elif child.tag == 'itemizedlist':
+                    self.process_list(parent_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in codetext %s', child.tag)
             else:       
@@ -1182,7 +1187,7 @@ class Akn30:
                    # no idea what to do about the version tag
                    pass
                 elif child.tag == 'notes':
-                    self.process_notes(article_akn, child, eId)
+                    self.process_notes(article_akn, child, eId, regulation)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(article_akn, child)
                 elif child.tag == 'code' and child.get('type') == 'Subchapter':
@@ -1231,7 +1236,7 @@ class Akn30:
                    # no idea what to do about the version tag
                    pass
                 elif child.tag == 'notes':
-                    self.process_notes(content_akn, child, eId)
+                    self.process_notes(content_akn, child, eId, regulation)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(content_akn, child)
                 else:    
@@ -1273,7 +1278,7 @@ class Akn30:
                    version_node = create_node('version', section_akn)
                    version_node.text = child.text
                 elif child.tag == 'notes':
-                    self.process_notes(section_akn, child, eId)
+                    self.process_notes(section_akn, child, eId, regulation)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(section_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')  == 'Form':
@@ -1363,9 +1368,15 @@ class Akn30:
                     content_eid = '%s__hcontainer_%d' % (eId, content_num)
                     content_num += 1
                     self.process_content(subsection_akn, child, content_eid, eId, None)
+                elif child.tag == 'add':    
+                    self.process_add(subsection_akn, child, eId)
+                elif child.tag == 'itemizedlist':    
+                    self.process_list(subsection_akn, child)
+                elif child.tag == 'footnoteref':
+                    self.process_footnoteref(subsection_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in subsection %s', ET.tostring(child))
-                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout']:
+                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist']:
                     if para_node == None:
                         print ('Unknown subsection child', child.tag)
                         #print (ET.tostring(node))
@@ -1378,9 +1389,59 @@ class Akn30:
             else:       
                 self.logger.warning ('Ignored node in subsection %s', child)
 
+    def process_add(self, parent_akn, node, eId):
+        comment_node = create_node('remark', parent_akn, \
+                                   {'status': 'editorial'})
+        comment_node.text = 'Added in sessionyear %s' % node.get('sessionyear')
+
+        subsection = 1
+        for child in node:
+            if child.tag == 'subsect':
+                subsection_eid = '%s__subsec_%d' % (eId, subsection)
+                subsection += 1
+                self.process_subsection(parent_akn, child, subsection_eid)
+            else:       
+                self.logger.warning ('Ignored node in add %s', child)
+
+        
     def process_pre(self, parent_akn, node):
         txtlines = node.text.splitlines()
         for txt in txtlines:
             p = create_node('p', parent_akn)
             p.text = txt
 
+    def process_list(self, parent_akn, node):
+        list_node = create_node('blockList', parent_akn)
+        for child in node:
+            if child.tag == 'listitem':
+                self.process_item(list_node, child)
+            else:       
+                self.logger.warning ('Ignored node in list %s', child)
+
+    def process_item(self, parent_akn, node):
+        item_akn = create_node('item', parent_akn)
+        self.process_para(item_akn, node)
+
+    def process_footnoteref(self, parent_akn, node):
+        href = node.get('linkend')
+        if not href:
+            self.logger.warning('No link in %s', ET.tostring(node))
+
+        refnode = create_node('ref', parent_akn, {'href': '#%s' % href})
+        self.copy_text(refnode, node)
+
+    def process_notes_footnotes(self, parent_akn, node):        
+        for child in node:
+            if child.tag == 'note':
+                self.process_footnote(parent_akn, child)
+            else:
+                self.logger.warning ('Ignored node in notes-footnotes %s', child)
+
+    def process_footnote(self, parent_akn, node):
+        eId = node.get('id')
+        note_akn = create_node('note', parent_akn, {'eId': eId})
+        for child in node:
+            if child.tag == 'para':
+                 self.process_para(note_akn, child)
+            else:     
+                self.logger.warning ('Ignored node in footnote %s', child)
