@@ -231,7 +231,10 @@ class Command(BaseCommand):
              if num == None:
                  self.logger.warn('No num found %s', regulation)
                  continue
- 
+
+             #if num not in ['110']:
+             #    continue
+
              frbr_uri    = regulation.get_frbr_uri()
              title       = regulation.get_title()
              publishdate = regulation.get_publish_date()
@@ -240,8 +243,8 @@ class Command(BaseCommand):
              regyear     = regulation.get_regyear()
              regnum      = regulation.get_regnum()
 
-             if regnum not in ['110']:
-                 continue
+             #if regnum not in ['110']:
+             #    continue
 
              akndoc   = BytesIO()
              regulation.write_akn_xml(akndoc, xml_decl = False)

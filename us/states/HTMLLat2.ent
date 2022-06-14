@@ -56,3 +56,11 @@
 <!ENTITY atilde "&#227;">
 <!ENTITY igrave "&#236;">
 <!ENTITY Auml   "&#196;">
+<!ENTITY ecirc  "&#234;">
+<!ENTITY rsquo  "&#8217;">
+<!ENTITY ndash  "&#8211;">
+<!ENTITY Uuml   "&#220;">
+<!ENTITY AMP    "&#38;#38;">
+<!ENTITY sup1   "&#185;">
+<!ENTITY Ecirc  "&#202;">
+<!ENTITY uml    "&#168;">
