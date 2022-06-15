@@ -243,8 +243,6 @@ class Command(BaseCommand):
              regyear     = regulation.get_regyear()
              regnum      = regulation.get_regnum()
 
-             #if regnum not in ['110']:
-             #    continue
 
              akndoc   = BytesIO()
              regulation.write_akn_xml(akndoc, xml_decl = False)

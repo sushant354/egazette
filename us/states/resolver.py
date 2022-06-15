@@ -52,7 +52,7 @@ class RefResolver:
     def add_regulation(self, regulation):
         uri = regulation.get_expr_uri()
         regs_title = None 
-        if regulation.statecd in ['CA', 'PA', 'NY']:
+        if regulation.statecd in ['CA', 'PA', 'NY', 'IL']:
             num = regulation.get_num()
             if not num:
                 self.logger.warning ('RefResolver: NO NUM %s', regulation)
@@ -100,15 +100,25 @@ class RefResolver:
         
     def resolve(self, regulation):
         reguri = regulation.get_expr_uri()
+        statecd = regulation.statecd
+
         for node in regulation.body_akn.iter('ref'):
             text = node.get('use')
             title = node.get('title')
+            stateref = node.get('state')
+            if stateref != statecd:
+                self.logger.warning('Outside state ref. Ignoring %s', ET.tostring(node), reguri)
+                continue
+
             if not text:
                 text = node.text
 
             if not text:
                 self.logger.warning('Nothing to resolve here %s %s', ET.tostring(node), reguri)
                 continue
+
+            if not title:
+                title = regulation.get_num()
 
             d  = self.resolve_num(title, text)
             uri, eId, version = d 

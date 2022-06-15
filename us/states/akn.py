@@ -53,7 +53,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code':
                     codetype = child.get('type')
-                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV']:
+                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV', 'IL']:
                         self.process_code(child, file_info, regulations)
                     else:
                         self.process_dept(child, file_info, regulations)
@@ -94,7 +94,7 @@ class Akn30:
             self.logger.warning ('NO NUM %s', regulation)
             return
 
-        if regulation.get_locality() in ['california', 'pennsylvania', 'newyork', 'georgia']:
+        if regulation.get_locality() in ['california', 'pennsylvania', 'newyork', 'georgia', 'illinois']:
             title = regulation.get_title()
             regulation.set_title('Title %s - %s' % (num, title))
 
@@ -393,6 +393,8 @@ class Akn30:
                      self.process_regcitation(pnode, child)
                 elif child.tag == 'linebreak':    
                     create_node('br', pnode)
+                elif child.tag == 'nbsp':
+                    self.process_nbsp(pnode, child)
                 elif child.tag == 'li':
                      if child.text:
                          self.add_text(pnode, child)
@@ -408,6 +410,17 @@ class Akn30:
             else:       
                 self.logger.warning ('Ignored node in para %s', child)
         return pnode
+
+    def process_nbsp(self, pnode, child):
+        if pnode.text:
+            pnode.text += ' ' 
+        else:    
+            pnode.text = ' ' 
+        if child.text:
+            pnode.text += child.text
+        if child.tail:
+            pnode.text += child.tail
+
 
     def process_ulink(self, parent_akn, node):
         anode = create_node('a', parent_akn, {'href': node.get('url')})
@@ -644,6 +657,8 @@ class Akn30:
                     self.process_appendix(content_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Subgroup':
                     self.process_group(content_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Exhibit':
+                    self.process_group(content_akn, child, regulation)
                 elif child.tag == 'number':
                     self.process_number(content_akn, child)
                 elif child.tag == 'name':
@@ -719,13 +734,13 @@ class Akn30:
                     self.process_appendix_content(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(hcontent_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Form', 'Chart']:
+                elif child.tag == 'code' and child.get('type') in ['Form', 'Chart', 'Unprefixed', 'Exhibit', 'Title']:
                     self.process_group(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Rule', 'Section']:
                     self.process_section(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')  == 'Undesignated':
                     self.process_part(hcontent_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type')=='Table':
+                elif child.tag == 'code' and child.get('type') == 'Table':
                     self.process_group(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Chapter':
                     self.process_chapter(hcontent_akn, child, regulation)
@@ -809,7 +824,7 @@ class Akn30:
                     self.process_article(part_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Rule':
                     self.process_section(part_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Form', 'Figure', 'Attachment']:
+                elif child.tag == 'code' and child.get('type') in ['Form', 'Figure', 'Attachment', 'Table']:
                     self.process_group(part_akn, child, regulation)
                 elif child.tag == 'version':
                     pass
@@ -845,6 +860,12 @@ class Akn30:
                     self.process_section(subpart_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Unprefixed':
                     self.process_group(subpart_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Table':
+                    self.process_group(subpart_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Exhibit':
+                    self.process_group(subpart_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Appendix':
+                    self.process_appendix(subpart_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in subpart %s', ET.tostring(child))
             else:       
@@ -940,7 +961,7 @@ class Akn30:
                 self.logger.warning ('Ignored node in notes-std %s', child)
 
  
-    def process_codesec(self, parent_akn, node, state, title):
+    def process_codesec(self, parent_akn, node, state, title, catchline):
         if state in ['MI', 'GA']:
             text = node.get('use')
         else:
@@ -958,6 +979,11 @@ class Akn30:
         if state in ['CA', 'PA', 'NY']:
             citenode.attrib['title'] = title
 
+        if state:
+            citenode.attrib['state'] = state
+        if catchline:
+            citenode.attrib['catchline'] = catchline
+
         text = ET.tostring(node, method = 'text', encoding = 'unicode')
         citenode.text = text
 
@@ -967,13 +993,14 @@ class Akn30:
         datatype = node.get('datatype')
         state = node.get('statecd')
         title = node.get('title')
+        catchline  = node.get('catchline')
         if datatype == 'D' and (state not in ['CA', 'PA', 'NY'] or title != None ) and state == self.statecd:
             self.copy_text(span_akn, node)
 
             for child in node:
                 if ET.iselement(child):
                     if child.tag == 'codesec':
-                        self.process_codesec(span_akn, child, state, title)
+                        self.process_codesec(span_akn, child, state, title, catchline)
                     else:    
                         self.logger.warning ('Ignored element in codesec %s', child.tag)
                 else:       
@@ -1159,6 +1186,8 @@ class Akn30:
                     self.process_pre(parent_akn, child)
                 elif child.tag == 'itemizedlist':
                     self.process_list(parent_akn, child)
+                elif child.tag == 'nbsp':
+                    self.process_nbsp(parent_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in codetext %s', child.tag)
             else:       
@@ -1393,6 +1422,8 @@ class Akn30:
                     self.process_list(subsection_akn, child)
                 elif child.tag == 'footnoteref':
                     self.process_footnoteref(subsection_akn, child)
+                elif child.tag == 'nbsp':
+                    self.process_nbsp(para_node, child)
                 else:    
                     self.logger.warning ('Ignored element in subsection %s', ET.tostring(child))
                 if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist']:
