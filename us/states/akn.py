@@ -53,7 +53,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code':
                     codetype = child.get('type')
-                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV', 'IL', 'TN']:
+                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV', 'IL', 'TN', 'NC']:
                         self.process_code(child, file_info, regulations)
                     else:
                         self.process_dept(child, file_info, regulations)
@@ -561,7 +561,9 @@ class Akn30:
                     self.process_section(chap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Article':
                     self.process_article(chap_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') == 'Part':
+                elif child.tag == 'code' and child.get('type') == 'Chapter':
+                    self.process_chapter(body_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') in ['Part', 'Sec2']:
                     self.process_part(chap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Table':
                     self.process_group(chap_akn, child, regulation)
@@ -636,7 +638,7 @@ class Akn30:
                     pass
                 elif child.tag == 'code' and child.get('type')=='Unprefixed':
                     self.process_part(subchap_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type')=='Part':
+                elif child.tag == 'code' and child.get('type') in ['Part', 'Sec2']:
                     self.process_part(subchap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Form':
                     self.process_group(subchap_akn, child, regulation)

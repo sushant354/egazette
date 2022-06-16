@@ -92,7 +92,11 @@ class Regulation:
         lang        = self.metadata.get_value('language')
         publishdate = self.metadata.get_value('publishdate')
         if isinstance(publishdate, str):
-            print (frbr_uri)
+            self.logger.warn ('No published date %s', frbr_uri)
+            year = int(self.metadata.get_value('regyear'))
+            publishdate = datetime.date(year, 1, 1)
+            self.metadata.set_value('publishdate', publishdate)
+
         publishdate = publishdate.strftime('%Y-%m-%d')
         return '%s/%s@%s' % (frbr_uri, lang, publishdate)
 
