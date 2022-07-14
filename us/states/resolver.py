@@ -51,8 +51,8 @@ class RefResolver:
 
     def add_regulation(self, regulation):
         uri = regulation.get_expr_uri()
-        regs_title = None 
-        if regulation.statecd in ['CA', 'PA', 'NY', 'IL', 'NC']:
+        regs_title = None
+        if regulation.statecd in ['CA', 'PA', 'NY', 'IL', 'NC', 'SC']:
             num = regulation.get_num()
             if not num:
                 self.logger.warning ('RefResolver: NO NUM %s', regulation)
@@ -66,19 +66,19 @@ class RefResolver:
             self.add_num(node, uri, regs_title)
 
         for node in akn.iter('neutralCitation'):
-            regs_title = node.get('title')
+            if 'title' in node:
+                regs_title = node.get('title')
 
             eId = node.get('secid')
             if eId:
                 num = node.get('num')
                 self.add_refid(num, uri, eId, None, regs_title)
 
-    def add_num(self, node, uri, regs_title, num = None):
-        if num == None:
-            numnode = node.find('num')
-            if numnode == None:
-                return 
-            num =  numnode.text
+    def add_num(self, node, uri, regs_title):
+        numnode = node.find('num')
+        if numnode == None:
+            return 
+        num =  numnode.text
 
         version = node.find('version')
         if version != None:

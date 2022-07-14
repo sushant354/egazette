@@ -28,6 +28,9 @@ if __name__ == '__main__':
 
         refresolver.add_regulation(regulation) 
 
+    #for k, v in refresolver.refids.items():
+    #    print ('REF', k, v)
+
     for num, regulation in regulations.items():
         if num == None:
             continue

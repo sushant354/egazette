@@ -53,7 +53,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code':
                     codetype = child.get('type')
-                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV', 'IL', 'TN', 'NC']:
+                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV', 'IL', 'TN', 'NC', 'SC']:
                         self.process_code(child, file_info, regulations)
                     else:
                         self.process_dept(child, file_info, regulations)
@@ -159,7 +159,7 @@ class Akn30:
                         self.process_section(body_akn, child, regulation)
                     elif codetype == 'Division':    
                         self.process_division(body_akn, child, regulation)
-                    elif codetype == 'Chapter':    
+                    elif codetype == 'Chapter' or codetype == 'Subchapter':    
                         self.process_chapter(body_akn, child, regulation)
                     elif codetype == 'Part' or codetype == 'Subpart':    
                         self.process_part(body_akn, child, regulation)
@@ -167,14 +167,14 @@ class Akn30:
                         self.process_subcode(body_akn, child, regulation)
                     elif codetype == 'RegulationNo':
                         self.process_division(body_akn, child, regulation)
-                    elif codetype == 'Article':
+                    elif codetype == 'Article' or codetype == 'Subarticle':
                         self.process_article(body_akn, child, regulation)
                     elif codetype == 'Appendix':
                         self.process_appendix(body_akn, child, regulation)
-                    elif codetype == 'Subtitle':
+                    elif codetype == 'Subtitle' or codetype == 'Title':
                         self.process_division(body_akn, child, regulation)
                     else:    
-                        self.logger.warning ('Ignored codetype in regulation %s', codetype)
+                        self.logger.warning ('Ignored codetype in regulation %s', ET.tostring(child))
                 elif child.tag == 'name':
                     regulation.set_title(self.get_name(child))
                     pnode = create_node('p', preface_akn, {'class': 'title'})
@@ -594,6 +594,8 @@ class Akn30:
                     subpart_eid = '%s__subpart_%d' % (eId, subpart)
                     self.process_subpart(chap_akn, subpart_eid, child, regulation)
                     subpart += 1
+                elif child.tag == 'code' and child.get('type')in ['Attachment']:
+                    self.process_group(chap_akn, child, regulation)
                 else:    
                    self.logger.warning ('Ignored element in chapter %s', ET.tostring(child))
             else:       
@@ -638,7 +640,7 @@ class Akn30:
                     pass
                 elif child.tag == 'code' and child.get('type')=='Unprefixed':
                     self.process_part(subchap_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Part', 'Sec2']:
+                elif child.tag == 'code' and child.get('type') in ['Part', 'Sec2', 'Subpart']:
                     self.process_part(subchap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Form':
                     self.process_group(subchap_akn, child, regulation)
@@ -748,6 +750,8 @@ class Akn30:
                     self.process_group(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Chapter':
                     self.process_chapter(hcontent_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Part':
+                    self.process_part(hcontent_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in appendix %s', ET.tostring(child))
             else:
@@ -971,7 +975,7 @@ class Akn30:
         else:
             text = node.text
 
-        if state in ['WI']:
+        if state in ['WI', 'SC']:
             text = node.get('use')
             if not text:
                 text = node.text
@@ -980,7 +984,7 @@ class Akn30:
         if text:
             citenode.attrib['use'] = text
 
-        if state in ['CA', 'PA', 'NY']:
+        if state in ['CA', 'PA', 'NY', 'IL', 'NC', 'SC']:
             citenode.attrib['title'] = title
 
         if state:
@@ -1106,6 +1110,8 @@ class Akn30:
                     self.process_filelink(comment_node, child)
                 elif child.tag == 'filelink':
                     self.process_filelink(comment_node, child)
+                elif child.tag == 'drop':
+                    self.process_drop(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', ET.tostring(child))
             else:       
@@ -1313,7 +1319,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'subsect' or \
                        (child.tag == 'code' and \
-                        child.get('type') in ['Rule', 'Undesignated']):
+                        child.get('type') in ['Subsection', 'Rule', 'Undesignated', 'Section']):  
                    subsection_eid = '%s__subsec_%d' % (eId, subsection)
                    subsection += 1
                    self.process_subsection(section_akn, child, subsection_eid)
@@ -1501,3 +1507,20 @@ class Akn30:
                  self.process_para(note_akn, child)
             else:     
                 self.logger.warning ('Ignored node in footnote %s', child)
+                
+    def process_drop(self, parent_akn, node):
+        self.copy_text_nonempty(parent_akn, node)
+
+        
+    def copy_text_nonempty(self, parent_akn, node):
+        if node.text:
+            if parent_akn.text:
+                parent_akn.text += node.text
+            else:    
+                parent_akn.text = node.text
+                
+        if node.tail:
+            if parent_akn.text:
+                parent_akn.text += node.tail
+            else:    
+                parent_akn.text = node.tail
