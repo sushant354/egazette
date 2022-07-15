@@ -53,7 +53,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code':
                     codetype = child.get('type')
-                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV', 'IL', 'TN', 'NC', 'SC']:
+                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV', 'IL', 'TN', 'NC', 'SC', 'TX']:
                         self.process_code(child, file_info, regulations)
                     else:
                         self.process_dept(child, file_info, regulations)
@@ -341,6 +341,10 @@ class Akn30:
             url  = self.media_url + filename
             linknode = create_node('a', parent_akn, {'href': url})
             self.copy_text(linknode, node)
+        elif filename and re.search('\.(htm|html)$', filename, re.IGNORECASE):
+            url  = self.media_url + filename
+            linknode = create_node('a', parent_akn, {'href': url})
+            self.copy_text(linknode, node)
         else:
             self.logger.warning('Unknown filelink: %s', ET.tostring(node))
 
@@ -618,6 +622,8 @@ class Akn30:
                     self.process_appendix(subchap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Group':
                     self.process_group(subchap_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Division':
+                    self.process_division(subchap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Undesignated':
                     subchap_eid = '%s_subchap_%d' % (eId, subchap)
                     subchap += 1
@@ -984,7 +990,7 @@ class Akn30:
         if text:
             citenode.attrib['use'] = text
 
-        if state in ['CA', 'PA', 'NY', 'IL', 'NC', 'SC']:
+        if state in ['CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX']:
             citenode.attrib['title'] = title
 
         if state:
@@ -1037,6 +1043,10 @@ class Akn30:
         anode = create_node('a', parent_akn, {'href': ''})
         self.copy_text(anode, node)
 
+    def process_primaryid(self, parent_akn, node):
+        anode = create_node('ref', parent_akn, {'href': ''})
+        self.copy_text(anode, node)
+
     def get_akn_date(self, datestr):
         ds = re.findall('\d+', datestr)
         if len(ds) != 3:
@@ -1066,6 +1076,13 @@ class Akn30:
             d = node.text
         datestr = self.get_akn_date(d)
         self.process_date(parent_akn, node, datestr, '#effectivedate')
+
+    def process_expiration_date(self, parent_akn, node):
+        d = node.get('use')
+        if d == None:
+            d = node.text
+        datestr = self.get_akn_date(d)
+        self.process_date(parent_akn, node, datestr, '#expirationdate')
 
     def process_operational_date(self, parent_akn, node):
         d = node.get('use')
@@ -1112,6 +1129,12 @@ class Akn30:
                     self.process_filelink(comment_node, child)
                 elif child.tag == 'drop':
                     self.process_drop(comment_node, child)
+                elif child.tag == 'expirationdate':
+                    self.process_expiration_date(comment_node, child)
+                elif child.tag == 'primaryidcodenumber':
+                    self.process_primaryid(comment_node, child)
+                elif child.tag == 'codesec':
+                    self.copy_text_nonempty(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', ET.tostring(child))
             else:       

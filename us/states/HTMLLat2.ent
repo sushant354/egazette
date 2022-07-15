@@ -65,3 +65,7 @@
 <!ENTITY Ecirc  "&#202;">
 <!ENTITY uml    "&#168;">
 <!ENTITY ugrave "&#249;">
+<!ENTITY Sgr    "&#x003A3;" >
+<!ENTITY Ntilde "&#209;">
+<!ENTITY fnof   "&#402;">
+<!ENTITY agrave "&#224;">
