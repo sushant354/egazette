@@ -67,3 +67,6 @@ start_year = {
 'TX': '1977', \
 'GA': '1946'  \
 }
+
+title_states = set(['GA', 'WI', 'NV', 'CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX', 'OH', 'TN'])
+

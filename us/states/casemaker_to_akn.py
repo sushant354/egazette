@@ -14,8 +14,8 @@ if __name__ == '__main__':
     regulations = {}
 
     for filename in os.listdir(indir):
-        #if filename != 'ca-2021-admin-title0028.xml':
-        #    continue
+        if filename != 'oh-2022-admin-0125.00.xml':
+            continue
 
         filepath = os.path.join(indir, filename)
         if os.path.isfile(filepath):

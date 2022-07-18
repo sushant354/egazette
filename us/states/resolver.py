@@ -1,5 +1,6 @@
 import logging
 import lxml.etree as ET
+from .states import title_states
 
 class RefResolver:
     def __init__(self):
@@ -52,7 +53,7 @@ class RefResolver:
     def add_regulation(self, regulation):
         uri = regulation.get_expr_uri()
         regs_title = None
-        if regulation.statecd in ['CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX']:
+        if regulation.statecd in title_states and regulation.statecd not in ['WI']:
             num = regulation.get_num()
             if not num:
                 self.logger.warning ('RefResolver: NO NUM %s', regulation)
@@ -60,6 +61,8 @@ class RefResolver:
 
             regs_title = num
         self.add_sections(regulation.body_akn, uri, regs_title)
+        #for k, v in self.refids.items():
+        #    print (k, v)
 
     def add_sections(self, akn, uri, regs_title):    
         for node in akn.iter('section'):
@@ -119,14 +122,14 @@ class RefResolver:
                 self.logger.warning('Nothing to resolve here %s %s', ET.tostring(node), reguri)
                 continue
 
-            if not title:
+            if not title and statecd in title_states and statecd not in ['WI']:
                 title = regulation.get_num()
 
             d  = self.resolve_num(title, text)
             uri, eId, version = d 
             if uri == None:
                 failure += 1
-                self.logger.warning('Could not resolve %s %s', ET.tostring(node), reguri)
+                self.logger.warning('Could not resolve %s %s %s %s', ET.tostring(node), reguri, title, text)
                 continue
 
             success += 1

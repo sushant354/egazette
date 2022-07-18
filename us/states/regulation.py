@@ -112,7 +112,7 @@ class Regulation:
         publishdate = publishdate.strftime('%Y-%m-%d')
         frbr_uri    = self.get_frbr_uri()
 
-        
+       
         idnode = create_node('identification', meta_node, \
                              {'source': '#casemaker'})
         work_node = create_node('FRBRWork', idnode)
@@ -399,7 +399,12 @@ class Regulation:
         if  self.metadata.get_value('regnum'):
             return
 
-        nums = re.findall('\w+', text)
+        if self.statecd == 'OH':
+            nums = re.findall('[\w:]+', text)
+        elif self.statecd == 'WI':
+            nums = re.findall('[\w-]+', text)
+        else:    
+            nums = re.findall('\w+', text)
         if nums:
             subnum = None
             if nums[0] == 'R':
@@ -413,9 +418,9 @@ class Regulation:
 
             self.metadata.set_value('regnum',  regnum.lower())
             if subnum:
-                 reobj = re.match('\d+', subnum)
-                 subnum = int(subnum[:reobj.end()] )
-                 self.metadata.set_value('subnum', subnum)
+                reobj = re.match('\d+', subnum)
+                subnum = int(subnum[:reobj.end()] )
+                self.metadata.set_value('subnum', subnum)
 
     def set_subnum(self, text):
         if (not self.metadata.get_value('regnum')) or \
@@ -465,6 +470,8 @@ class Regulation:
 
         if not reobj:
             reobj = re.search('(?P<month>%s)\s+(?P<day>\d+)[\s,]+(?P<year>\d+)' % monthre, text, flags=re.IGNORECASE)
+            #print (text)
+            #print (reobj)
 
         if reobj:
             groups = reobj.groupdict()

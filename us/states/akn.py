@@ -4,6 +4,7 @@ import logging
 
 import lxml.etree as ET
 from .regulation import Regulation, create_node
+from .states import title_states
 
 class DTDResolver(ET.Resolver):
     def resolve(self, url, public_id, context):
@@ -53,7 +54,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'code':
                     codetype = child.get('type')
-                    if codetype == 'Title' or  file_info.statecd in ['GA', 'PA', 'NY', 'WI', 'NV', 'IL', 'TN', 'NC', 'SC', 'TX']:
+                    if codetype == 'Title' or  file_info.statecd in title_states:
                         self.process_code(child, file_info, regulations)
                     else:
                         self.process_dept(child, file_info, regulations)
@@ -94,9 +95,14 @@ class Akn30:
             self.logger.warning ('NO NUM %s', regulation)
             return
 
-        if regulation.get_locality() in ['california', 'pennsylvania', 'newyork', 'georgia', 'illinois']:
+        if regulation.statecd in title_states:
             title = regulation.get_title()
-            regulation.set_title('Title %s - %s' % (num, title))
+            if title:
+                title = 'Title %s - %s' % (num, title)
+            else:   
+                title = 'Title %s' % num
+
+            regulation.set_title(title)
 
         if num in regulations:
             regulations[num] = self.merge(regulations[num], regulation)
@@ -409,6 +415,10 @@ class Akn30:
                              pnode.text = child.tail
                 elif child.tag == 'footnoteref':
                     self.process_footnoteref(pnode, child)
+                elif child.tag == 'add':    
+                    self.process_add(pnode, child, section_eid)
+                elif child.tag == 'del':
+                    self.process_strike(pnode, child)
                 else:
                     self.logger.warning ('Ignored element in para %s', ET.tostring(child))
             else:       
@@ -545,6 +555,8 @@ class Akn30:
                     create_node('br', td_akn)
                 elif child.tag == 'strike':
                     self.process_strike(td_akn, child)
+                elif child.tag == 'add':    
+                    self.process_add(td_akn, child, None)
                 else:    
                     self.logger.warning ('Ignored element in td %s', child.tag)
             else:       
@@ -899,6 +911,8 @@ class Akn30:
                     self.process_citeas_notes(parent_akn, child, eId)
                 elif child.tag == 'notes-history':
                     self.process_notes_history(comment_node, child)
+                elif child.tag == 'notes-priorhistory':
+                    self.process_notes_history(comment_node, child)
                 elif child.tag == 'notes-maint':
                     self.process_notes_maint(comment_node, child)
                 elif child.tag == 'notes-std':    
@@ -990,7 +1004,7 @@ class Akn30:
         if text:
             citenode.attrib['use'] = text
 
-        if state in ['CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX']:
+        if state in title_states and title and state not in ['WI']:
             citenode.attrib['title'] = title
 
         if state:
@@ -1077,6 +1091,13 @@ class Akn30:
         datestr = self.get_akn_date(d)
         self.process_date(parent_akn, node, datestr, '#effectivedate')
 
+    def process_one_reviewdate(self, parent_akn, node):
+        d = node.get('use')
+        if d == None:
+            d = node.text
+        datestr = self.get_akn_date(d)
+        self.process_date(parent_akn, node, datestr, '#reviewdate')
+
     def process_expiration_date(self, parent_akn, node):
         d = node.get('use')
         if d == None:
@@ -1135,10 +1156,30 @@ class Akn30:
                     self.process_primaryid(comment_node, child)
                 elif child.tag == 'codesec':
                     self.copy_text_nonempty(comment_node, child)
+                elif child.tag == 'reviewdate':
+                    self.process_one_reviewdate(comment_node, child)
+                elif child.tag == 'reviewdates':
+                    self.process_reviewdates(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', ET.tostring(child))
             else:       
                  self.logger.warning ('Ignored node in note %s', child)
+
+    def process_reviewdates(self, parent_akn, node):
+        pnode = create_node('p', parent_akn)
+        self.copy_text(pnode, node)
+
+        for child in node:
+            if ET.iselement(child):
+                if child.tag == 'reviewdate':
+                    self.process_one_reviewdate(pnode, child)
+                elif child.tag == 'codecitation':
+                    self.process_codecitation(pnode, child)
+
+                else:    
+                    self.logger.warning ('Ignored element in reviewdates %s', ET.tostring(child))
+            else:       
+                self.logger.warning ('Ignored node in reviewdates %s', child)
 
     def process_number(self, parent_akn, node):
         number_node = create_node('num', parent_akn)
@@ -1221,6 +1262,10 @@ class Akn30:
                     self.process_list(parent_akn, child)
                 elif child.tag == 'nbsp':
                     self.process_nbsp(parent_akn, child)
+                elif child.tag == 'strike':
+                    self.process_strike(parent_akn, child)
+                elif child.tag == 'filelink':
+                    self.process_filelink(parent_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in codetext %s', child.tag)
             else:       
@@ -1459,9 +1504,13 @@ class Akn30:
                     self.process_footnoteref(subsection_akn, child)
                 elif child.tag == 'nbsp':
                     self.process_nbsp(para_node, child)
+                elif child.tag == 'del':
+                    self.process_strike(para_node, child)
+                elif child.tag == 'filelink':
+                    self.process_filelink(para_node, child)
                 else:    
                     self.logger.warning ('Ignored element in subsection %s', ET.tostring(child))
-                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist']:
+                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist', 'footnoteref', 'nbsp', 'del', 'filelink']:
                     if para_node == None:
                         print ('Unknown subsection child', child.tag)
                         #print (ET.tostring(node))
@@ -1481,10 +1530,27 @@ class Akn30:
 
         subsection = 1
         for child in node:
-            if child.tag == 'subsect':
-                subsection_eid = '%s__subsec_%d' % (eId, subsection)
-                subsection += 1
-                self.process_subsection(parent_akn, child, subsection_eid)
+            if ET.iselement(child):
+                if child.tag == 'subsect':
+                    subsection_eid = '%s__subsec_%d' % (eId, subsection)
+                    subsection += 1
+                    self.process_subsection(parent_akn, child, subsection_eid)
+                elif child.tag == 'codecitation':
+                    self.process_codecitation(parent_akn, child)
+                elif child.tag == 'strike':
+                    self.process_strike(parent_akn, child)
+                elif child.tag == 'add':    
+                    self.process_add(parent_akn, child, eId)
+                elif child.tag == 'actcitation':
+                    self.process_actcitation(parent_akn, child)
+                elif child.tag == 'bold':
+                    self.process_bold(parent_akn, child)
+                elif child.tag == 'italic':
+                    self.process_italic(parent_akn, child)
+                elif child.tag == 'superscript':
+                    self.process_superscript(parent_akn, child)
+                elif child.tag == 'subscript':
+                    self.process_subscript(parent_akn, child)
             else:       
                 self.logger.warning ('Ignored node in add %s', child)
 
@@ -1533,7 +1599,6 @@ class Akn30:
                 
     def process_drop(self, parent_akn, node):
         self.copy_text_nonempty(parent_akn, node)
-
         
     def copy_text_nonempty(self, parent_akn, node):
         if node.text:

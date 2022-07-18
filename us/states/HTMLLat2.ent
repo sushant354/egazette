@@ -69,3 +69,5 @@
 <!ENTITY Ntilde "&#209;">
 <!ENTITY fnof   "&#402;">
 <!ENTITY agrave "&#224;">
+<!ENTITY Oslash "&#216;">
+<!ENTITY euml   "&#235;">
