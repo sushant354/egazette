@@ -97,10 +97,11 @@ class Akn30:
 
         if regulation.statecd in title_states:
             title = regulation.get_title()
+            num_u = num.upper()
             if title:
-                title = 'Title %s - %s' % (num, title)
+                title = 'Title %s - %s' % (num_u, title)
             else:   
-                title = 'Title %s' % num
+                title = 'Title %s' % num_u
 
             regulation.set_title(title)
 
