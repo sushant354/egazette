@@ -26,11 +26,11 @@ class RefResolver:
                 return
 
             oldver = refids[num][2]
-            if oldver != None and version!= None and version <= oldver:
-                self.logger.warning('Refid already exists %s %s %s for (%s, %s, %s)', regs_title, num, refids[num], uri, eid, version)
-                return
-            else:
-                self.logger.warning('Refid replacement of %s %s %s with (%s, %s, %s)', regs_title, num, refids[num], uri, eid, version)
+            if oldver != None:
+                if version == None or version <= oldver:
+                    self.logger.warning('Refid already exists %s %s %s for (%s, %s, %s)', regs_title, num, refids[num], uri, eid, version)
+                    return
+            self.logger.warning('Refid replacement of %s %s %s with (%s, %s, %s)', regs_title, num, refids[num], uri, eid, version)
                 
         refids[num] = (uri, eid, version)
 

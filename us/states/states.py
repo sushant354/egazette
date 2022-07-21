@@ -65,8 +65,16 @@ start_year = {
 'SC': '1976', \
 'OH': '1977', \
 'TX': '1977', \
-'GA': '1946'  \
+'GA': '1946',  \
+'AL': '1988', \
+'AK': '2003', \
+'AR': '2013', \
+'AZ': '2003', \
+'CO': '2003', \
+'CT': '1970', \
+'DE': '1975', \
+'HI': '1995', \
 }
 
-title_states = set(['GA', 'WI', 'NV', 'CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX', 'OH', 'TN'])
+title_states = set(['GA', 'WI', 'NV', 'CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX', 'OH', 'TN', 'AK'])
 

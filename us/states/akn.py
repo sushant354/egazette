@@ -1160,6 +1160,8 @@ class Akn30:
                     self.process_one_reviewdate(comment_node, child)
                 elif child.tag == 'reviewdates':
                     self.process_reviewdates(comment_node, child)
+                elif child.tag == 'ulink':
+                    self.process_ulink(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', ET.tostring(child))
             else:       
@@ -1556,7 +1558,9 @@ class Akn30:
 
         
     def process_pre(self, parent_akn, node):
-        txtlines = node.text.splitlines()
+        text = ET.tostring(node, method = 'text', encoding = 'unicode')
+
+        txtlines = text.splitlines()
         for txt in txtlines:
             p = create_node('p', parent_akn)
             p.text = txt

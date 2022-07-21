@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 
 from egazette.us.states.resolver import RefResolver
 from egazette.us.states.akn import Akn30
@@ -14,7 +15,10 @@ if __name__ == '__main__':
     regulations = {}
 
     for filename in os.listdir(indir):
-        if filename != 'oh-2022-admin-0125.00.xml':
+        #if filename != 'oh-2022-admin-0125.00.xml':
+        #    continue
+
+        if re.search('\.swp$', filename):
             continue
 
         filepath = os.path.join(indir, filename)
