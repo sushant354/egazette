@@ -76,3 +76,5 @@
 <!ENTITY le     "&#8804;">
 <!ENTITY macr  "&#175;">
 <!ENTITY dagger "&#8224;">
+<!ENTITY ccedil "&#231;">
+<!ENTITY cedil  "&#184;">
