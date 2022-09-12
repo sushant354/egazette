@@ -1317,6 +1317,8 @@ class Akn30:
                    self.process_heading(article_akn, child)
                 elif child.tag == 'table' or child.tag == 'TABLE':
                     self.process_table(article_akn, child)
+                elif child.tag == 'code' and child.get('type') == 'Article':
+                   self.process_article(parent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Section':
                    self.process_section(article_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Undesignated':
@@ -1353,6 +1355,8 @@ class Akn30:
                     self.process_chapter(article_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Rule':
                     self.process_section(article_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') in ['Exhibit', 'Form', 'Attachment', 'Schedule']:
+                    self.process_group(article_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in article %s', ET.tostring(child))
             else:       
