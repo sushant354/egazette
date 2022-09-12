@@ -97,10 +97,14 @@ class Akn30:
 
         if regulation.statecd in title_states:
             title = regulation.get_title()
+            if regulation.statecd in ['AR']:
+                header = 'Agency'
+            else:
+                header = 'Title'
             if title:
-                title = 'Title %s - %s' % (num, title)
+                title = '%s %s - %s' % (header, num, title)
             else:   
-                title = 'Title %s' % num
+                title = '%s %s' % (header, num)
 
             regulation.set_title(title)
 
@@ -161,13 +165,18 @@ class Akn30:
                     regulation.set_num(child.text)
                 elif child.tag == 'code':
                     codetype =  child.get('type') 
-                    if codetype == 'Section' or codetype == 'Rule':
+                    if codetype == 'Section':
                         self.process_section(body_akn, child, regulation)
+                    elif codetype in ['Rule', 'Rule2']:
+                        if file_info.statecd in ['AR']:
+                            self.process_chapter(body_akn, child, regulation)
+                        else:    
+                            self.process_section(body_akn, child, regulation)
                     elif codetype == 'Division':    
                         self.process_division(body_akn, child, regulation)
                     elif codetype == 'Chapter' or codetype == 'Subchapter':    
                         self.process_chapter(body_akn, child, regulation)
-                    elif codetype == 'Part' or codetype == 'Subpart':    
+                    elif codetype in ['Part', 'Subpart', 'Regulation']:    
                         self.process_part(body_akn, child, regulation)
                     elif codetype in ['Undesignated', 'Unprefixed']:
                         self.process_subcode(body_akn, child, regulation)
@@ -227,7 +236,7 @@ class Akn30:
                     self.process_article(div_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Undesignated':
                     self.process_part(div_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') == 'Part':
+                elif child.tag == 'code' and child.get('type') in['Part', 'Regulation']:
                     self.process_part(div_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(div_akn, child, regulation)
@@ -239,6 +248,8 @@ class Akn30:
                     subchap_eId = '%s_subchap_%d' % (eId, subchap)
                     subchap += 1
                     self.process_subchapter(div_akn, child, regulation, subchap_eId)
+                elif child.tag == 'code' and child.get('type') == 'Rule':
+                    self.process_section(div_akn, child, regulation)
                 elif child.tag == 'number':
                     self.process_number(div_akn, child)
                     regulation.set_subnum(child.text)
@@ -964,6 +975,9 @@ class Akn30:
         text = ET.tostring(node, method = 'text', encoding = 'unicode')
         primaryid = node.find('primaryidcodenumber')
 
+        if primaryid == None:
+            primaryid = node.find('rulenumber')
+
         d = {}
         if primaryid != None:
             d['title'] = primaryid.text
@@ -1389,7 +1403,7 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'subsect' or \
                        (child.tag == 'code' and \
-                        child.get('type') in ['Subsection', 'Rule', 'Undesignated', 'Section']):  
+                        child.get('type') in ['Subsection', 'Rule', 'Undesignated', 'Section', 'Unprefixed']):  
                    subsection_eid = '%s__subsec_%d' % (eId, subsection)
                    subsection += 1
                    self.process_subsection(section_akn, child, subsection_eid)

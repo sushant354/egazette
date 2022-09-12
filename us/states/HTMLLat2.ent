@@ -72,3 +72,7 @@
 <!ENTITY Oslash "&#216;">
 <!ENTITY euml   "&#235;">
 <!ENTITY oslash "&#248;">
+<!ENTITY raquo  "&#187;">
+<!ENTITY le     "&#8804;">
+<!ENTITY macr  "&#175;">
+<!ENTITY dagger "&#8224;">

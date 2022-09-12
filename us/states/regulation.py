@@ -473,9 +473,16 @@ class Regulation:
             #print (text)
             #print (reobj)
 
+        if not reobj:
+            reobj = re.search('(?P<month>%s)[\s,]+(?P<year>\d+)' % monthre, text, flags=re.IGNORECASE)
+
         if reobj:
             groups = reobj.groupdict()
-            dateobj = datetime.date(int(groups['year']),  month_to_num(groups['month']), int(groups['day']))
+            if 'day' in groups:
+                day =  int(groups['day'])
+            else:
+                day = 1
+            dateobj = datetime.date(int(groups['year']),  month_to_num(groups['month']), day)
         return dateobj
 
     def remove_version(self):

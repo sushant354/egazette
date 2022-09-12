@@ -73,8 +73,8 @@ class RefResolver:
                 regs_title = node.get('title')
 
             eId = node.get('secid')
-            if eId:
-                num = node.get('num')
+            num = node.get('num')
+            if eId and num:
                 self.add_refid(num, uri, eId, None, regs_title)
 
     def add_num(self, node, uri, regs_title):

@@ -76,5 +76,5 @@ start_year = {
 'HI': '1995', \
 }
 
-title_states = set(['GA', 'WI', 'NV', 'CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX', 'OH', 'TN', 'AK'])
+title_states = set(['GA', 'WI', 'NV', 'CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX', 'OH', 'TN', 'AK', 'AR'])
 
