@@ -738,8 +738,10 @@ class Akn30:
                         self.process_appendix(body_akn, child, regulation)
                     elif codetype in ['Undesignated', 'Unprefixed']:
                         self.process_subcode(body_akn, child, regulation)
-                    elif  codetype =='Opinion':
+                    elif  codetype in ['Opinion', 'Schedule', 'Exhibit']:
                         self.process_group(body_akn, child, regulation)
+                    elif child.tag == 'code' and child.get('type') == 'Article':
+                        self.process_article(body_akn, child, regulation)
                     else:
                         self.logger.warning('Ignored code element in subcode %s %s', codetype, ET.tostring(child))
                 elif child.tag == 'name':
@@ -1420,10 +1422,12 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'subsect' or \
                        (child.tag == 'code' and \
-                        child.get('type') in ['Subsection', 'Rule', 'Undesignated', 'Section', 'Unprefixed']):  
+                        child.get('type') in ['Subsection', 'Rule', 'Section', 'Unprefixed']):  
                    subsection_eid = '%s__subsec_%d' % (eId, subsection)
                    subsection += 1
                    self.process_subsection(section_akn, child, subsection_eid)
+                elif child.tag == 'code' and child.get('type') == 'Undesignated':
+                   self.process_part(parent_akn, child, regulation)
                 elif child.tag == 'number':
                    self.process_number(section_akn, child)
                    regulation.set_num(child.text)
@@ -1479,10 +1483,12 @@ class Akn30:
         subsection     = 1
         para_node      = None
         content_num    = 1
+        num            = None
         for child in node:
             if ET.iselement(child):
                 if child.tag in ['designator', 'number']:
                     self.process_number(subsection_akn, child)
+                    num = ET.tostring(child, method='text', encoding='unicode', with_tail=False)
                     content_akn = create_node('content', subsection_akn)
                     para_node = create_node('p', content_akn)
                     if child.tail:
@@ -1543,8 +1549,10 @@ class Akn30:
                     self.process_strike(para_node, child)
                 elif child.tag == 'filelink':
                     self.process_filelink(para_node, child)
+                #elif child.tag == 'code' and child.get('type') == 'Section':
+                #    self.process_section(section_akn, child, regulation)
                 else:    
-                    self.logger.warning ('Ignored element in subsection %s', ET.tostring(child))
+                    self.logger.warning ('Ignored element in subsection %s %s', num, ET.tostring(child))
                 if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist', 'footnoteref', 'nbsp', 'del', 'filelink']:
                     if para_node == None:
                         print ('Unknown subsection child', child.tag)
