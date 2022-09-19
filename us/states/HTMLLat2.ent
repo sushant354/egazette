@@ -78,3 +78,7 @@
 <!ENTITY dagger "&#8224;">
 <!ENTITY ccedil "&#231;">
 <!ENTITY cedil  "&#184;">
+<!ENTITY Iuml   "&#207;">
+<!ENTITY yuml   "&#255;">
+<!ENTITY ucirc  "&#251;">
+<!ENTITY icirc  "&#238;">
