@@ -186,7 +186,7 @@ class Akn30:
                         self.process_article(body_akn, child, regulation)
                     elif codetype == 'Appendix':
                         self.process_appendix(body_akn, child, regulation)
-                    elif codetype == 'Subtitle' or codetype == 'Title':
+                    elif codetype in ['Subtitle', 'Title', 'Sec2']:
                         self.process_division(body_akn, child, regulation)
                     elif child.tag == 'code' and child.get('type') == 'Form':
                         self.process_group(body_akn, child, regulation)
@@ -679,7 +679,7 @@ class Akn30:
                     self.process_part(subchap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Part', 'Sec2', 'Subpart']:
                     self.process_part(subchap_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type')in ['Form', 'Attachment']:
+                elif child.tag == 'code' and child.get('type')in ['Form', 'Attachment', 'Table', 'Subchapter']:
                     self.process_group(subchap_akn, child, regulation)
                 else:
                    self.logger.warning ('Ignored element in subchapter %s', ET.tostring(child))
@@ -719,7 +719,8 @@ class Akn30:
                     self.process_part(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Chapter', 'Subchapter']:
                     self.process_chapter(hcontent_akn, child, regulation)
-                    
+                elif child.tag == 'code' and child.get('type') == 'Subtitle':
+                        self.process_division(hcontent_akn, child, regulation)
                 else:    
                    self.logger.warning ('Ignored element in group %s', ET.tostring(child))
             else:       
@@ -1266,7 +1267,7 @@ class Akn30:
                    self.process_content(section_akn, child, subcontent_eid, section_eid, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Section':
                    self.process_section(hcontent_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Exhibit']:
+                elif child.tag == 'code' and child.get('type') in ['Exhibit', 'Appendix']:
                     self.process_group(hcontent_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in content %s', ET.tostring(child))
