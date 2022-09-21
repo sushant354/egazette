@@ -97,7 +97,7 @@ class Akn30:
 
         if regulation.statecd in title_states:
             title = regulation.get_title()
-            if regulation.statecd in ['AR']:
+            if regulation.statecd in ['AR', 'IA']:
                 header = 'Agency'
             else:
                 header = 'Title'
@@ -154,8 +154,9 @@ class Akn30:
 
         regulation.body_akn    = body_akn
         regulation.preface_akn = preface_akn
-        codetype = node.get('type')
+        regtype                = node.get('type')
         num      = None
+
         for child in node:
             if ET.iselement(child):
                 if child.tag == 'version':
@@ -196,8 +197,8 @@ class Akn30:
                     regulation.set_title(self.get_name(child))
                     pnode = create_node('p', preface_akn, {'class': 'title'})
                     title = create_node('shortTitle', pnode)
-                    if num != None and codetype != None:
-                        short_title = '%s %s - %s' % (codetype, num, child.text)
+                    if num != None and regtype != None:
+                        short_title = '%s %s - %s' % (regtype, num, child.text)
                     else:
                         short_title = child.text
                     title.text = short_title
@@ -242,7 +243,7 @@ class Akn30:
                     self.process_part(div_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(div_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') == 'Subdivision':
+                elif child.tag == 'code' and child.get('type') in ['Subdivision', 'Division']:
                     subdivision_eid = '%s_subdivision_%d' % (eId, subdiv)
                     subdiv += 1
                     self.process_subdivision(div_akn, child, regulation, subdivision_eid)
@@ -631,6 +632,8 @@ class Akn30:
                     subpart += 1
                 elif child.tag == 'code' and child.get('type')in ['Attachment', 'Addendum', 'Schedule']:
                     self.process_group(chap_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Division':
+                    self.process_division(chap_akn, child, regulation)
                 else:    
                    self.logger.warning ('Ignored element in chapter %s', ET.tostring(child))
             else:       
