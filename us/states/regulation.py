@@ -403,6 +403,8 @@ class Regulation:
             nums = re.findall('[\w:]+', text)
         elif self.statecd == 'WI':
             nums = re.findall('[\w-]+', text)
+        elif self.statecd == 'ID':
+            nums = [text]
         else:    
             nums = re.findall('\w+', text)
         if nums:

@@ -169,7 +169,7 @@ class Akn30:
                     if codetype == 'Section':
                         self.process_section(body_akn, child, regulation)
                     elif codetype in ['Rule', 'Rule2']:
-                        if file_info.statecd in ['AR', 'CO']:
+                        if file_info.statecd in ['AR', 'CO', 'ID']:
                             self.process_chapter(body_akn, child, regulation)
                         else:    
                             self.process_section(body_akn, child, regulation)
@@ -706,7 +706,7 @@ class Akn30:
                     self.process_appendix(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Subgroup':
                     self.process_group(hcontent_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Exhibit', 'Schedule', 'Undesignated', 'Unprefixed', 'Form', 'Attachment']:
+                elif child.tag == 'code' and child.get('type') in ['Exhibit', 'Schedule', 'Undesignated', 'Unprefixed', 'Form', 'Attachment', 'Rule']:
                     self.process_group(hcontent_akn, child, regulation)
                 elif child.tag == 'number':
                     self.process_number(hcontent_akn, child)
