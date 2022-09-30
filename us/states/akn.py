@@ -97,14 +97,15 @@ class Akn30:
 
         if regulation.statecd in title_states:
             title = regulation.get_title()
+            num_u = num.upper()
             if regulation.statecd in ['AR', 'IA']:
                 header = 'Agency'
             else:
                 header = 'Title'
             if title:
-                title = '%s %s - %s' % (header, num, title)
+                title = '%s %s - %s' % (header, num_u, title)
             else:   
-                title = '%s %s' % (header, num)
+                title = '%s %s' % (header, num_u)
 
             regulation.set_title(title)
 
