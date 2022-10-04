@@ -1036,7 +1036,7 @@ class Akn30:
 
  
     def process_codesec(self, parent_akn, node, state, title, catchline):
-        if state in ['MI', 'GA', 'ID']:
+        if state in ['MI', 'GA', 'ID', 'LA']:
             text = node.get('use')
         else:
             text = node.text
