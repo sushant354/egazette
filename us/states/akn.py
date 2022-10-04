@@ -110,6 +110,7 @@ class Akn30:
             regulation.set_title(title)
 
         if num in regulations:
+            print ('Num', num)
             regulations[num] = self.merge(regulations[num], regulation)
         else:
             regulations[num] = regulation
@@ -138,6 +139,11 @@ class Akn30:
     def merge(self, reg1, reg2):
         num1 = reg1.metadata.get_value('subnum')
         num2 = reg2.metadata.get_value('subnum')
+
+        if num1 == '' or num2 == '':
+            self.logger.warning("Couldn't merge %s", reg1.get_num())
+            return reg1
+
 
         self.logger.warning('Merging %d %d of %s', num1, num2, reg1.get_num())
         if num1 < num2:
@@ -1030,7 +1036,7 @@ class Akn30:
 
  
     def process_codesec(self, parent_akn, node, state, title, catchline):
-        if state in ['MI', 'GA']:
+        if state in ['MI', 'GA', 'ID']:
             text = node.get('use')
         else:
             text = node.text
