@@ -370,7 +370,7 @@ class Akn30:
             url  = self.media_url + filename
             linknode = create_node('a', parent_akn, {'href': url})
             self.copy_text(linknode, node)
-        elif filename and re.search('\.(htm|html)$', filename, re.IGNORECASE):
+        elif filename and re.search('\.(htm|html|xls|rtf|xlsx)$', filename, re.IGNORECASE):
             url  = self.media_url + filename
             linknode = create_node('a', parent_akn, {'href': url})
             self.copy_text(linknode, node)
@@ -584,6 +584,8 @@ class Akn30:
                     self.process_add(td_akn, child, None)
                 elif child.tag == 'actseccitation':
                     self.process_actcitation(td_akn, child)
+                elif child.tag == 'itemizedlist':
+                    self.process_list(td_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in td %s', child.tag)
             else:       
@@ -627,7 +629,7 @@ class Akn30:
                     content_eid = '%s__hcontainer_%d' % (eId, content_num)
                     content_num += 1
                     self.process_content(chap_akn, child, content_eid, eId, regulation)
-                elif child.tag == 'code' and child.get('type')in ['Group', 'Figure', 'Form']:
+                elif child.tag == 'code' and child.get('type')in ['Group', 'Figure', 'Form', 'Subsection']:
                     self.process_group(chap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Rule':
                     self.process_section(chap_akn, child, regulation)
@@ -637,7 +639,7 @@ class Akn30:
                     subpart_eid = '%s__subpart_%d' % (eId, subpart)
                     self.process_subpart(chap_akn, subpart_eid, child, regulation)
                     subpart += 1
-                elif child.tag == 'code' and child.get('type')in ['Attachment', 'Addendum', 'Schedule']:
+                elif child.tag == 'code' and child.get('type')in ['Attachment', 'Addendum', 'Schedule', 'Chart', 'Amendment']:
                     self.process_group(chap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Division':
                     self.process_division(chap_akn, child, regulation)
@@ -855,6 +857,8 @@ class Akn30:
                     self.process_table(content_akn, child)
                 elif child.tag == 'bold':
                     self.process_bold(content_akn, child)
+                elif child.tag == 'itemizedlist':
+                    self.process_list(content_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in appendix_codetext %s', child.tag)
             else:       
@@ -883,7 +887,7 @@ class Akn30:
                     self.process_part(body_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Chapter':
                     self.process_chapter(part_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Subpart', 'Rule2', 'Unprefixed', 'Part', 'Title', 'Sec2', 'Subtitle']:
+                elif child.tag == 'code' and child.get('type') in ['Subpart', 'Rule2', 'Unprefixed', 'Part', 'Title', 'Sec2', 'Subtitle', 'Subsection']:
                     subpart_eid = '%s__subpart_%d' % (part_eid, subpart)
                     self.process_subpart(part_akn, subpart_eid, child, regulation)
                     subpart += 1
@@ -1036,7 +1040,7 @@ class Akn30:
 
  
     def process_codesec(self, parent_akn, node, state, title, catchline):
-        if state in ['MI', 'GA', 'ID', 'LA']:
+        if state in ['MI', 'GA', 'ID', 'LA', 'ME']:
             text = node.get('use')
         else:
             text = node.text
@@ -1210,6 +1214,8 @@ class Akn30:
                     self.process_ulink(comment_node, child)
                 elif child.tag == 'underscore':
                     self.process_underscore(comment_node, child)
+                elif child.tag == 'superscript':
+                    self.process_superscript(comment_node, child)
                 else:    
                     self.logger.warning ('Ignored element in note %s', ET.tostring(child))
             else:       
@@ -1324,6 +1330,8 @@ class Akn30:
                     self.process_strike(parent_akn, child)
                 elif child.tag == 'filelink':
                     self.process_filelink(parent_akn, child)
+                elif child.tag == 'bold':
+                    self.process_bold(parent_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in codetext %s', child.tag)
             else:       
