@@ -416,7 +416,8 @@ class Regulation:
             else:
                 regnum = nums[0]
                 if len(nums) > 1:
-                    subnum = nums[1]
+                    if self.statecd not in ['MA']:
+                        subnum = nums[1]
 
             self.metadata.set_value('regnum',  regnum.lower())
             if subnum:

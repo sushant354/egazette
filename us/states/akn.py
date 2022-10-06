@@ -246,7 +246,7 @@ class Akn30:
                     self.process_article(div_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Undesignated':
                     self.process_part(div_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Part', 'Regulation']:
+                elif child.tag == 'code' and child.get('type') in ['Part', 'Regulation', 'Subpart']:
                     self.process_part(div_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(div_akn, child, regulation)
@@ -1012,7 +1012,7 @@ class Akn30:
 
         d = {}
         if primaryid != None:
-            d['title'] = primaryid.text
+            d['title'], n = re.subn(r'[\x00-\x1f\x7f-\x9f\s]+', ' ', primaryid.text)
 
         codesec = node.find('codesec')
         if codesec != None:

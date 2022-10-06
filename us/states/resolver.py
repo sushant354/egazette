@@ -60,12 +60,16 @@ class RefResolver:
                 return
 
             regs_title = num
+            if regulation.statecd == 'MA':
+                regs_title += ' CMR'
         self.add_sections(regulation.body_akn, uri, regs_title)
         #for k, v in self.refids.items():
         #    print (k, v)
 
     def add_sections(self, akn, uri, regs_title):    
         for node in akn.iter('section'):
+            self.add_num(node, uri, regs_title)
+        for node in akn.iter('division'):
             self.add_num(node, uri, regs_title)
 
         for node in akn.iter('neutralCitation'):

@@ -89,5 +89,5 @@ start_year = {
 'MT': '1971', \
 }
 
-title_states = set(['GA', 'WI', 'NV', 'CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX', 'OH', 'TN', 'AK', 'AR', 'AL', 'AZ', 'CT', 'CO', 'DE', 'HI', 'IA', 'ID', 'IN', 'KS', 'KY', 'LA'])
+title_states = set(['GA', 'WI', 'NV', 'CA', 'PA', 'NY', 'IL', 'NC', 'SC', 'TX', 'OH', 'TN', 'AK', 'AR', 'AL', 'AZ', 'CT', 'CO', 'DE', 'HI', 'IA', 'ID', 'IN', 'KS', 'KY', 'LA', 'MA'])
 
