@@ -361,7 +361,7 @@ class Akn30:
 
     def process_filelink(self, parent_akn, node):
         filename = node.get('filename')
-        if filename and re.search('(png|jpg|pdf|jpeg|gif)$', filename):
+        if filename and re.search('(png|jpg|pdf|jpeg|gif|tif)$', filename):
             filename = self.media_url + filename
             imgnode = create_node('img', parent_akn, {'src': filename})
             if node.tail:
@@ -1582,11 +1582,13 @@ class Akn30:
                     self.process_strike(para_node, child)
                 elif child.tag == 'filelink':
                     self.process_filelink(para_node, child)
+                elif child.tag == 'effectivedate':
+                    self.process_effective_date(para_node, child)
                 #elif child.tag == 'code' and child.get('type') == 'Section':
                 #    self.process_section(section_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in subsection %s %s', num, ET.tostring(child))
-                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist', 'footnoteref', 'nbsp', 'del', 'filelink']:
+                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist', 'footnoteref', 'nbsp', 'del', 'filelink', 'effectivedate']:
                     if para_node == None:
                         print ('Unknown subsection child', child.tag)
                         #print (ET.tostring(node))
