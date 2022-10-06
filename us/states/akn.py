@@ -883,7 +883,7 @@ class Akn30:
                     self.process_part(body_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Chapter':
                     self.process_chapter(part_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Subpart', 'Rule2', 'Unprefixed', 'Part', 'Title', 'Sec2']:
+                elif child.tag == 'code' and child.get('type') in ['Subpart', 'Rule2', 'Unprefixed', 'Part', 'Title', 'Sec2', 'Subtitle']:
                     subpart_eid = '%s__subpart_%d' % (part_eid, subpart)
                     self.process_subpart(part_akn, subpart_eid, child, regulation)
                     subpart += 1
