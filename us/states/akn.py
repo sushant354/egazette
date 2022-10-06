@@ -269,6 +269,8 @@ class Akn30:
                     content_eid = '%s__hcontainer_%d' % (eId, content_num)
                     content_num += 1
                     self.process_content(div_akn, child, content_eid, eId, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Form':
+                    self.process_group(div_akn, child, regulation)
                 elif child.tag == 'version':
                     pass
                 else:    
@@ -1332,6 +1334,8 @@ class Akn30:
                     self.process_filelink(parent_akn, child)
                 elif child.tag == 'bold':
                     self.process_bold(parent_akn, child)
+                elif child.tag == 'italic':
+                    self.process_italic(parent_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in codetext %s', child.tag)
             else:       
