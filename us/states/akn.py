@@ -1009,6 +1009,10 @@ class Akn30:
             else:
                 self.logger.warning ('Ignored node in notes-citeas %s', ET.tostring(child))
 
+    def remove_cntrl_chars(self, s):
+        s, n = re.subn(r'[\x00-\x1f\x7f-\x9f\s]+', ' ', s)
+        return s
+
     def process_citeas(self, comment_node, node, eId):
         text = ET.tostring(node, method = 'text', encoding = 'unicode')
         primaryid = node.find('primaryidcodenumber')
@@ -1018,7 +1022,7 @@ class Akn30:
 
         d = {}
         if primaryid != None:
-            d['title'], n = re.subn(r'[\x00-\x1f\x7f-\x9f\s]+', ' ', primaryid.text)
+            d['title'] = self.remove_cntrl_chars(primaryid.text)
 
         codesec = node.find('codesec')
         if codesec != None:
@@ -1051,6 +1055,9 @@ class Akn30:
             text = node.get('use')
             if not text:
                 text = node.text
+
+        if state in ['MO']:
+            text = self.remove_cntrl_chars(text)
 
         citenode = create_node('ref', parent_akn, {'href': ''})
         if text:
