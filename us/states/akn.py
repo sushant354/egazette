@@ -603,6 +603,7 @@ class Akn30:
         subpart     = 1
 
         for child in node:
+            
             if ET.iselement(child):
                 if child.tag == 'code' and child.get('type') == 'Section':
                     self.process_section(chap_akn, child, regulation)
@@ -634,7 +635,13 @@ class Akn30:
                 elif child.tag == 'code' and child.get('type')in ['Group', 'Figure', 'Form', 'Subsection']:
                     self.process_group(chap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Rule':
-                    self.process_section(chap_akn, child, regulation)
+                    has_article = child.find("code[@type='Article']")
+                    has_section = child.find("code[@type='Section']")
+                    if has_article == None and has_section == None:
+                        self.process_section(chap_akn, child, regulation)
+                    else:    
+                        self.process_group(chap_akn, child, regulation)
+
                 elif child.tag == 'code' and child.get('type') == 'Subject':
                     self.process_part(chap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Subpart':
@@ -735,6 +742,8 @@ class Akn30:
                     self.process_chapter(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Subtitle':
                         self.process_division(hcontent_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Division':
+                    self.process_division(hcontent_akn, child, regulation)
                 else:    
                    self.logger.warning ('Ignored element in group %s', ET.tostring(child))
             else:       
@@ -803,7 +812,7 @@ class Akn30:
                     self.process_appendix_content(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(hcontent_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Form', 'Chart', 'Unprefixed', 'Exhibit', 'Title', 'Attachment']:
+                elif child.tag == 'code' and child.get('type') in ['Form', 'Chart', 'Unprefixed', 'Exhibit', 'Title', 'Attachment', 'Addendum', 'Schedule']:
                     self.process_group(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Rule', 'Section']:
                     self.process_section(hcontent_akn, child, regulation)
@@ -911,6 +920,7 @@ class Akn30:
     def process_subpart(self, part_akn, subpart_eid, node, regulation):
         subpart_akn = create_node('subpart', part_akn,  {'eId': subpart_eid})
         content_num = 1
+        subpart     = 1
         for child in node:
             if ET.iselement(child):
                 if child.tag == 'code' and child.get('type') == 'Section':
@@ -927,7 +937,7 @@ class Akn30:
                     content_eid = '%s__hcontainer_%d' % (subpart_eid, content_num)
                     content_num += 1
                     self.process_content(subpart_akn, child, content_eid, subpart_eid, regulation)
-                elif child.tag == 'code' and child.get('type') == 'Chapter':    
+                elif child.tag == 'code' and child.get('type') in ['Chapter', 'Subchapter']:    
                     self.process_chapter(subpart_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Article':
                     self.process_article(subpart_akn, child, regulation)
@@ -939,6 +949,10 @@ class Akn30:
                     self.process_appendix(subpart_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Sec2':
                     self.process_group(subpart_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type')=='Subpart':
+                    subsubpart_eid = '%s__subpart_%d' % (subpart_eid, subpart)
+                    self.process_subpart(subpart_akn, subsubpart_eid, child, regulation)
+                    subpart += 1
                 else:    
                     self.logger.warning ('Ignored element in subpart %s', ET.tostring(child))
             else:       
@@ -1046,7 +1060,7 @@ class Akn30:
 
  
     def process_codesec(self, parent_akn, node, state, title, catchline):
-        if state in ['MI', 'GA', 'ID', 'LA', 'ME']:
+        if state in ['MI', 'GA', 'ID', 'LA', 'ME', 'MS']:
             text = node.get('use')
         else:
             text = node.text
@@ -1281,7 +1295,7 @@ class Akn30:
                 elif child.tag == 'subsect':
                     subsection_eid = '%s__subsec_%d' % (eId, subsection)
                     subsection += 1
-                    self.process_subsection(section_akn, child, subsection_eid)
+                    self.process_subsection(section_akn, child, subsection_eid, regulation)
                 elif child.tag == 'version':
                     pass
                 elif child.tag == 'name':
@@ -1470,10 +1484,10 @@ class Akn30:
             if ET.iselement(child):
                 if child.tag == 'subsect' or \
                        (child.tag == 'code' and \
-                        child.get('type') in ['Subsection', 'Rule', 'Section', 'Unprefixed', 'Part']):  
+                        child.get('type') in ['Subsection', 'Rule', 'Section', 'Unprefixed', 'Part', 'Article']):  
                    subsection_eid = '%s__subsec_%d' % (eId, subsection)
                    subsection += 1
-                   self.process_subsection(section_akn, child, subsection_eid)
+                   self.process_subsection(section_akn, child, subsection_eid, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Undesignated':
                    self.process_part(parent_akn, child, regulation)
                 elif child.tag == 'number':
@@ -1519,7 +1533,7 @@ class Akn30:
         if node.tail and node.tail.strip():
             print ('TAIL', node.tail, ET.tostring(node))
 
-    def process_subsection(self, section_akn, node, eId):
+    def process_subsection(self, section_akn, node, eId, regulation = None):
         subsection_akn = create_node('subsection', section_akn)
         if eId:
             node.set('eId', eId)
@@ -1537,10 +1551,10 @@ class Akn30:
                     para_node = create_node('p', content_akn)
                     if child.tail:
                         para_node.text = child.tail
-                elif child.tag == 'subsect' or (child.tag == 'code' and child.get('type') == 'Rule'):
+                elif child.tag == 'subsect' or (child.tag == 'code' and child.get('type') in ['Rule', 'Section']):
                     subsection_eid = '%s__subsec_%d' % (eId, subsection)
                     subsection += 1
-                    self.process_subsection(subsection_akn, child, subsection_eid)
+                    self.process_subsection(subsection_akn, child, subsection_eid, regulation)
                 elif child.tag == 'codecitation':
                     self.process_codecitation(para_node, child)
                 elif child.tag == 'para':
@@ -1597,6 +1611,10 @@ class Akn30:
                     self.process_effective_date(para_node, child)
                 #elif child.tag == 'code' and child.get('type') == 'Section':
                 #    self.process_section(section_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') == 'Appendix':
+                     self.process_appendix(subsection_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') in ['Exhibit']:
+                    self.process_group(subsection_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in subsection %s %s', num, ET.tostring(child))
                 if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist', 'footnoteref', 'nbsp', 'del', 'filelink', 'effectivedate']:
