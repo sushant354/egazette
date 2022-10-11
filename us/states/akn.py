@@ -1357,6 +1357,8 @@ class Akn30:
                     self.process_bold(parent_akn, child)
                 elif child.tag == 'italic':
                     self.process_italic(parent_akn, child)
+                elif child.tag == 'codecitation':
+                    self.process_codecitation(parent_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in codetext %s', child.tag)
             else:       
