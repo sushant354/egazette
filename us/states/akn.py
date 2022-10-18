@@ -990,6 +990,8 @@ class Akn30:
                     self.process_notes_history(comment_node, child)
                 elif child.tag == 'notes-maint':
                     self.process_notes_maint(comment_node, child)
+                elif child.tag == 'notes-cont':
+                    self.process_notes_std(comment_node, child)
                 elif child.tag == 'notes-std':    
                     self.process_notes_std(comment_node, child)
                 elif child.tag == 'notes-alert':    

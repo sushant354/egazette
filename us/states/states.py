@@ -108,5 +108,5 @@ title_states = set(['GA', 'WI', 'NV', 'CA', 'PA', 'NY', 'IL', 'NC', 'SC', \
                     'TX', 'OH', 'TN', 'AK', 'AR', 'AL', 'AZ', 'CT', 'CO', \
                     'DE', 'HI', 'IA', 'ID', 'IN', 'KS', 'KY', 'LA', 'MA', \
                     'MD', 'ME', 'MN', 'MO', 'MS', 'MT', 'NE', 'NH', 'NJ', \
-                    'NM', 'ND', 'OK', 'OR', 'RI', 'SD'])
+                    'NM', 'ND', 'OK', 'OR', 'RI', 'SD', 'UT'])
 
