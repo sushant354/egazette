@@ -185,9 +185,7 @@ class Akn30:
                             self.process_chapter(body_akn, child, regulation)
                         else:    
                             self.process_section(body_akn, child, regulation)
-                    elif codetype == 'Division':    
-                        self.process_division(body_akn, child, regulation)
-                    elif codetype == 'Subagency':    
+                    elif codetype in ['Division', 'Agency', 'Subagency']:    
                         self.process_division(body_akn, child, regulation)
                     elif codetype == 'Chapter' or codetype == 'Subchapter':    
                         self.process_chapter(body_akn, child, regulation)

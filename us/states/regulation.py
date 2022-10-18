@@ -24,7 +24,8 @@ def create_node(tagname, parent = None, attribs = None):
 
     if attribs:
         for k, v in attribs.items():
-            node.attrib[k] = v
+            if v:
+                node.attrib[k] = v
 
     return node
 
