@@ -837,7 +837,7 @@ class Akn30:
                     self.process_appendix_content(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and (child.get('type')=='Appendix' or child.get('style')=='Appendix'):
                     self.process_appendix(hcontent_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Form', 'Chart', 'Unprefixed', 'Exhibit', 'Title', 'Attachment', 'Addendum', 'Schedule', 'Series']:
+                elif child.tag == 'code' and child.get('type') in ['Form', 'Chart', 'Unprefixed', 'Exhibit', 'Title', 'Attachment', 'Addendum', 'Schedule', 'Series', 'Article']:
                     self.process_group(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Rule', 'Section']:
                     self.process_section(hcontent_akn, child, regulation)
@@ -1087,7 +1087,7 @@ class Akn30:
 
  
     def process_codesec(self, parent_akn, node, state, title, catchline):
-        if state in ['MI', 'GA', 'ID', 'LA', 'ME', 'MS', 'NE', 'RI']:
+        if state in ['MI', 'GA', 'ID', 'LA', 'ME', 'MS', 'NE', 'RI', 'WY']:
             text = node.get('use')
         else:
             text = node.text
@@ -1541,7 +1541,7 @@ class Akn30:
                     self.process_notes(section_akn, child, eId, regulation)
                 elif child.tag == 'code' and child.get('type')=='Appendix':
                     self.process_appendix(section_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type')  in ['Form', 'Attachment', 'Schedule', 'Table', 'Sec2', 'Rule2', 'Subpart']:
+                elif child.tag == 'code' and child.get('type')  in ['Form', 'Attachment', 'Schedule', 'Table', 'Sec2', 'Rule2', 'Subpart', 'Subagency']:
                     self.process_group(section_akn, child, regulation)
                 else:    
                     self.logger.warning ('Ignored element in section %s', ET.tostring(child))
