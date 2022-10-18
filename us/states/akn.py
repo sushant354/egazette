@@ -269,7 +269,7 @@ class Akn30:
                     content_eid = '%s__hcontainer_%d' % (eId, content_num)
                     content_num += 1
                     self.process_content(div_akn, child, content_eid, eId, regulation)
-                elif child.tag == 'code' and child.get('type') == 'Form':
+                elif child.tag == 'code' and child.get('type') in ['Form', 'Attachment']:
                     self.process_group(div_akn, child, regulation)
                 elif child.tag == 'version':
                     pass
@@ -363,7 +363,7 @@ class Akn30:
 
     def process_filelink(self, parent_akn, node):
         filename = node.get('filename')
-        if filename and re.search('(png|jpg|pdf|jpeg|gif|tif)$', filename):
+        if filename and re.search('(png|jpg|pdf|jpeg|gif|tif|bmp)$', filename):
             filename = self.media_url + filename
             imgnode = create_node('img', parent_akn, {'src': filename})
             if node.tail:
@@ -810,7 +810,7 @@ class Akn30:
                     self.process_para(hcontent_akn, child)
                 elif child.tag == 'content':
                     self.process_appendix_content(hcontent_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type')=='Appendix':
+                elif child.tag == 'code' and (child.get('type')=='Appendix' or child.get('style')=='Appendix'):
                     self.process_appendix(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Form', 'Chart', 'Unprefixed', 'Exhibit', 'Title', 'Attachment', 'Addendum', 'Schedule']:
                     self.process_group(hcontent_akn, child, regulation)
@@ -1060,7 +1060,7 @@ class Akn30:
 
  
     def process_codesec(self, parent_akn, node, state, title, catchline):
-        if state in ['MI', 'GA', 'ID', 'LA', 'ME', 'MS']:
+        if state in ['MI', 'GA', 'ID', 'LA', 'ME', 'MS', 'NE']:
             text = node.get('use')
         else:
             text = node.text
@@ -1077,7 +1077,13 @@ class Akn30:
         if text:
             citenode.attrib['use'] = text
 
-        if state in title_states and title and state not in ['WI']:
+        if state == 'NE' and text:    
+            reobj = re.search('(?P<title>\d+)-(?P<num>.+)', text)
+            if reobj:
+                groupdict = reobj.groupdict()
+                citenode.attrib['title'] = groupdict['title']
+                citenode.attrib['use']   = groupdict['num']
+        elif state in title_states and title and state not in ['WI']:
             citenode.attrib['title'] = title
 
         if state:
