@@ -405,6 +405,8 @@ class Regulation:
             nums = re.findall('[\w-]+', text)
         elif self.statecd == 'ID':
             nums = [text]
+        elif self.statecd == 'ND':
+            nums = re.findall('[\w.]+', text)
         else:    
             nums = re.findall('\w+', text)
         if nums:
