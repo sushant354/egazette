@@ -92,8 +92,14 @@ class Akn30:
         regulation = self.process_regulation(file_info, node)
         num = regulation.get_num()
         if not num:
-            self.logger.warning ('NO NUM %s', regulation)
-            return
+            title = regulation.get_title()
+            if title:
+                num, n = re.subn('[\s,:]+', '-', title)
+                num = num.lower()
+                regulation.metadata.set_value('regnum', num)        
+            else:            
+                self.logger.warning ('NO NUM %s', regulation)
+                return
 
         if regulation.statecd in title_states:
             title = regulation.get_title()
@@ -445,11 +451,16 @@ class Akn30:
                     self.process_strike(pnode, child)
                 elif child.tag == 'monospace':
                     self.process_monospace(pnode, child)
+                elif child.tag == 'expirationdate':
+                    self.process_expiration_date(pnode, child)
+                elif child.tag == 'div':
+                    self.process_div(pnode, child)
                 else:
                     self.logger.warning ('Ignored element in para %s', ET.tostring(child))
             else:       
                 self.logger.warning ('Ignored node in para %s', child)
         return pnode
+
 
     def process_nbsp(self, pnode, child):
         if pnode.text:
@@ -543,6 +554,8 @@ class Akn30:
                 self.process_bold(th_akn, child)
             elif child.tag == 'superscript':
                 self.process_superscript(th_akn, child)
+            elif child.tag == 'italic':
+                self.process_italic(th_akn, child)
             else:    
                 self.logger.warning ('Ignored node in th %s', child)
 
@@ -1624,9 +1637,11 @@ class Akn30:
                      self.process_appendix(subsection_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Exhibit']:
                     self.process_group(subsection_akn, child, regulation)
+                elif child.tag == 'div':
+                    self.process_div(para_node, child)
                 else:    
                     self.logger.warning ('Ignored element in subsection %s %s', num, ET.tostring(child))
-                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist', 'footnoteref', 'nbsp', 'del', 'filelink', 'effectivedate']:
+                if child.tag not in ['designator', 'subsect', 'codecitation', 'para', 'ulink', 'actcitation', 'superscript', 'subscript', 'bold', 'underscore', 'italic', 'strike', 'content', 'name', 'number', 'code', 'literallayout', 'add', 'itemizedlist', 'footnoteref', 'nbsp', 'del', 'filelink', 'effectivedate', 'div']:
                     if para_node == None:
                         print ('Unknown subsection child', child.tag)
                         #print (ET.tostring(node))
@@ -1638,6 +1653,13 @@ class Akn30:
                         self.add_tail(para_node, child)
             else:       
                 self.logger.warning ('Ignored node in subsection %s', child)
+
+    def process_div(self, parent_akn, node):
+        if node.text:
+             self.add_text(parent_akn, node)
+
+        if node.tail:
+             self.add_tail(parent_akn, node)
 
     def process_add(self, parent_akn, node, eId):
         comment_node = create_node('remark', parent_akn, \
