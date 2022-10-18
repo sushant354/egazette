@@ -90,3 +90,13 @@
 <!ENTITY AElig  "&#198;">
 <!ENTITY ocirc  "&#244;">
 <!ENTITY Euml   "&#203;">
+<!ENTITY Aring  "&#197;">
+<!ENTITY Ccedil "&#199;">
+<!ENTITY Egrave "&#200;">
+<!ENTITY Ograve "&#210;">
+<!ENTITY THORN  "&#222;">
+<!ENTITY Ugrave "&#217;">
+<!ENTITY Uacute "&#218;">
+<!ENTITY Ucirc  "&#219;">
+<!ENTITY Yacute "&#221;">
+<!ENTITY aring  "&#229;">
