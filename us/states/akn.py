@@ -274,7 +274,7 @@ class Akn30:
                     content_eid = '%s__hcontainer_%d' % (eId, content_num)
                     content_num += 1
                     self.process_content(div_akn, child, content_eid, eId, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Form', 'Attachment']:
+                elif child.tag == 'code' and child.get('type') in ['Form', 'Attachment', 'Exhibit']:
                     self.process_group(div_akn, child, regulation)
                 elif child.tag == 'version':
                     pass
