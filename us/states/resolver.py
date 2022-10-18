@@ -132,6 +132,9 @@ class RefResolver:
             if not title and statecd in title_states and statecd not in ['WI']:
                 title = regulation.get_num()
 
+            if title:
+                title = title.lower()
+
             d  = self.resolve_num(title, text)
             uri, eId, version = d 
             if uri == None:

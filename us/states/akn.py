@@ -714,7 +714,7 @@ class Akn30:
                     self.process_part(subchap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Part', 'Sec2', 'Subpart']:
                     self.process_part(subchap_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type')in ['Form', 'Attachment', 'Table', 'Subchapter']:
+                elif child.tag == 'code' and child.get('type')in ['Form', 'Attachment', 'Table', 'Subchapter', 'Title']:
                     self.process_group(subchap_akn, child, regulation)
                 else:
                    self.logger.warning ('Ignored element in subchapter %s', ET.tostring(child))
