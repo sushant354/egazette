@@ -110,7 +110,6 @@ class Akn30:
             regulation.set_title(title)
 
         if num in regulations:
-            print ('Num', num)
             regulations[num] = self.merge(regulations[num], regulation)
         else:
             regulations[num] = regulation
@@ -588,6 +587,8 @@ class Akn30:
                     self.process_actcitation(td_akn, child)
                 elif child.tag == 'itemizedlist':
                     self.process_list(td_akn, child)
+                elif child.tag == 'footnoteref':
+                    self.process_footnoteref(td_akn, child)
                 else:    
                     self.logger.warning ('Ignored element in td %s', child.tag)
             else:       

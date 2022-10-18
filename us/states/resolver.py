@@ -94,6 +94,9 @@ class RefResolver:
         self.add_refid(num, uri, node.get('eId'), version, regs_title)
 
     def is_duplicate(self, node):
+        if node.find('num') == None:
+            return None 
+
         num = node.find('num').text
 
         uri, eId, version = self.resolve_num(None, num)

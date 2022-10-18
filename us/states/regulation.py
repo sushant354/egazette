@@ -401,7 +401,7 @@ class Regulation:
 
         if self.statecd == 'OH':
             nums = re.findall('[\w:]+', text)
-        elif self.statecd == 'WI':
+        elif self.statecd in ['NH', 'WI']:
             nums = re.findall('[\w-]+', text)
         elif self.statecd == 'ID':
             nums = [text]
@@ -420,7 +420,7 @@ class Regulation:
                         subnum = nums[1]
 
             self.metadata.set_value('regnum',  regnum.lower())
-            if subnum:
+            if subnum and re.match('\d+', subnum):
                 reobj = re.match('\d+', subnum)
                 subnum = int(subnum[:reobj.end()] )
                 self.metadata.set_value('subnum', subnum)
