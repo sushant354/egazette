@@ -379,7 +379,7 @@ class Akn30:
 
     def process_filelink(self, parent_akn, node):
         filename = node.get('filename')
-        if filename and re.search('(png|jpg|pdf|jpeg|gif|tif|bmp)$', filename):
+        if filename and re.search('(png|jpg|jpeg|gif|tif|bmp)$', filename):
             filename = self.media_url + filename
             imgnode = create_node('img', parent_akn, {'src': filename})
             if node.tail:
@@ -388,7 +388,7 @@ class Akn30:
             url  = self.media_url + filename
             linknode = create_node('a', parent_akn, {'href': url})
             self.copy_text(linknode, node)
-        elif filename and re.search('\.(htm|html|xls|rtf|xlsx)$', filename, re.IGNORECASE):
+        elif filename and re.search('\.(htm|html|xls|rtf|xlsx|pdf)$', filename, re.IGNORECASE):
             url  = self.media_url + filename
             linknode = create_node('a', parent_akn, {'href': url})
             self.copy_text(linknode, node)
