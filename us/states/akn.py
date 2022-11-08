@@ -5,6 +5,7 @@ import logging
 import lxml.etree as ET
 from .regulation import Regulation, create_node
 from .states import title_states
+from .utils import normalize_date
 
 class DTDResolver(ET.Resolver):
     def resolve(self, url, public_id, context):
@@ -749,7 +750,7 @@ class Akn30:
                     self.process_appendix(hcontent_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type')=='Subgroup':
                     self.process_group(hcontent_akn, child, regulation)
-                elif child.tag == 'code' and child.get('type') in ['Exhibit', 'Schedule', 'Undesignated', 'Unprefixed', 'Form', 'Attachment', 'Rule', 'Table']:
+                elif child.tag == 'code' and child.get('type') in ['Exhibit', 'Schedule', 'Undesignated', 'Unprefixed', 'Form', 'Attachment', 'Rule', 'Table', 'Opinion']:
                     self.process_group(hcontent_akn, child, regulation)
                 elif child.tag == 'number':
                     self.process_number(hcontent_akn, child)
@@ -1170,8 +1171,14 @@ class Akn30:
     def get_akn_date(self, datestr):
         ds = re.findall('\d+', datestr)
         if len(ds) != 3:
-            self.logger.warn('Not able to get date from %s', datestr)
-            return None
+            dateobj = normalize_date(datestr)
+            if dateobj:
+                datestr = '%s' % dateobj
+                return datestr
+            else:
+                self.logger.warn('Not able to get date from %s', datestr)
+                return None
+
 
         return '%s-%s-%s' % (ds[2], ds[0], ds[1])
 
@@ -1193,28 +1200,49 @@ class Akn30:
     def process_effective_date(self, parent_akn, node):
         d = node.get('use')
         if d == None:
-            d = node.text
+            textdate = node.find('textdate')
+            if textdate != None:
+                d = textdate.text
+            else:    
+                d = node.text
+
         datestr = self.get_akn_date(d)
         self.process_date(parent_akn, node, datestr, '#effectivedate')
 
     def process_one_reviewdate(self, parent_akn, node):
         d = node.get('use')
         if d == None:
-            d = node.text
+            textdate = node.find('textdate')
+            if textdate != None:
+                d = textdate.text
+            else:    
+                d = node.text
+
         datestr = self.get_akn_date(d)
         self.process_date(parent_akn, node, datestr, '#reviewdate')
 
     def process_expiration_date(self, parent_akn, node):
         d = node.get('use')
         if d == None:
-            d = node.text
+            textdate = node.find('textdate')
+            if textdate != None:
+                d = textdate.text
+            else:    
+                d = node.text
+
         datestr = self.get_akn_date(d)
         self.process_date(parent_akn, node, datestr, '#expirationdate')
 
     def process_operational_date(self, parent_akn, node):
         d = node.get('use')
         if d == None:
-            d = node.text
+            textdate = node.find('textdate')
+            if textdate != None:
+                d = textdate.text
+            else:    
+                d = node.text
+
+
         datestr = self.get_akn_date(d)
         self.process_date(parent_akn, node, datestr, '#operationaldate')
 
