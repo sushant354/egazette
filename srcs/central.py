@@ -371,12 +371,15 @@ class CentralWeekly(CentralBase):
     def download_oneday(self, relpath, dateobj):
         dls = []
         cookiejar  = CookieJar()
-        response = self.download_url(self.baseurl, savecookies = cookiejar, loadcookies = cookiejar)
-        if not response:
-            self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
-            return dls
-        curr_url = response.response_url
-        postdata = self.get_form_data(response.webpage, dateobj, 'default.aspx')
+        postdata = None
+        while postdata == None:
+            response = self.download_url(self.baseurl, savecookies = cookiejar, loadcookies = cookiejar)
+            if not response:
+                self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
+                return dls
+
+            curr_url = response.response_url
+            postdata = self.get_form_data(response.webpage, dateobj, 'default.aspx')
         postdata.append(('ImgMessage_OK.x', 60))
         postdata.append(('ImgMessage_OK.y', 21))
         response = self.download_url(curr_url, savecookies = cookiejar, loadcookies=cookiejar, referer = curr_url, postdata = postdata)

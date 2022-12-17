@@ -541,8 +541,7 @@ def print_usage(progname):
                         [-g google_gvision_key]
                         [-t start_time (%Y-%m-%d %H:%M:%S)]
                         [-T end_time (%Y-%m-%d %H:%M:%S)]
-                        [-U gmail_user]
-                        [-P gmail_password]
+                        [-p postmark_token]
                         [-E email_to_report]
                         [-s central_weekly -s central_extraordinary 
                          -s andhra -s andhraarchive
@@ -580,13 +579,14 @@ if __name__ == '__main__':
     secret_key = None
     relurls    = []
     from_stdin = False
-    gmail_user = None
-    gmail_pwd  = None
+
+    server_token = None
+    from_addr    = None
     to_addrs   = []
     key_file   = None
     iadir      = None
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:g:hiI:l:s:t:T:mr:uE:U:P:')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:g:hiI:l:s:t:T:mr:uE:p:U:')
     for o, v in optlist:
         if o == '-l':
             loglevel = v
@@ -611,6 +611,8 @@ if __name__ == '__main__':
             to_update = True    
         elif o == '-u':
             to_upload = True    
+        elif o == '-U':
+            from_addr = v
         elif o == '-a':
             access_key = v    
         elif o == '-k':
@@ -621,10 +623,8 @@ if __name__ == '__main__':
             from_stdin = True    
         elif o == '-E':
             to_addrs.append(v)
-        elif o == '-U':
-            gmail_user = v
-        elif o == '-P':
-            gmail_pwd = v
+        elif o == '-p':
+            server_token = v
         elif o == '-I':
             iadir = v
         elif o == '-g':
@@ -661,8 +661,8 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
-    if to_addrs and (not gmail_user or not gmail_pwd):
-        print('To report through email, please specify gmail username and password')
+    if to_addrs and (not server_token or not from_addr):
+        print('To report through email, please specify postmark server token/from_addr')
         print_usage(progname)
         sys.exit(0)
 
@@ -720,5 +720,5 @@ if __name__ == '__main__':
 
     if to_addrs:
         msg = stats.get_message(srcnames)
-        reporting.report(gmail_user, gmail_pwd, to_addrs, \
+        reporting.report(server_token, from_addr, to_addrs,   \
                         'Stats for gazette on %s' % datetime.date.today(), msg)
