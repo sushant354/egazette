@@ -33,7 +33,7 @@ jaraco.context==4.1.2
 jaraco.functools==3.5.2
 jaraco.text==3.10.0
 Jinja2==3.1.2
-joblib==1.1.0
+joblib==1.2.0
 jsonpatch==1.32
 jsonpointer==2.3
 loky==3.3.0
