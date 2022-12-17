@@ -26,11 +26,11 @@ class RefResolver:
                 return
 
             oldver = refids[num][2]
-            if oldver != None and version!= None and version <= oldver:
-                self.logger.warning('Refid already exists %s %s %s for (%s, %s, %s)', regs_title, num, refids[num], uri, eid, version)
-                return
-            else:
-                self.logger.warning('Refid replacement of %s %s %s with (%s, %s, %s)', regs_title, num, refids[num], uri, eid, version)
+            if oldver != None:
+                if version == None or version <= oldver:
+                    self.logger.warning('Refid already exists %s %s %s for (%s, %s, %s)', regs_title, num, refids[num], uri, eid, version)
+                    return
+            self.logger.warning('Refid replacement of %s %s %s with (%s, %s, %s)', regs_title, num, refids[num], uri, eid, version)
                 
         refids[num] = (uri, eid, version)
 
@@ -60,6 +60,8 @@ class RefResolver:
                 return
 
             regs_title = num
+            if regulation.statecd == 'MA':
+                regs_title += ' CMR'
         self.add_sections(regulation.body_akn, uri, regs_title)
         #for k, v in self.refids.items():
         #    print (k, v)
@@ -67,14 +69,16 @@ class RefResolver:
     def add_sections(self, akn, uri, regs_title):    
         for node in akn.iter('section'):
             self.add_num(node, uri, regs_title)
+        for node in akn.iter('division'):
+            self.add_num(node, uri, regs_title)
 
         for node in akn.iter('neutralCitation'):
             if 'title' in node:
                 regs_title = node.get('title')
 
             eId = node.get('secid')
-            if eId:
-                num = node.get('num')
+            num = node.get('num')
+            if eId and num:
                 self.add_refid(num, uri, eId, None, regs_title)
 
     def add_num(self, node, uri, regs_title):
@@ -90,6 +94,9 @@ class RefResolver:
         self.add_refid(num, uri, node.get('eId'), version, regs_title)
 
     def is_duplicate(self, node):
+        if node.find('num') == None:
+            return None 
+
         num = node.find('num').text
 
         uri, eId, version = self.resolve_num(None, num)
@@ -124,6 +131,9 @@ class RefResolver:
 
             if not title and statecd in title_states and statecd not in ['WI']:
                 title = regulation.get_num()
+
+            if title:
+                title = title.lower()
 
             d  = self.resolve_num(title, text)
             uri, eId, version = d 

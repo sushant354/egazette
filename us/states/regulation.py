@@ -24,7 +24,8 @@ def create_node(tagname, parent = None, attribs = None):
 
     if attribs:
         for k, v in attribs.items():
-            node.attrib[k] = v
+            if v:
+                node.attrib[k] = v
 
     return node
 
@@ -401,8 +402,12 @@ class Regulation:
 
         if self.statecd == 'OH':
             nums = re.findall('[\w:]+', text)
-        elif self.statecd == 'WI':
+        elif self.statecd in ['NH', 'WI']:
             nums = re.findall('[\w-]+', text)
+        elif self.statecd == 'ID':
+            nums = [text]
+        elif self.statecd == 'ND':
+            nums = re.findall('[\w.]+', text)
         else:    
             nums = re.findall('\w+', text)
         if nums:
@@ -414,10 +419,11 @@ class Regulation:
             else:
                 regnum = nums[0]
                 if len(nums) > 1:
-                    subnum = nums[1]
+                    if self.statecd not in ['MA']:
+                        subnum = nums[1]
 
             self.metadata.set_value('regnum',  regnum.lower())
-            if subnum:
+            if subnum and re.match('\d+', subnum):
                 reobj = re.match('\d+', subnum)
                 subnum = int(subnum[:reobj.end()] )
                 self.metadata.set_value('subnum', subnum)
@@ -473,9 +479,16 @@ class Regulation:
             #print (text)
             #print (reobj)
 
+        if not reobj:
+            reobj = re.search('(?P<month>%s)[\s,]+(?P<year>\d+)' % monthre, text, flags=re.IGNORECASE)
+
         if reobj:
             groups = reobj.groupdict()
-            dateobj = datetime.date(int(groups['year']),  month_to_num(groups['month']), int(groups['day']))
+            if 'day' in groups:
+                day =  int(groups['day'])
+            else:
+                day = 1
+            dateobj = datetime.date(int(groups['year']),  month_to_num(groups['month']), day)
         return dateobj
 
     def remove_version(self):
