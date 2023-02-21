@@ -658,7 +658,7 @@ class Akn30:
                     content_eid = '%s__hcontainer_%d' % (eId, content_num)
                     content_num += 1
                     self.process_content(chap_akn, child, content_eid, eId, regulation)
-                elif child.tag == 'code' and child.get('type')in ['Group', 'Figure', 'Form', 'Subsection']:
+                elif child.tag == 'code' and child.get('type')in ['Group', 'Figure', 'Form', 'Subsection', 'Opinion']:
                     self.process_group(chap_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') == 'Rule':
                     has_article = child.find("code[@type='Article']")
@@ -907,6 +907,7 @@ class Akn30:
         regulation.partnum += 1
 
         subpart = 1
+        subdiv  = 1
         content_num = 1
         for child in node:
             if ET.iselement(child):
@@ -936,6 +937,10 @@ class Akn30:
                     self.process_section(part_akn, child, regulation)
                 elif child.tag == 'code' and child.get('type') in ['Form', 'Figure', 'Attachment', 'Table', 'Schedule']:
                     self.process_group(part_akn, child, regulation)
+                elif child.tag == 'code' and child.get('type') in ['Subdivision', 'Division']:
+                    subdivision_eid = '%s_subdivision_%d' % (part_eid, subdiv)
+                    subdiv += 1
+                    self.process_subdivision(part_akn, child, regulation, subdivision_eid)
                 elif child.tag == 'version':
                     pass
                 else:    

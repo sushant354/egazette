@@ -475,7 +475,7 @@ class Regulation:
         dateobj = None
 
         if not reobj:
-            reobj = re.search('(?P<month>%s)\s+(?P<day>\d+)[\s,]+(?P<year>\d+)' % monthre, text, flags=re.IGNORECASE)
+            reobj = re.search('(?P<month>%s)\s*(?P<day>\d+)[\s,]+(?P<year>\d+)' % monthre, text, flags=re.IGNORECASE)
             #print (text)
             #print (reobj)
 
@@ -488,7 +488,11 @@ class Regulation:
                 day =  int(groups['day'])
             else:
                 day = 1
-            dateobj = datetime.date(int(groups['year']),  month_to_num(groups['month']), day)
+
+            year = int(groups['year'])  
+            if year < 100:
+                year += 2000
+            dateobj = datetime.date(year,  month_to_num(groups['month']), day)
         return dateobj
 
     def remove_version(self):
