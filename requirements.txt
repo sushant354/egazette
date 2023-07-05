@@ -19,7 +19,7 @@ google-auth==2.15.0
 google-cloud-vision==3.2.0
 googleapis-common-protos==1.57.0
 gpg==1.18.0
-grpcio==1.51.1
+grpcio==1.53.0
 grpcio-status==1.51.1
 hatchling==1.11.1
 html5lib==1.1
