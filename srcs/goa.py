@@ -10,7 +10,7 @@ class Goa(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
         self.hostname = 'goaprintingpress.gov.in'
-        self.searchurl = 'http://goaprintingpress.gov.in/search-by-date/?task=search_by_date&Itemid=177&type=ALL&series=ALL&sdate=%s&edate=%s&action=search'
+        self.searchurl = 'https://goaprintingpress.gov.in/search-by-date/?task=search_by_date&Itemid=177&type=ALL&series=ALL&sdate=%s&edate=%s&action=search'
         self.start_date = datetime.datetime(1908, 1, 1)
 
     def download_oneday(self, relpath, dateobj):
