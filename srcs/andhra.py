@@ -9,9 +9,8 @@ from .central import CentralBase
 class Andhra(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-
-        self.baseurl   = 'https://apegazette.cgg.gov.in/eGazetteSearch.do'
-        self.searchurl = self.baseurl
+        self.baseurl   = 'https://apegazette.cgg.gov.in/'
+        self.searchurl = 'https://apegazette.cgg.gov.in/searchAllGazette'
         self.hostname  = 'apegazette.cgg.gov.in'
         self.result_table= 'gvGazette'
 
@@ -45,24 +44,46 @@ class Andhra(BaseGazette):
             return order
         return None    
 
-    def get_post_data(self, dateobj):
+    def get_post_data(self, webpage, page, dateobj):
         datestr = utils.dateobj_to_str(dateobj, '')
+        if webpage == None:
+            self.logger.warning('Unable to download the starting search page for day: %s', dateobj)
+            return None 
 
-        postdata = [\
-            ('mode',                  'unspecified'),  \
-            ('property(abstract)',    ''  ), \
-            ('property(department)',  '0'), \
-            ('property(docid)',       ''), \
-            ('property(fromdate)',    datestr), \
-            ('property(gazetteno)',   ''), \
-            ('property(gazettePart)', '0'), \
-            ('property(gazetteType)', '0'), \
-            ('property(month1)',      '0'), \
-            ('property(search)',      'search'), \
-            ('property(todate)',      datestr), \
-            ('property(year1)',       '0'), \
-        ]
+        d = utils.parse_webpage(webpage, self.parser)
+        if d == None:
+            self.logger.warning('Unable to parse the search page for day: %s', dateobj)
+            return None
+        
+        search_form = d.find('form', { 'action': page })
+        if d == None:
+            self.logger.warning('Unable to locate form the search page for day: %s', dateobj)
+            return None
+
+        reobj  = re.compile('^(input|select)$')
+        tags = search_form.find_all(reobj)
+        postdata = []
+        for tag in tags:
+            name  = None
+            value = None
+            if tag.name == 'input':
+                name  = tag.get('name')
+                value = tag.get('value')
+                t     = tag.get('type')
+                if t == 'button':
+                    continue
+                if name == 'fromdate':
+                    value = datestr
+                elif name == 'todate':
+                    value = datestr
+            elif tag.name == 'select':        
+                name = tag.get('name')
+            if name:
+                if value == None:
+                    value = ''
+                postdata.append((name, value))
         return postdata
+
 
     def get_postdata_for_doc(self, docid, dateobj):
         postdata = [\
@@ -90,7 +111,7 @@ class Andhra(BaseGazette):
             self.logger.warning('Unable to parse results page for date %s', dateobj)
             return minfos
 
-        table = d.find('table', {'id': 'displaytable'})
+        table = d.find('table', {'id': 'displaytable1'})
         if not table:
             self.logger.warning('Unable to find result table for date %s', dateobj)
             return minfos
@@ -138,11 +159,22 @@ class Andhra(BaseGazette):
         dls = []
         cookiejar  = CookieJar()
         response = self.download_url(self.baseurl, savecookies = cookiejar)
-        postdata = self.get_post_data(dateobj)
-        response = self.download_url(self.searchurl, postdata = postdata, \
-                               loadcookies = cookiejar, savecookies = cookiejar)
+        if not response or not response.webpage:
+            self.logger.warning('Unable to get main page for date %s', dateobj)
+            return dls
+        response = self.download_url(self.searchurl, referer = self.baseurl, \
+                                    loadcookies = cookiejar)
+        if not response or not response.webpage:
+            self.logger.warning('Unable to get search page for date %s', dateobj)
+            return dls
+        searchpagenew = 'searchAllGazettes'
+        postdata = self.get_post_data(response.webpage, searchpagenew, dateobj)
+        searchnewurl = self.baseurl + searchpagenew
+        response = self.download_url(searchnewurl, postdata = postdata, \
+                                    referer = self.searchurl, loadcookies = cookiejar)
 
         if not response or not response.webpage:
+            self.logger.warning('Unable to get results page for date %s', dateobj)
             return dls
 
         metainfos = self.parse_search_results(response.webpage, dateobj)
@@ -154,17 +186,18 @@ class Andhra(BaseGazette):
         return dls
 
     def download_metainfo(self, metainfo, relpath, dateobj, cookiejar):
-        reobj = re.search('openDocument\(\'(?P<num>\d+)\'\)', metainfo['download'])        
+        reobj = re.search('openDocument\(\'(?P<num>[^\']+)\'\)', metainfo['download'])        
         if not reobj:
             return None
         docid = reobj.groupdict()['num']    
-        postdata = self.get_postdata_for_doc(docid, dateobj)
+        gazurl = self.baseurl + f'uploadGazette_view?filePath={docid}'
+
         metainfo.pop('download')
         relurl = os.path.join(relpath, docid)
 
-        if self.save_gazette(relurl, self.searchurl, metainfo, \
+        if self.save_gazette(relurl, gazurl, metainfo, \
                              cookiefile = cookiejar, \
-                             postdata = postdata, validurl = False):
+                             validurl = False):
             return relurl
         return None    
 
