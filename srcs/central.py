@@ -9,8 +9,8 @@ from .basegazette import BaseGazette
 class CentralBase(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl     = 'https://egazette.nic.in'
-        self.hostname    = 'egazette.nic.in'
+        self.baseurl     = 'https://egazette.gov.in'
+        self.hostname    = 'egazette.gov.in'
         self.gztype      = 'Weekly'
         self.parser      = 'lxml'
         self.search_endp = 'SearchCategory.aspx'
@@ -276,7 +276,25 @@ class CentralBase(BaseGazette):
             return None
 
         href  = reobj.groupdict()['href']
-        gzurl = urllib.parse.urljoin(search_url, href)
+        pdfviewer_url = urllib.parse.urljoin(search_url, href)
+
+        response = self.download_url(pdfviewer_url, loadcookies= cookiejar)
+        if not response or not response.webpage:
+            self.logger.warning('Could not get the pdfviewer page for %s' % metainfo)
+            return None
+
+        d = utils.parse_webpage(response.webpage, self.parser)
+        if not d:
+            self.logger.warning('Could not get parse pdf view page for %s' % metainfo)
+            return None
+
+        iframe = d.find('iframe', {'id': 'framePDFDisplay'})
+        srcurl = iframe.get('src')
+        if not srcurl.startswith('../'):
+            self.logger.warning('Unexpected url format for %s' % metainfo)
+            return None
+        srcurl = srcurl[2:]
+        gzurl = urllib.parse.urljoin(self.baseurl, srcurl)
 
         gazetteid = metainfo['gazetteid']
         reobj = re.search('(?P<num>\d+)\s*$', gazetteid)
@@ -398,7 +416,7 @@ class CentralWeekly(CentralBase):
         if postdata == None:
             return None
 
-        postdata = self.remove_fields(postdata, set(['btnGazetteID', 'btnContentID', 'btnMinistry', 'btnBill', 'btnNotification', 'btnPublish']))
+        postdata = self.remove_fields(postdata, set(['btnGazetteID', 'btnContentID', 'btnMinistry', 'btnBill', 'btnNotification', 'btnPublish', 'btneSearch']))
 
         response = self.download_url(curr_url, savecookies = cookiejar, \
                                      referer = curr_url, \
@@ -406,6 +424,7 @@ class CentralWeekly(CentralBase):
         curr_url = response.response_url
         form_href = curr_url.split('/')[-1]
         postdata = self.get_form_data(response.webpage, dateobj, form_href)
+        postdata = self.replace_field(postdata, '__EVENTTARGET', 'ddlGazetteCategory')
         response = self.download_url(curr_url, savecookies = cookiejar, \
                                      referer = curr_url, \
                                    loadcookies = cookiejar, postdata = postdata)           
