@@ -295,7 +295,9 @@ class CentralBase(BaseGazette):
         gazetteid = metainfo['gazetteid']
         reobj = re.search('(?P<num>\d+)\s*$', gazetteid)
         if not reobj:
-            return None
+            reobj = re.search('\(\s*(?P<num>\d+)\s*\)\s*$', gazetteid)
+            if not reobj:
+                return None
 
         filename = reobj.groupdict()['num']
         relurl   = os.path.join(relpath, filename)
