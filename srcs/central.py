@@ -290,10 +290,6 @@ class CentralBase(BaseGazette):
 
         iframe = d.find('iframe', {'id': 'framePDFDisplay'})
         srcurl = iframe.get('src')
-        if not srcurl.startswith('../'):
-            self.logger.warning('Unexpected url format for %s' % metainfo)
-            return None
-        srcurl = srcurl[2:]
         gzurl = urllib.parse.urljoin(self.baseurl, srcurl)
 
         gazetteid = metainfo['gazetteid']
