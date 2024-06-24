@@ -12,9 +12,9 @@ class ChattisgarhWeekly(CentralBase):
     def __init__(self, name, storage):
         CentralBase.__init__(self, name, storage)
         self.hostname     = 'egazette.cg.nic.in'
-        self.baseurl      = 'http://egazette.cg.nic.in/FileSearch.aspx'
+        self.baseurl      = 'https://egazette.cg.nic.in/FileSearch.aspx'
         self.search_endp  = 'FileSearch.aspx'
-        self.file_url     = 'http://egazette.cg.nic.in/FileCS1.ashx?Id=%s'
+        self.file_url     = 'https://egazette.cg.nic.in/FileCS1.ashx?Id=%s'
         self.result_table = 'ContentPlaceHolder2_GridView2'
         self.gztype       = '1'
         self.gznum_re     = re.compile('\u0930\u093e\u091c\u092a\u0924\u094d\u0930\s*\u0915\u094d\u0930\u092e\u093e\u0902\u0915')
@@ -121,30 +121,10 @@ class ChattisgarhWeekly(CentralBase):
 
         metainfos, nextpage = self.parse_search_results(response.webpage, \
                                                         dateobj, 1)
-
         postdata = self.get_form_data(response.webpage, dateobj, self.search_endp)
         return self.download_metainfos(relpath, metainfos, self.baseurl, \
                                        postdata, cookiejar)
 
-    def post_for_gzid(self, postdata):
-        conn = http.client.HTTPConnection(self.hostname, timeout = 300)
-        hdrs = {'User-Agent': self.useragent, \
-                'Content-Type': 'application/x-www-form-urlencoded'}
-        postdata = urllib.parse.urlencode(postdata)        
-        conn.request('POST', '/FileSearch.aspx', postdata, hdrs)
-        response = conn.getresponse()
-
-        conn.close()
-
-        cookie = response.getheader('Set-Cookie')
-        if cookie == None:
-            return None
-        for c in cookie.split(';'):
-            words = c.split('=')
-            if len(words) == 2 and words[0].strip() ==  self.filenum_cookie:
-                return words[1].strip()
-        return None        
-    
     def get_relurl(self, relpath, metainfo): 
         partnum, n = re.subn('[\s()]+', '_', metainfo['partnum'])
         partnum.strip(' _')
@@ -158,33 +138,49 @@ class ChattisgarhWeekly(CentralBase):
         relurl = os.path.join(relpath, num)
         return relurl
 
+    def parse_download_page(self, webpage, search_url):
+        d = utils.parse_webpage(webpage, self.parser)
+        if d == None:
+            return None
+
+        obj = d.find('object')
+        if obj == None:
+            return None
+        link = obj.find('a')
+        if link == None:
+            return None
+        url = link.get('href')
+        if url == None:
+            return None
+
+        return urllib.parse.urljoin(search_url, url)
+
+
     def download_gazette(self, relpath, search_url, postdata, metainfo, cookiejar):
         relurl = self.get_relurl(relpath, metainfo)
         if not relurl:
             self.logger.warning('Not able to form relurl for %s', metainfo)
             return None
 
-        newpost = []
-        for d in postdata:
-            if d[0]  == 'ctl00$ContentPlaceHolder2$btnShow':
-                continue
-            
-            newpost.append(d)
+        newpost = self.remove_fields(postdata, set(['ctl00$ContentPlaceHolder2$btnShow']))
 
-        gzid = self.post_for_gzid(newpost)
-
-        if not gzid:
-            self.logger.warning('Unable to get gazette id in the cookie for %s', relurl)
+        session = self.get_session()
+        session.cookies = cookiejar
+        response = self.download_url_using_session(search_url, session=session, \
+                                                   postdata=newpost, referer=search_url)
+        if response == None or response.webpage == None:
+            self.logger.warning('Unable to post to get download page for %s', relurl) 
             return None
-        
-        fileurl = self.file_url % gzid 
-        cookie = Cookie(0, self.filenum_cookie, gzid, None, False, \
-                       self.hostname, True, False, '/', True, False, \
-                       None, False, None, None, None)
 
-        cookiejar.set_cookie(cookie) 
+        viewurl = response.response_url
+
+        fileurl = self.parse_download_page(response.webpage, search_url)
+        if fileurl == None:
+            self.logger.warning('Unable to get fileurl for %s', relurl) 
+            return None
+
         if self.save_gazette(relurl, fileurl, metainfo, cookiefile=cookiejar,\
-                             validurl = False):
+                             referer=viewurl, validurl = False):
             return relurl
         return None
 
@@ -204,6 +200,7 @@ class ChattisgarhExtraordinary(ChattisgarhWeekly):
         self.subject_re = re.compile('\u0935\u093f\u0937\u092f')
         self.dept_re = re.compile('\u0935\u093f\u092d\u093e\u0917')
         self.download_re = re.compile('\u0921\u093e\u0909\u0928\u0932\u094b\u0921')
+
     def get_relurl(self, relpath, metainfo):
         if 'gznum' not in metainfo:
             return None
