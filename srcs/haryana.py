@@ -238,7 +238,7 @@ class Haryana(AndhraArchive):
 class HaryanaArchive(Haryana):
     def __init__(self, name, storage):
         Haryana.__init__(self, name, storage)
-        self.baseurl      = 'http://www.egazetteharyana.gov.in/ArchiveNotifications.aspx'
+        self.baseurl      = 'https://www.egazetteharyana.gov.in/ArchiveNotifications.aspx'
         self.hostname     = 'www.egazetteharyana.gov.in'
         self.search_endp  = 'ArchiveNotifications.aspx'
         self.gazette_js   = 'window.open\(\'(?P<href>ArchiveNotifications[^\']+)'
