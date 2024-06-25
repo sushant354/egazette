@@ -102,14 +102,15 @@ class Downloader:
             headers['Referer'] = referer
 
         fixed_url = self.url_fix(url)        
+        req_kwargs = { 'timeout': self.request_timeout_secs }
 
         try:
             if postdata == None:
-                response = session.get(fixed_url, headers=headers)
+                response = session.get(fixed_url, headers=headers, **req_kwargs)
             else:
                 if type(postdata) == list:
                     postdata = dict(postdata)
-                response = session.post(fixed_url, data=postdata, headers=headers)
+                response = session.post(fixed_url, data=postdata, headers=headers, **req_kwargs)
             self.logger.debug('Request url: %s headers: %s data: %s', \
                               fixed_url, response.request.headers, postdata)
             status_code = response.raise_for_status()
