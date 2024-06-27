@@ -328,7 +328,7 @@ class TamilNadu(BaseGazette):
                     if section:
                         metainfo['section'] = section
 
-                elif order[i] in ['subject', 'extraordinary_type']:
+                elif order[i] in ['subject', 'extraordinary_type', 'department', 'govorder_num']:
                     metainfo[order[i]] = txt                    
  
             i += 1
