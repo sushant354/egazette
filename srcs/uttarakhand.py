@@ -16,78 +16,13 @@ class Uttarakhand(BaseGazette):
         self.hostname     = 'gazettes.uk.gov.in'
         self.start_date   = datetime.datetime(2014, 1, 1)
 
-    def find_search_form(self, d):
-        search_form = None
-        forms = d.find_all('form')
-        for form in forms:
-            action = form.get('action')
-            if action == './%s' % self.search_endp or action == self.search_endp:
-                search_form = form
-                break
-
-        return search_form
 	
-    def get_post_data(self, tags, dateobj):
-        postdata = []
-        today    = datetime.date.today()
-
-        for tag in tags:
-            name  = None
-            value = None
-
-            if tag.name == 'input':
-                name  = tag.get('name')
-                value = tag.get('value')
-                t     = tag.get('type')
-                if t == 'image':
-                    continue
-
-                if name in['btnGono', 'btnOfficeName', 'btnreset']:
-                    continue
-
-            elif tag.name == 'select':        
-                name = tag.get('name')
-                if name == 'ddloffcode':
-                    value = '0'
-                elif name == 'ddlcatcode': 
-                    value = '0'
-                elif name == 'ddldeptcode':
-                    value = 'All Department'
-                elif name == 'ddlgodatefrom' or name == 'ddlgodateto':
-                    value = utils.pad_zero(dateobj.day)
-                elif name == 'ddlgomonfrom' or name == 'ddlgomonto':
-                    value = utils.pad_zero(dateobj.month)
-                elif name == 'ddlgoyearfrom' or name == 'ddlgoyearto':
-                    value = utils.pad_zero(dateobj.year)
-                elif name == 'ddlfromdate_day' or name == 'ddlfromdate_mon':
-                    value = '01'
-                elif name == 'ddlfromdate_year':
-                    value = '2014'
-                elif name == 'ddltodate_date':
-                    value = utils.pad_zero(today.day)
-                elif name == 'ddltodate_mon':
-                    value = utils.pad_zero(today.month)
-                elif name == 'ddltodate_year':
-                    value = utils.pad_zero(today.year)
-
-            if name:
-                if value == None:
-                    value = ''
-                postdata.append((name, value))
-
-        return postdata
-
-    def get_search_form(self, webpage, dateobj):
-        if webpage == None:
-            self.logger.warning('Unable to download the starting search page for day: %s', dateobj)
-            return None 
-
+    def get_search_form(self, webpage, endp):
         d = utils.parse_webpage(webpage, self.parser)
         if d == None:
-            self.logger.warning('Unable to parse the search page for day: %s', dateobj)
             return None
 
-        search_form = self.find_search_form(d)
+        search_form = d.find('form', {'action': endp})
         return search_form
 
     def get_selected_option(self, select):
@@ -102,7 +37,7 @@ class Uttarakhand(BaseGazette):
         return val
 
     def get_form_data(self, webpage, dateobj):
-        search_form = self.get_search_form(webpage, dateobj)
+        search_form = self.get_search_form(webpage, self.search_endp)
         if search_form == None:
             self.logger.warning('Unable to get the search form for day: %s', dateobj)
             return None 
