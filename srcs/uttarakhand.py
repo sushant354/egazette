@@ -10,28 +10,42 @@ from ..utils import utils
 class Uttarakhand(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl      = 'http://gazettes.uk.gov.in/'
+        self.baseurl      = 'https://gazettes.uk.gov.in/'
         self.search_endp  = 'searchgazette.aspx'
         self.searchurl    = urllib.parse.urljoin(self.baseurl, self.search_endp)
         self.hostname     = 'gazettes.uk.gov.in'
-        self.start_date   = datetime.datetime(2013, 1, 1)
+        self.start_date   = datetime.datetime(2014, 1, 1)
 
-    def find_search_form(self, d):
-        search_form = None
-        forms = d.find_all('form')
-        for form in forms:
-            action = form.get('action')
-            if action == './%s' % self.search_endp or action == self.search_endp:
-                search_form = form
-                break
-
-        return search_form
 	
-    def get_post_data(self, tags, dateobj):
-        postdata = []
-        today    = datetime.date.today()
+    def get_search_form(self, webpage, endp):
+        d = utils.parse_webpage(webpage, self.parser)
+        if d == None:
+            return None
 
-        for tag in tags:
+        search_form = d.find('form', {'action': endp})
+        return search_form
+
+    def get_selected_option(self, select):
+        option = select.find('option', {'selected': 'selected'})
+        if option == None:
+            option = select.find('option')
+        if option == None:
+            return ''
+        val = option.get('value')
+        if val == None:
+            val = ''
+        return val
+
+    def get_form_data(self, webpage, dateobj):
+        search_form = self.get_search_form(webpage, self.search_endp)
+        if search_form == None:
+            self.logger.warning('Unable to get the search form for day: %s', dateobj)
+            return None 
+
+        formdata = []
+        reobj  = re.compile('^(input|select)$')
+        inputs = search_form.find_all(reobj)
+        for tag in inputs:
             name  = None
             value = None
 
@@ -39,86 +53,87 @@ class Uttarakhand(BaseGazette):
                 name  = tag.get('name')
                 value = tag.get('value')
                 t     = tag.get('type')
-                if t == 'image':
+                if t == 'image' or t == 'submit':
                     continue
-
-                if name in['btnGono', 'btnOfficeName', 'btnreset']:
-                    continue
-
             elif tag.name == 'select':        
                 name = tag.get('name')
-                if name == 'ddloffcode':
-                    value = '0'
-                elif name == 'ddlcatcode': 
-                    value = '0'
-                elif name == 'ddldeptcode':
-                    value = 'All Department'
-                elif name == 'ddlgodatefrom' or name == 'ddlgodateto':
-                    value = utils.pad_zero(dateobj.day)
-                elif name == 'ddlgomonfrom' or name == 'ddlgomonto':
-                    value = utils.pad_zero(dateobj.month)
-                elif name == 'ddlgoyearfrom' or name == 'ddlgoyearto':
-                    value = utils.pad_zero(dateobj.year)
-                elif name == 'ddlfromdate_day' or name == 'ddlfromdate_mon':
-                    value = '01'
-                elif name == 'ddlfromdate_year':
-                    value = '2013'
-                elif name == 'ddltodate_date':
-                    value = utils.pad_zero(today.day)
-                elif name == 'ddltodate_mon':
-                    value = utils.pad_zero(today.month)
-                elif name == 'ddltodate_year':
-                    value = utils.pad_zero(today.year)
-
+                value = self.get_selected_option(tag)
             if name:
                 if value == None:
                     value = ''
-                postdata.append((name, value))
+                formdata.append((name, value))
+        return formdata
 
-        return postdata
+    def replace_field(self, formdata, k, v):
+        newdata = []
+        for k1, v1 in formdata:
+            if k1 == k:
+                newdata.append((k1, v))
+            else:
+                newdata.append((k1, v1))
+        return newdata
 
-    def get_search_form(self, webpage, dateobj):
-        if webpage == None:
-            self.logger.warning('Unable to download the starting search page for day: %s', dateobj)
-            return None 
-
-        d = utils.parse_webpage(webpage, self.parser)
-        if d == None:
-            self.logger.warning('Unable to parse the search page for day: %s', dateobj)
-            return None
-
-        search_form = self.find_search_form(d)
-        return search_form
-
-    def get_form_data(self, webpage, dateobj):
-        search_form = self.get_search_form(webpage, dateobj)
-        if search_form == None:
-            self.logger.warning('Unable to get the search form for day: %s', dateobj)
-            return None 
-
-        reobj  = re.compile('^(input|select)$')
-        inputs = search_form.find_all(reobj)
-        postdata = self.get_post_data(inputs, dateobj)
-
-        return postdata
+    def get_mismatched_field(self, formdata, expected):
+        mismatched = None
+        for k,v in expected.items():
+            if mismatched != None:
+                break
+            for k1, v1 in formdata:
+                if k1 != k:
+                    continue
+                if v1 != v:
+                    mismatched = k
+                    break
+        return mismatched
 
     def download_oneday(self, relpath, dateobj):
         dls = []
 
         cookiejar  = CookieJar()
-        response   = self.download_url(self.baseurl, savecookies = cookiejar)
+        response   = self.download_url(self.searchurl, savecookies = cookiejar)
+        if not response or not response.webpage:
+            self.logger.warning('Could not get base page for date %s', \
+                              dateobj)
+            return dls
 
-        postdata = self.get_form_data(response.webpage, dateobj)
-        if postdata == None:
-            return dls 
+        expected_fields = {
+            'ddltodate_date'   : utils.pad_zero(dateobj.day),
+            'ddlfromdate_day'  : utils.pad_zero(dateobj.day),
+            'ddltodate_mon'    : utils.pad_zero(dateobj.month),
+            'ddlfromdate_mon'  : utils.pad_zero(dateobj.month),
+            'ddltodate_year'   : utils.pad_zero(dateobj.year),
+            'ddlfromdate_year' : utils.pad_zero(dateobj.year),
+        }
 
+        formdata = self.get_form_data(response.webpage, dateobj)
+        while True:
+            field_to_update = self.get_mismatched_field(formdata, expected_fields)
+            self.logger.info('replacing field %s', field_to_update)
+            if field_to_update == None:
+                break
+
+            formdata = self.replace_field(formdata, field_to_update, \
+                                          expected_fields[field_to_update])
+            formdata = self.replace_field(formdata, '__EVENTTARGET', field_to_update)
+
+            response = self.download_url(self.searchurl, savecookies = cookiejar, \
+                                       loadcookies = cookiejar, postdata = formdata, \
+                                       referer = self.searchurl)
+            if not response or not response.webpage:
+                self.logger.warning('Could not make call to update field %s for date %s', \
+                                    field_to_update, dateobj)
+                return dls
+            formdata = self.get_form_data(response.webpage, dateobj)
+
+        formdata.append(('Button2', 'Search'))
         response = self.download_url(self.searchurl, savecookies = cookiejar, \
-                                   loadcookies = cookiejar, postdata = postdata)
+                                   loadcookies = cookiejar, postdata = formdata, \
+                                   referer = self.baseurl)
         if not response or not response.webpage:
             self.logger.warning('Could not download search result for date %s', \
                               dateobj)
             return dls
-        
+
         d = utils.parse_webpage(response.webpage, self.parser)
         if not d:
             self.logger.warning('Could not parse search result for date %s', \
