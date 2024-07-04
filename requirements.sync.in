@@ -1,0 +1,6 @@
+PyPDF2
+Pillow
+lxml
+beautifulsoup4
+python-magic
+requests
