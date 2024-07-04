@@ -49,6 +49,7 @@ srcdict = { \
 'haryana'              : haryana.Haryana, \
 'haryanaarchive'       : haryana.HaryanaArchive, \
 'kerala'               : kerala.Kerala, \
+'keralacompose'        : kerala.KeralaCompose, \
 'stgeorge'             : stgeorge.StGeorge, \
 'keralalibrary'        : stgeorge.KeralaLibrary, \
 'goa'                  : goa.Goa, \
@@ -80,6 +81,7 @@ srcnames = { \
 'haryana'              : 'Government of Haryana', \
 'haryanaarchive'       : 'Government of Haryana', \
 'kerala'               : 'Government of Kerala', \
+'keralacompose'        : 'Government of Kerala', \
 'stgeorge'             : 'Madras Presidency', \
 'keralalibrary'        : 'Government of Kerala', \
 'goa'                  : 'Government of Goa', \
@@ -111,6 +113,7 @@ categories = { \
 'haryana'              : 'Haryana Gazette', \
 'haryanaarchive'       : 'Haryana Gazette', \
 'kerala'               : 'Kerala Gazette', \
+'keralacompose'        : 'Kerala Gazette', \
 'stgeorge'             : 'Fort St. George Gazette', \
 'keralalibrary'        : 'Kerala Gazette', \
 'goa'                  : 'Goa Gazette', \
@@ -142,6 +145,7 @@ languages = { \
 'haryana'              : ['eng', 'hin'], \
 'haryanaarchive'       : ['eng', 'hin'], \
 'kerala'               : ['eng', 'mal'], \
+'keralacompose'        : ['eng', 'mal'], \
 'stgeorge'             : ['eng', 'mal'], \
 'keralalibrary'        : ['eng', 'mal'], \
 'goa'                  : ['eng', 'por'], \
