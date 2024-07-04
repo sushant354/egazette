@@ -277,7 +277,7 @@ class TamilNadu(BaseGazette):
                 order.append('department')
                 found = True
             elif txt and re.search('G\.O\s+No', txt, re.IGNORECASE):
-                order.append('govorder_num')
+                order.append('notification_num')
                 found = True
             else:
                 order.append('')    
@@ -328,7 +328,7 @@ class TamilNadu(BaseGazette):
                     if section:
                         metainfo['section'] = section
 
-                elif order[i] in ['subject', 'extraordinary_type', 'department', 'govorder_num']:
+                elif order[i] in ['subject', 'extraordinary_type', 'department', 'notification_num']:
                     metainfo[order[i]] = txt                    
  
             i += 1

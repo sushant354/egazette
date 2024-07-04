@@ -289,6 +289,10 @@ class CentralBase(BaseGazette):
             return None
 
         iframe = d.find('iframe', {'id': 'framePDFDisplay'})
+        if not iframe:
+            self.logger.warning('Unable to find iframe with gazette link %s', metainfo)
+            return None
+
         srcurl = iframe.get('src')
         gzurl = urllib.parse.urljoin(self.baseurl, srcurl)
 

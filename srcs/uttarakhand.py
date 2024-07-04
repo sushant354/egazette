@@ -108,7 +108,6 @@ class Uttarakhand(BaseGazette):
         formdata = self.get_form_data(response.webpage, dateobj)
         while True:
             field_to_update = self.get_mismatched_field(formdata, expected_fields)
-            self.logger.info('replacing field %s', field_to_update)
             if field_to_update == None:
                 break
 
