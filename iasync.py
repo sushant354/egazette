@@ -204,7 +204,7 @@ class GazetteIA:
             relurl, n  = re.subn('[()]', '', relurl)
             identifier = relurl.replace('/', '.')
         elif srcname == 'haryana':
-            relurl, n  = re.subn("[',&:%\s;()]", '', relurl)
+            relurl, n  = re.subn("[',&:%\s;()–]", '', relurl)
             identifier = relurl.replace('/', '.')
         elif srcname == 'haryanaarchive':
             identifier = relurl.replace('/', '.')
