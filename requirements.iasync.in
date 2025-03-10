@@ -1,5 +1,0 @@
--r requirements.sync.in
--r requirements.gvision.in
-internetarchive
-requests
-postmarker

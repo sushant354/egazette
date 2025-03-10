@@ -1,4 +1,0 @@
--r requirements.sync.in
--r requirements.iasync.in
--r requirements.gvision.in
--r requirements.tools.in
