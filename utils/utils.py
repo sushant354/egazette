@@ -6,6 +6,7 @@ import calendar
 import magic
 import datetime
 import sys
+import getopt
 import calendar
 import logging
 
@@ -388,6 +389,31 @@ def setup_logging(loglevel, logfile):
             format  = logfmt, \
             datefmt = datefmt \
         )
+
+
+# multiprocessing module on macs does forking weirdly, so logging doesn't work as expected
+# if on darwin call this function inside the task to reinitialize logging
+def setup_logging_if_needed():
+    platform = sys.platform
+    if platform != 'darwin':
+        return
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'ad:D:l:mnf:p:t:T:hrs:W:')
+    datadir    = None
+    debuglevel = 'info'
+    filename = None
+    for o, v in optlist:
+        if o == '-D':
+            datadir = v
+        elif o == '-l':
+            debuglevel = v
+        elif o == '-f':
+            filename = v
+    statsdir = os.path.join(datadir, 'stats')
+    mk_dir(statsdir)
+
+    if filename:
+        filename = os.path.join(statsdir, filename)
+    setup_logging(debuglevel, filename)
 
 
 
