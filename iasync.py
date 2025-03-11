@@ -267,31 +267,31 @@ class GazetteIA:
         return ', '.join(title)
 
     def get_srcname(self, relurl):
-       words    = relurl.split('/')
-       return words[0]
+        words    = relurl.split('/')
+        return words[0]
 
     def to_ia_metadata(self, relurl, metainfo):
-       src      = self.get_srcname(relurl) 
-       srcinfo  = datasrcs_info.srcinfos[src]
+        src      = self.get_srcname(relurl) 
+        srcinfo  = datasrcs_info.srcinfos[src]
 
-       creator   = srcinfo['source']
-       category  = srcinfo['category']
-       languages = srcinfo['languages']
+        creator   = srcinfo['source']
+        category  = srcinfo['category']
+        languages = srcinfo['languages']
 
-       title   = self.get_title(src, metainfo)
+        title   = self.get_title(src, metainfo)
 
-       metadata = { \
-           'collection' : 'gazetteofindia', 'mediatype' :'texts', \
-           'language'   : languages, 'title': title, 'creator': creator, \
-           'subject'    : category
-       } 
+        metadata = { \
+            'collection' : 'gazetteofindia', 'mediatype' :'texts', \
+            'language'   : languages, 'title': title, 'creator': creator, \
+            'subject'    : category
+        } 
+         
+        dateobj = metainfo.get_date()
+        if dateobj:
+            metadata['date'] = '%s' % dateobj
         
-       dateobj = metainfo.get_date()
-       if dateobj:
-           metadata['date'] = '%s' % dateobj
-       
-       metadata['description'] = self.get_description(metainfo)
-       return metadata
+        metadata['description'] = self.get_description(metainfo)
+        return metadata
 
     def get_description(self, metainfo):       
        desc = []
