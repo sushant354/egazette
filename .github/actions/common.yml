@@ -1,0 +1,104 @@
+name: Common Pull and Push
+on:
+  workflow_call:
+    inputs:
+      source:
+        description: 'source name'
+        required: true
+        type: string
+      tesseract_needed:
+        description: 'tesseract needed for captchas'
+        required: false
+        type: boolean
+        default: false
+      testing:
+        description: 'run in test mode'
+        required: false
+        type: boolean
+        default: false
+      from_date:
+        description: 'from date'
+        required: false
+        type: string
+        default: ''
+      to_date:
+        description: 'to date'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  Pull-Push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get current date
+        shell: bash
+        run: echo "date=$(date +'%d-%m-%Y')" >> $GITHUB_OUTPUT
+        id: date
+
+      - uses: actions/checkout@v4.1.7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: ">=0.5.29"
+
+      - name: Install packages
+        if: inputs.tesseract_needed
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+
+      - name: Restore daily run data from cache
+        uses: ramSeraph/cache-always@v0.0.1
+        with:
+          path: |
+            data/
+          key:  egazette-data-v0-${{ inputs.testing }}-${{ inputs.source }}-${{ steps.date.outputs.date }}-${{ github.run_number }}-${{ github.run_attempt }}
+          restore-keys: |
+            egazette-data-v0-${{ inputs.testing }}-${{ inputs.source }}-${{ steps.date.outputs.date }}-${{ github.run_number }}-
+            egazette-data-v0-${{ inputs.testing }}-${{ inputs.source }}-${{ steps.date.outputs.date }}-
+
+
+      - name: Pull data
+        run: |
+          testing=${{ inputs.testing }}
+          src_name=${{ inputs.source }}
+          from_date=${{ inputs.from_date }}
+          to_date=${{ inputs.to_date }}
+
+          mkdir -p data
+
+          if [[ $from_date == '' ]]; then
+            if [[ ! -e data/from_date.txt ]]; then
+              if [[ $testing == 'true' ]]; then
+                export TESTING=1
+              fi
+              scripts/get_fromdate.sh $src_name data/from_date.txt
+            fi
+            from_date=$(cat data/from_date.txt)
+          fi
+
+          if [[ $to_date == '' ]]; then
+            to_date=${{ steps.date.outputs.date }}
+          fi
+
+          export PYTHONPATH=$PYTHONPATH:..
+          uv run --with-requirements requirements/sync.in sync.py -t $from_date -T $to_date -s $src_name -D data/
+        id: pull
+
+      - name: Push data
+        run: |
+          export PYTHONPATH=$PYTHONPATH:..
+          testing=${{ inputs.testing }}
+          extra_args=''
+          if [[ $testing == 'true' ]]; then
+            extra_args=' -S'
+          fi
+          uv run --with-requirements requirements/iasync.in iasync.py -D data/ -a ${{ secrets.IA_ACCESS_KEY }} -k ${{ inputs.IA_SECRET_KEY }} -f '' $extra_args
+        id: push
+
+      - name: Cleanup
+        run: |
+          rm -rf data/* || true

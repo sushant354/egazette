@@ -1,0 +1,11 @@
+name: Central Weekly Gazette archiver
+on:
+  workflow_dispatch:
+
+jobs:
+  Run:
+    uses: ./.github/actions/common.yml
+    secrets: inherit
+    with:
+      source: 'central_weekly'
+      testing: true
