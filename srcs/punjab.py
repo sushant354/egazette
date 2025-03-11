@@ -2,7 +2,6 @@ import urllib.request, urllib.parse, urllib.error
 import re
 import os
 import ssl
-import datetime
 import json
 import base64
 
@@ -14,7 +13,6 @@ class Punjab(BaseGazette):
         BaseGazette.__init__(self, name, storage)
         self.hostname  = 'esarkar.punjab.gov.in'
         self.searchurl = 'http://esarkar.punjab.gov.in/web/guest/customepage?p_p_id=guestPortlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&requestType=ApplicationRH&actionVal=searchRecord&queryType=Select&screenId=400176'
-        self.start_date   = datetime.datetime(2007, 1, 1)
        
     def get_post_data(self, dateobj):
         datestr = utils.dateobj_to_str(dateobj, '/')

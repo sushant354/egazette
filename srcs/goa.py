@@ -1,7 +1,6 @@
 import urllib.request, urllib.parse, urllib.error
 import re
 import os
-import datetime
 
 from .basegazette import BaseGazette
 from ..utils import utils
@@ -11,7 +10,6 @@ class Goa(BaseGazette):
         BaseGazette.__init__(self, name, storage)
         self.hostname = 'goaprintingpress.gov.in'
         self.searchurl = 'https://goaprintingpress.gov.in/search-by-date/?task=search_by_date&Itemid=177&type=ALL&series=ALL&sdate=%s&edate=%s&action=search'
-        self.start_date = datetime.datetime(1908, 1, 1)
 
     def download_oneday(self, relpath, dateobj):
         dls = []

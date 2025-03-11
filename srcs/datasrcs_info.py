@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 def basic_identifier(relurl, metainfo):
     identifier = relurl.replace('/', '.')
@@ -55,6 +56,7 @@ srcinfos = {
         'source'    : 'Government of Bihar',
         'category'  : 'Gazette of Bihar',
         'prefix'    : 'in.gov.bih.gazette.',
+        'start_date': datetime(2008, 9, 24),
         'identifier_fn': bihar_identifier
     },
     # 'delhi.egaz.<year>.<month_no_pad>.<day_no_pad>' start_date: 1987-01-01, end_date: 2017-09-08 count: 831
@@ -63,6 +65,7 @@ srcinfos = {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of NCT of Delhi',
         'category'  : 'Delhi Gazette - Weekly',
+        'start_date': datetime(2016, 5, 1),
         'prefix'    : 'in.gazette.delhi.w.'
     },
     # 'in.gazette.delhi.e.<year>-<month>-<day>.<id>' start_date: 2011-01-03, end_date: 2025-03-01 count: 3980
@@ -77,7 +80,8 @@ srcinfos = {
         'languages' : ['eng', 'hin'], 
         'source'    : 'Government of Chattisgarh',
         'category'  : 'Chattisgarh Gazette - Weekly',
-        'prefix'    : 'in.gazette.chattisgarh.weekly.'
+        'prefix'    : 'in.gazette.chattisgarh.weekly.',
+        'start_date': datetime(2000, 11, 1)
     },
     # 'in.gazette.chattisgarh.eo.<year>-<month>-<day>.<id>' start_date: 2001-01-04 end_date: 2024-08-08 count: 9193
     'cgextraordinary' : {
@@ -112,19 +116,22 @@ srcinfos = {
     'maharashtra'   : {
         'languages' : ['eng', 'mar'],
         'source'    : 'Government of Maharashtra',
-        'category'  : 'Maharashtra Gazette'
+        'category'  : 'Maharashtra Gazette',
+        'start_date': datetime(2010, 1, 1)
     },
     # 'in.gazette.telangana.<year>-<month>-<day>.<id>' start_date: 2014-06-02 end_date: 2024-07-15 count: 4338
     'telangana' : {
         'languages' : ['eng', 'tel'],
         'source'    : 'Government of Telangana',
-        'category'  : 'Telangana Gazette'
+        'category'  : 'Telangana Gazette',
+        'start_date': datetime(2014, 1, 1)
     },
     # 'in.gazette.tamilnadu.<year>-<month>-<day>.<id>' start_date: 2008-12-01 end_date: 2025-03-05 count: 13529
     'tamilnadu' : {
         'languages' : ['eng', 'tam'],
         'source'    : 'Government of Tamil Nadu',
-        'category'  : 'Tamil Nadu Gazette'
+        'category'  : 'Tamil Nadu Gazette',
+        'start_date': datetime(2008, 1, 1)
     },
     # 'in.gazette.odisha.<year>-<month>-<day>.<id>' start_date: 2004-01-10 end_date: 2020-09-07 count: 22693
     'odisha' : {
@@ -144,13 +151,15 @@ srcinfos = {
         'source'    : 'Government of Madhya Pradesh',
         'category'  : 'Madhya Pradesh Gazette',
         'prefix'    : 'in.gazette.madhya.',
-        'identifier_fn': madhyapradesh_identifier
+        'start_date': datetime(2010, 1, 1),
+        'madhyapradesh': madhyapradesh_identifier
     },
     # 'in.gazette.punjab.<year>-<month>-<day>.<id>' start_date; 2016-01-01 end_date: 2020-04-09 count: 2332
     'punjab' : {
         'languages' : ['eng', 'pan'],
         'source'    : 'Government of Punjab',
         'category'  : 'Punjab Gazette',
+        'start_date': datetime(2007, 1, 1),
         'enabled'   : False
     },
     # 'in.gazette.punjabdsa.<year>-<month>-<day>.<id>' start_date: 2020-03-20 end_date: 2023-05-03 count: 2612
@@ -163,24 +172,28 @@ srcinfos = {
     'uttarakhand' : {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of Uttarakhand',
-        'category'  : 'Uttarakhand Gazette'
+        'category'  : 'Uttarakhand Gazette',
+        'start_date': datetime(2014, 1, 1)
     },
     'himachal' : {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of Himachal Pradesh',
-        'category'  : 'Himachal Pradesh Gazette'
+        'category'  : 'Himachal Pradesh Gazette',
+        'start_date': datetime(2010, 1, 1)
     },
     # 'in.gazette.haryana.<year>-<month>-<day>.<id>' start_date: 2014-10-27 end_date: 2025-03-06 count: 14106
     'haryana' : {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of Haryana',
-        'category'  : 'Haryana Gazette'
+        'category'  : 'Haryana Gazette',
+        'start_date': datetime(2014, 1, 1)
     },
     # 'in.gazette.haryanaarch.<year>-<month>-<day>.<id>' start_date: 1958-12-10 end_date: 2017-12-25 count: 47693
     'haryanaarchive' : {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of Haryana',
         'category'  : 'Haryana Gazette',
+        'start_date': datetime(1958, 1, 1),
         'prefix'    : 'in.gazette.haryanaarch.'
     },
     # 'in.gazette.kerala.<year>-<month>-<day>' start_date: 2007-05-22 end_date: 2018-06-12 count: 552
@@ -190,6 +203,7 @@ srcinfos = {
         'source'    : 'Government of Kerala',
         'category'  : 'Kerala Gazette',
         'prefix'    : 'in.gazette.kerala_new.',
+        'start_date': datetime(2007, 1, 1),
         'identifier_fn': kerala_identifier
     },
     # 'gazette.stgeorge.TG<year>.TG<year><month_text3_caps><day><type>?' start_date: 1908-07-07 end_date: 1943-02-23 count: 1924
@@ -198,6 +212,7 @@ srcinfos = {
         'source'    : 'Madras Presidency',
         'category'  : 'Fort St. George Gazette',
         'prefix'    : 'gazette.stgeorge.',
+        'start_date': datetime(1903, 1, 1),
         'enabled'   : False
     },
     # 'gazette.kerala.archive.<year>.<year><month_text3_caps><day><type>?' start_date: 1903-01-06 end_date: 1985-12-31 count: 9489
@@ -206,6 +221,7 @@ srcinfos = {
         'source'    : 'Government of Kerala',
         'category'  : 'Kerala Gazette',
         'prefix'    : 'gazette.kerala.archive.',
+        'start_date': datetime(1903, 1, 1),
         'enabled'   : False
     },
     # 'in.gazette.goa.<year>-<month>-<day>.<id>' start_date: 1962-01-25  end_date: 1962-01-25  count: 4
@@ -215,6 +231,7 @@ srcinfos = {
         'source'    : 'Government of Goa',
         'category'  : 'Goa Gazette',
         'prefix'    : 'in.goa.egaz.',
+        'start_date': datetime(1908, 1, 1),
         'identifier_fn': goa_identifier
     },
     # 'in.gazette.csl_weekly.<year>-<month>-<day>.<id>' start_date: 1922-01-28 end_date: 1997-12-29 count: 13855

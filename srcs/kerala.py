@@ -13,7 +13,6 @@ class Kerala(BaseGazette):
         self.latest_url = 'http://www.egazette.kerala.gov.in/'
         self.baseurl    = self.latest_url
         self.parser     = 'html.parser'
-        self.start_date   = datetime.datetime(2007, 1, 1)
 
         self.year_href =  '/%d.php'
 
