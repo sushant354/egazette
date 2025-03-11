@@ -5,6 +5,7 @@ import urllib.parse
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class Maharashtra(BaseGazette):
     def __init__(self, name, storage):
@@ -63,7 +64,7 @@ class Maharashtra(BaseGazette):
         return order
 
     def process_result_row(self, tr, metainfos, dateobj, order):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
 
         i = 0

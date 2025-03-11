@@ -5,6 +5,7 @@ import os
 
 from ..utils import utils
 from .basegazette import BaseGazette
+from ..utils.metainfo import MetaInfo
 
 class CentralBase(BaseGazette):
     def __init__(self, name, storage):
@@ -223,7 +224,7 @@ class CentralBase(BaseGazette):
         return response 
 
     def process_result_row(self, tr, metainfos, dateobj, order):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfos.append(metainfo)
         metainfo.set_date(dateobj)
 

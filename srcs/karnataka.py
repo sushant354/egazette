@@ -8,6 +8,7 @@ from io import BytesIO
 
 from ..utils import utils
 from .basegazette import BaseGazette
+from ..utils.metainfo import MetaInfo
 
 class Karnataka(BaseGazette):
     def __init__(self, name, storage):
@@ -33,7 +34,7 @@ class Karnataka(BaseGazette):
         dateurl = self.baseurl % datestr
         docurl  = urllib.parse.urljoin(dateurl, mainhref)
 
-        mainmeta = utils.MetaInfo()
+        mainmeta = MetaInfo()
         mainmeta.set_date(dateobj)
         mainmeta.set_url(self.url_fix(docurl))
        
@@ -69,7 +70,7 @@ class Karnataka(BaseGazette):
             relurl = os.path.join(relpath, partnum)
             docurl = urllib.parse.urljoin(dateurl, href) 
 
-            metainfo = utils.MetaInfo()
+            metainfo = MetaInfo()
             metainfo.set_date(dateobj)
             metainfo['partnum'] = partnum
 
@@ -312,7 +313,7 @@ class KarnatakaBase(BaseGazette):
         return order
     
     def process_result_row(self, tr, metainfos, order):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfos.append(metainfo)
 
         i  = 0

@@ -4,6 +4,7 @@ import os
 import urllib.parse
 
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 from .basegazette import BaseGazette
 
 class Manipur(BaseGazette):
@@ -50,7 +51,7 @@ class Manipur(BaseGazette):
         return table
 
     def extract_metainfos(self, row, order):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         i = 0
         for td in row.find_all('td'):
             if len(order) > i:

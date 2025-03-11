@@ -12,6 +12,7 @@ import urllib3
 import ssl
 
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 from .basegazette import BaseGazette
 
 default_ssl_context_creator = ssl._create_default_https_context
@@ -410,7 +411,7 @@ class RajasthanStateArchive(BaseGazette):
 
 
     def process_result_row(self, metainfos, tr, order, city):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
 
         i = 0
         for td in tr.find_all('td'):

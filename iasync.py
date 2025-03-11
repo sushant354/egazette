@@ -367,127 +367,15 @@ class GazetteIA:
             return None
 
 
-    def get_title(self, src, metainfo):
-        category = datasrcs_info.srcinfos[src]['category']
-        title = [category]
-
-        if 'date' in metainfo:
-            title.append('%s' % metainfo['date'])
-
-        if 'gztype' in metainfo:
-            title.append(metainfo['gztype'])
-
-        if 'partnum' in metainfo:
-            partnum = metainfo['partnum']
-            if re.search(r'\bPart\b', partnum):
-                title.append(partnum)
-            else:    
-                title.append('Part %s' %partnum)
-
-        if 'gznum' in metainfo:
-            title.append('Number %s' % metainfo['gznum'])
-
-        return ', '.join(title)
-
     def get_srcname(self, relurl):
        words    = relurl.split('/')
        return words[0]
     
-    def get_collection(self, src):
-        src_collection = {
-            'rsa' : 'ArchivesOfIndia'
-        }
-
-        return src_collection.get(src, 'gazetteofindia')
-
     def to_ia_metadata(self, relurl, metainfo):
-       src      = self.get_srcname(relurl) 
-       srcinfo  = datasrcs_info.srcinfos[src]
+        src      = self.get_srcname(relurl) 
+        srcinfo  = datasrcs_info.srcinfos[src]
 
-       creator   = srcinfo['source']
-       category  = srcinfo['category']
-       languages = srcinfo['languages']
-
-       title   = self.get_title(src, metainfo)
-       collection = self.get_collection(src)
-
-       metadata = { \
-           'collection' : collection, 'mediatype' :'texts', \
-           'language'   : languages, 'title': title, 'creator': creator, \
-           'subject'    : category
-       } 
-
-       dateobj = metainfo.get_date()
-       if dateobj:
-           metadata['date'] = '%s' % dateobj
-       
-       metadata['description'] = self.get_description(metainfo)
-       return metadata
-
-    def get_description(self, metainfo):       
-       desc = []
-
-       ignore_keys  = set(['linknames', 'links', 'linkids'])
-       keys = [ \
-         ('gztype',           'Gazette Type'),  \
-         ('gznum',            'Gazette Number'), \
-         ('date',             'Date'), \
-         ('ministry',         'Ministry'),   \
-         ('department',       'Department'), \
-         ('subject',          'Subject'),      \
-         ('office',           'Office'), \
-         ('notification_num', 'Notification Number'), \
-         ('partnum',          'Part Number'), \
-         ('refnum',           'Reference Number'), \
-         ('linknames',        'Gazette Links'), \
-         ('url',              'Gazette Source'), \
-         ('num',              'Number'), \
-         ('gazetteid',        'Gazette ID'), \
-        ('bundleno',     'Bundle Number'), \
-        ('city',         'City'), \
-        ('description',  'Description'), \
-        ('file',         'File'), \
-        ('topic',        'Topic'), \
-        ('year',         'Year'), \
-        ('title',        'Title')
-       ]
-       for k, kdesc in keys:
-           if k in metainfo:
-               v = metainfo[k]
-               if k == 'date':
-                   v = '%s' % v
-               elif k == 'linknames':
-                  linkids = metainfo['linkids']
-                  i = 0
-                  v = []
-                  for linkname in metainfo[k]:
-                      identifier = linkids[i]
-                      v.append('<a href="/details/%s">%s</a>' % \
-                              (identifier, linkname))
-                      i += 1
-                  v = '<br/>'.join(v)
-               elif k == 'url':
-                  v = '<a href="%s">URL</a>' % v
-               else:    
-                   v = metainfo[k].strip()
-                   
-               if v:
-                   desc.append((kdesc, v))
-
-       known_keys = set([k for k, kdesc in keys])
-
-       for k, v in metainfo.items():
-           if k not in known_keys and k not in ignore_keys:
-               if type(v) in (str,):
-                   v = v.strip()
-               elif isinstance(v, list):
-                   v = '%s' % v    
-               if v:
-                   desc.append((k.title(), v))
-
-
-       desc_html = '<br/>'.join(['%s: %s' % (d[0], d[1]) for d in desc])
-       return '<p>' + desc_html + '</p>'
+        return metainfo.get_ia_metadata(srcinfo)
 
     def update_meta(self, relurl):
         metainfo = self.file_storage.get_metainfo(relurl)
