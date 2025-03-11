@@ -14,8 +14,7 @@ from internetarchive import upload, get_session, get_item, modify_metadata
 from egazette.utils import basic
 from egazette.utils.file_storage import FileManager
 
-from egazette.utils import reporting
-from egazette.srcs  import datasrcs 
+from egazette.srcs  import datasrcs
 from egazette.utils import utils
 from egazette.gvision import get_google_client, to_hocr, pdf_to_jpg, compress_file, LangTags
 
@@ -693,8 +692,11 @@ if __name__ == '__main__':
             handle_relurl(gazette_ia, relurl, to_upload, to_update, stats)
 
 
+    msg = stats.get_message(srcnames)
+    print(msg)
 
     if to_addrs:
-        msg = stats.get_message(srcnames)
+        from egazette.utils import reporting
         reporting.report(server_token, from_addr, to_addrs,   \
                         'Stats for gazette on %s' % datetime.date.today(), msg)
+
