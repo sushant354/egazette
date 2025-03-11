@@ -67,11 +67,12 @@ class Stats:
 
 class GazetteIA:
     def __init__(self, gvisionobj, file_storage, access_key, secret_key, \
-                 loglevel, logfile):
+                 loglevel, logfile, to_sandbox):
         self.gvisionobj   = gvisionobj         
         self.file_storage = file_storage
         self.access_key   = access_key
         self.secret_key   = secret_key
+        self.to_sandbox    = to_sandbox
 
         session_data = {'access': access_key, 'secret': secret_key}
         if logfile:
@@ -105,7 +106,7 @@ class GazetteIA:
         return final
 
     def get_identifier(self, relurl, metainfo):
-        return datasrcs_info.get_identifier(relurl, metainfo)
+        return datasrcs_info.get_identifier(relurl, metainfo, self.to_sandbox)
 
 
     def update_links(self, relurl, metainfo):
@@ -281,10 +282,12 @@ class GazetteIA:
         title   = self.get_title(src, metainfo)
 
         metadata = { \
-            'collection' : 'gazetteofindia', 'mediatype' :'texts', \
+            'mediatype' :'texts', \
             'language'   : languages, 'title': title, 'creator': creator, \
             'subject'    : category
         } 
+        if not self.to_sandbox:
+            metadata['collection'] = 'gazetteofindia'
          
         dateobj = metainfo.get_date()
         if dateobj:
@@ -403,6 +406,7 @@ def print_usage(progname):
                         [-T end_time (%Y-%m-%d %H:%M:%S)]
                         [-p postmark_token]
                         [-E email_to_report]
+                        [-S upload to sandbox]
                         [-s central_weekly -s central_extraordinary 
                          -s andhra -s andhraarchive
                          -s bihar  -s cgweekly -s cgextraordinary
@@ -445,8 +449,9 @@ if __name__ == '__main__':
     to_addrs   = []
     key_file   = None
     iadir      = None
+    to_sandbox = False
 
-    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:g:hiI:l:s:t:T:mr:uE:p:U:')
+    optlist, remlist = getopt.getopt(sys.argv[1:], 'a:k:d:D:f:g:hiI:l:s:t:T:mr:uE:p:U:S')
     for o, v in optlist:
         if o == '-l':
             loglevel = v
@@ -489,6 +494,8 @@ if __name__ == '__main__':
             iadir = v
         elif o == '-g':
             key_file = v
+        elif o == '-S':
+            to_sandbox = True
         elif o == '-h':
             print_usage(progname)
             sys.exit(0)
@@ -535,7 +542,7 @@ if __name__ == '__main__':
 
 
     storage = FileManager(datadir, False, False)
-    gazette_ia = GazetteIA(gvisionobj, storage, access_key, secret_key, loglevel, logfile)
+    gazette_ia = GazetteIA(gvisionobj, storage, access_key, secret_key, loglevel, logfile, to_sandbox)
     stats        = Stats()
 
     if len(srcnames) == 0:

@@ -233,12 +233,14 @@ srcinfos = {
     }
 }
 
-def get_prefix(srcname):
+def get_prefix(srcname, to_sandbox=False):
     srcinfo = srcinfos[srcname]
     prefix = srcinfo.get('prefix', f'in.gazette.{srcname}.')
+    if to_sandbox:
+        prefix = 'egaztest.' + prefix
     return prefix
 
-def get_identifier(relurl, metainfo):
+def get_identifier(relurl, metainfo, to_sandbox):
     words   = relurl.split('/')
     srcname = words[0]
     relurl  = '/'.join(words)
@@ -251,7 +253,7 @@ def get_identifier(relurl, metainfo):
 
     identifier = identifier_fn(relurl, metainfo)
 
-    prefix = get_prefix(srcname)
+    prefix = get_prefix(srcname, to_sandbox=to_sandbox)
     return prefix + identifier
 
 
