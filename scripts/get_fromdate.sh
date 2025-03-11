@@ -17,15 +17,18 @@ if [[ $TESTING == '1' ]]; then
 fi
 prefix=$(uv run python -c "from srcs.datasrcs_info import get_prefix; print(get_prefix('$src_name', to_sandbox=$to_sandox_val))")
 echo "got prefix as: $prefix"
+[[ $prefix != '' ]] || exit 1
 
 echo "getting items with prefix from internet archive"
 last_id=$(uvx --from internetarchive ia search $prefix --sort 'date asc' -i | tail -1)
 echo "got last id as: $last_id"
+[[ $last_id != '' ]] || exit 1
 
 echo "getting from date from the itemlist"
 from_date=$(uvx --from internetarchive ia metadata $last_id | jq -r .metadata.date)
 from_date=$(date -d "$from_date" +%d-%m-%Y)
 echo "got from date as: $from_date"
+[[ $from_date != '' ]] || exit 1
 
 [[ $output_file == '' ]] && exit 0
 
