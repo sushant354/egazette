@@ -1,8 +1,9 @@
 import multiprocessing
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.error
+import urllib.parse
 import time
 import logging
-import re
 
 from . import proxylist
 

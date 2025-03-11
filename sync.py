@@ -41,7 +41,7 @@ def print_usage(progname):
     print('todate is not specified then the default is your current date.')
 
 def to_datetime(datestr):
-    numlist = re.findall('\d+', datestr)
+    numlist = re.findall(r'\d+', datestr)
     if len(numlist) != 3:
         print('%s not in correct format [DD/MM/YYYY]' % datestr, file=sys.stderr)
         return None

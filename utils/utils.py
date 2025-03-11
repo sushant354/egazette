@@ -1,15 +1,15 @@
 import re
-import types
 import urllib.parse
 import calendar
 import datetime
 import sys
 
-from PyPDF2 import PdfFileReader
 from xml.parsers.expat import ExpatError
 from xml.dom import minidom, Node
-from bs4 import BeautifulSoup, NavigableString, Tag
 from functools import reduce
+
+from PyPDF2 import PdfFileReader
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 def parse_xml(xmlpage):
     try: 
