@@ -74,8 +74,10 @@ class FileManager:
         return self.updateRaw or not glob.glob('%s.*' % rawpath)
 
     def get_file_extension(self, doc):
-        mtype = utils.get_buffer_type(doc)
-        return utils.get_file_extension(mtype)
+        # avoid python-magic dependency where possible
+        from . import ext_tools
+        mtype = ext_tools.get_buffer_type(doc)
+        return ext_tools.get_file_extension(mtype)
 
     def save_rawdoc(self, court, relurl, encoding, doc):
         self.create_dirs(self.rawdir, relurl)

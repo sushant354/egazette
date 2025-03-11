@@ -7,7 +7,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
-from ..utils import utils
+from ..utils import ext_tools
 
 class WebResponse:
    def __init__(self):
@@ -227,8 +227,8 @@ class BaseGazette(Downloader):
         return (min_size <= 0 or len(doc) > min_size)
 
     def get_file_extension(self, doc):
-        mtype = utils.get_buffer_type(doc)
-        return utils.get_file_extension(mtype)
+        mtype = ext_tools.get_buffer_type(doc)
+        return ext_tools.get_file_extension(mtype)
 
     def save_gazette(self, relurl, gurl, metainfo, postdata = None, \
                      referer = None, cookiefile = None, validurl = True, \
