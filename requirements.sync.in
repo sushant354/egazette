@@ -4,3 +4,4 @@ lxml
 beautifulsoup4
 python-magic
 requests
+requests-toolbelt

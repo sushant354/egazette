@@ -4,14 +4,23 @@ import datetime
 from http.cookiejar import CookieJar
 import urllib.parse
 
+import requests
+from requests_toolbelt.adapters.host_header_ssl import HostHeaderSSLAdapter
+
 from .basegazette import BaseGazette
 from ..utils import utils
+
+
+# needed because the DNS entries for the hostname is broken
+# with one of the ip addresses pointing to a chinese server
+# we need to force the right ip address
+HOST_IP = '27.111.73.140'
 
 class Telangana(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl      = 'https://tserplive.cgg.gov.in/homeAllGazetteSearch?type={}'
-        self.hostname     = 'tserplive.cgg.gov.in'
+        self.baseurl      = f'https://{HOST_IP}/homeAllGazetteSearch' + '?type={}'
+        self.hostname     = 'tggazette.cgg.gov.in'
         self.search_endp  = 'searchGazettesNow'
         self.start_date   = datetime.datetime(2014, 1, 1)
 
@@ -21,20 +30,20 @@ class Telangana(BaseGazette):
         valid = False
         for th in tr.find_all('th'):
             txt = utils.get_tag_contents(th)
-            if txt and re.search('gazettetype', txt, re.IGNORECASE):
+            if txt and re.search(r'gazettetype', txt, re.IGNORECASE):
                 order.append('gztype')
-            elif txt and re.search('department', txt, re.IGNORECASE):
+            elif txt and re.search(r'department', txt, re.IGNORECASE):
                 order.append('department')
-            elif txt and re.search('abstract', txt, re.IGNORECASE):
+            elif txt and re.search(r'abstract', txt, re.IGNORECASE):
                 order.append('subject')
-            elif txt and re.search('Issue\s+No', txt, re.IGNORECASE):
+            elif txt and re.search(r'Issue\s+No', txt, re.IGNORECASE):
                 order.append('gznum')
-            elif txt and re.search('Job\s+No', txt, re.IGNORECASE):
+            elif txt and re.search(r'Job\s+No', txt, re.IGNORECASE):
                 order.append('job_num')
-            elif txt and re.search('Download', txt, re.IGNORECASE):
+            elif txt and re.search(r'Download', txt, re.IGNORECASE):
                 order.append('download')
                 valid = True
-            elif txt and re.search('', txt, re.IGNORECASE):
+            elif txt and re.search(r'', txt, re.IGNORECASE):
                 order.append('')
 
             else:
@@ -159,6 +168,7 @@ class Telangana(BaseGazette):
     def download_metainfo(self, metainfo, relpath, dateobj, url):
         href = metainfo.pop('download')
         gzurl = urllib.parse.urljoin(url, href)
+        gzurl = gzurl.replace(HOST_IP, self.hostname)
 
         docid = href.split('/')[-1]
         relurl = os.path.join(relpath, docid)
@@ -168,10 +178,11 @@ class Telangana(BaseGazette):
 
     def download_onetype(self, relpath, dateobj, gztype, typ):
         dls = []
-        cookiejar  = CookieJar()
         url = self.baseurl.format(typ)
 
-        response = self.download_url(url, savecookies = cookiejar)
+        session = requests.session()
+        session.mount('https://', HostHeaderSSLAdapter(max_retries=self.get_session_retry()))
+        response = self.download_url_using_session(url, session=session, headers = { 'Host': self.hostname })
         if not response or not response.webpage:
             self.logger.warning('Unable to get %s for type %s and date %s', \
                                 url, gztype, dateobj)
@@ -183,8 +194,7 @@ class Telangana(BaseGazette):
             return dls
 
         searchurl = urllib.parse.urljoin(url, self.search_endp)
-        response = self.download_url(searchurl, postdata = postdata, referer = url, \
-                                     loadcookies = cookiejar, savecookies = cookiejar)
+        response = self.download_url_using_session(searchurl, session = session, postdata = postdata, referer = url, headers = { 'Host': self.hostname })
         if not response or not response.webpage:
             self.logger.warning('Unable to get search results at %s for type %s and date %s', \
                                 searchurl, gztype, dateobj)

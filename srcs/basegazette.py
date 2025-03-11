@@ -73,8 +73,7 @@ class Downloader:
             fromdate += datetime.timedelta(days=1)
         return newdownloads
 
-    def get_session(self):
-        s = requests.session()
+    def get_session_retry(self):
         retries = self.num_http_retries
         retry = Retry(
             total=retries,
@@ -84,6 +83,11 @@ class Downloader:
             backoff_factor=self.retry_delay_base_secs,
             status_forcelist=set([503,504,403]),
         )
+        return retry
+
+    def get_session(self):
+        s = requests.session()
+        retry = self.get_session_retry()
         s.mount('http://', HTTPAdapter(max_retries=retry))
         s.mount('https://', HTTPAdapter(max_retries=retry))
         return s
