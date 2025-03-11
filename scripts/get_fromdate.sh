@@ -22,11 +22,15 @@ echo "got prefix as: $prefix"
 echo "getting items with prefix from internet archive"
 last_id=$(uvx --from internetarchive ia search $prefix --sort 'date asc' -i | tail -1)
 echo "got last id as: $last_id"
-[[ $last_id != '' ]] || exit 1
 
-echo "getting from date from the itemlist"
-from_date=$(uvx --from internetarchive ia metadata $last_id | jq -r .metadata.date)
-from_date=$(date -d "$from_date" +%d-%m-%Y)
+if [[ $last_id == '' ]]; then
+  echo "getting from date from config"
+  from_date=$(uv run python -c "from srcs.datasrcs_info import get_start_date; d = get_start_date('$src_name'); print('' if d is None else d.strftime('%d-%m-%Y'))")
+else
+  echo "getting from date from the last id"
+  from_date=$(uvx --from internetarchive ia metadata $last_id | jq -r .metadata.date)
+  from_date=$(date -d "$from_date" +%d-%m-%Y)
+fi
 echo "got from date as: $from_date"
 [[ $from_date != '' ]] || exit 1
 

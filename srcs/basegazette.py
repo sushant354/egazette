@@ -11,7 +11,7 @@ from requests.packages.urllib3.util.retry import Retry
 
 from ..utils import ext_tools
 
-from .datasrcs_info import srcinfos
+from .datasrcs_info import get_start_date
 
 class WebResponse:
    def __init__(self):
@@ -51,8 +51,7 @@ class Downloader:
         self.useragent   = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0'
 
     def all_downloads(self, event):
-        srcinfo = srcinfos[self.name]
-        start_date = srcinfo.get('start_date', None) 
+        start_date = get_start_date(self.name)
         assert start_date != None
         return self.sync(start_date, datetime.datetime.today(), event)
 

@@ -257,6 +257,11 @@ def get_prefix(srcname, to_sandbox=False):
         prefix = 'egaztest.' + prefix
     return prefix
 
+def get_start_date(srcname):
+    srcinfo = srcinfos[srcname]
+    start_date = srcinfo.get('start_date', None)
+    return start_date
+
 def get_identifier(relurl, metainfo, to_sandbox):
     words   = relurl.split('/')
     srcname = words[0]
