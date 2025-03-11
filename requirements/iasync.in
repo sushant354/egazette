@@ -1,5 +1,3 @@
 -r sync.in
--r gvision.in
 internetarchive
 requests
-postmarker

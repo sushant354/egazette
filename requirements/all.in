@@ -1,4 +1,4 @@
 -r sync.in
--r iasync.in
+-r iasync_full.in
 -r gvision.in
 -r tools.in
