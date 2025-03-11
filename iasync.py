@@ -7,16 +7,12 @@ import shutil
 import os
 import time
 from requests.exceptions import HTTPError
-from zipfile import ZipFile
-import codecs
 
 from internetarchive import upload, get_session, get_item, modify_metadata
 from egazette.utils import basic
 from egazette.utils.file_storage import FileManager
 
 from egazette.srcs  import datasrcs
-from egazette.utils import utils
-from egazette.gvision import get_google_client, to_hocr, pdf_to_jpg, compress_file, LangTags
 
 class Stats:
     def __init__(self):
@@ -68,64 +64,6 @@ class Stats:
         if noupdate:
              msg.append('No updates from %s' % ', '.join(noupdate))
         return '\n'.join(msg)
-
-def create_zip(zipfile, filenames):
-    zipobj = ZipFile(zipfile, 'w')
-    for filename in filenames:
-        head, tail   = os.path.split(filename)
-        head1, tail1 = os.path.split(head)
-        dirpath = os.path.join(tail1, tail)
-        zipobj.write(filename, dirpath)
-    zipobj.close()
-
-def atoi(text):
-    return int(text) if text.isdigit() else text
-
-def natural_keys(text):
-    return [ atoi(c) for c in re.split('(\d+)', text) ]
-
-class Gvision:
-    def __init__(self, iadir, key_file):
-        self.client = get_google_client(key_file)
-        self.iadir  = iadir
-
-    def convert_to_jpg_hocr(self, identifier, filepath):
-        path, filename  = os.path.split(filepath)
-        name, n = re.subn('.pdf$', '', filename)
-
-        item_path = os.path.join(self.iadir, identifier)
-        jpgdir    = os.path.join(item_path, name + '_jpg')
-        gocrdir   = os.path.join(item_path, name + '_gocr')
-        hocrfile  = os.path.join(item_path, name + '_chocr.html')
-
-        basic.mk_dir(item_path)
-        basic.mk_dir(jpgdir)
-        basic.mk_dir(gocrdir)
-
-        success = pdf_to_jpg(filepath, jpgdir, 300)
-        if not success:
-            self.logger.warning('Could not convert into jpg files %s', filepath)
-            return None, None
-
-        filenames = os.listdir(jpgdir)
-        filenames.sort(key=natural_keys)
-
-        outhandle = codecs.open(hocrfile, 'w', encoding = 'utf8')
-        langtags  = LangTags()
-        to_hocr(jpgdir, filenames, self.client, outhandle, gocrdir, 300, langtags)
-        outhandle.close()
-        
-        hocrfile_gz =  hocrfile + '.gz'
-        compress_file(hocrfile, hocrfile_gz)
-
-        jpgzip   = jpgdir + '.zip'
-        jpgfiles = [os.path.join(jpgdir, x) for x in filenames]
-
-        create_zip(jpgzip, jpgfiles)
-        if os.path.exists(jpgdir):
-            shutil.rmtree(jpgdir)
-
-        return jpgzip, hocrfile_gz
 
 class GazetteIA:
     def __init__(self, gvisionobj, file_storage, access_key, secret_key, \
@@ -661,6 +599,7 @@ if __name__ == '__main__':
 
     gvisionobj = None
     if key_file and iadir:
+        from egazette.gvision import Gvision
         gvisionobj = Gvision(iadir, key_file)
         
     if not basic.setup_logging(loglevel, logfile, datadir=datadir):

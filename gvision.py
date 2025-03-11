@@ -431,6 +431,58 @@ def zip_gocr(dirpath, filename):
     tar.add(indir, arcname=filename)
     tar.close()
 
+def create_zip(zipfile, filenames):
+    zipobj = ZipFile(zipfile, 'w')
+    for filename in filenames:
+        head, tail   = os.path.split(filename)
+        head1, tail1 = os.path.split(head)
+        dirpath = os.path.join(tail1, tail)
+        zipobj.write(filename, dirpath)
+    zipobj.close()
+
+class Gvision:
+    def __init__(self, iadir, key_file):
+        self.client = get_google_client(key_file)
+        self.iadir  = iadir
+
+    def convert_to_jpg_hocr(self, identifier, filepath):
+        path, filename  = os.path.split(filepath)
+        name, n = re.subn('.pdf$', '', filename)
+
+        item_path = os.path.join(self.iadir, identifier)
+        jpgdir    = os.path.join(item_path, name + '_jpg')
+        gocrdir   = os.path.join(item_path, name + '_gocr')
+        hocrfile  = os.path.join(item_path, name + '_chocr.html')
+
+        mk_dir(item_path)
+        mk_dir(jpgdir)
+        mk_dir(gocrdir)
+
+        success = pdf_to_jpg(filepath, jpgdir, 300)
+        if not success:
+            self.logger.warning('Could not convert into jpg files %s', filepath)
+            return None, None
+
+        filenames = os.listdir(jpgdir)
+        filenames.sort(key=natural_keys)
+
+        outhandle = codecs.open(hocrfile, 'w', encoding = 'utf8')
+        langtags  = LangTags()
+        to_hocr(jpgdir, filenames, self.client, outhandle, gocrdir, 300, langtags)
+        outhandle.close()
+        
+        hocrfile_gz =  hocrfile + '.gz'
+        compress_file(hocrfile, hocrfile_gz)
+
+        jpgzip   = jpgdir + '.zip'
+        jpgfiles = [os.path.join(jpgdir, x) for x in filenames]
+
+        create_zip(jpgzip, jpgfiles)
+        if os.path.exists(jpgdir):
+            shutil.rmtree(jpgdir)
+
+        return jpgzip, hocrfile_gz
+
 class IA:
     def __init__(self, top_dir, access_key, secret_key, loglevel, logfile, \
                  update_lang):
