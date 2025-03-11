@@ -265,7 +265,7 @@ def get_start_date(srcname):
 def get_identifier(relurl, metainfo, to_sandbox):
     words   = relurl.split('/')
     srcname = words[0]
-    relurl  = '/'.join(words)
+    relurl  = '/'.join(words[1:])
 
     relurl, _  = re.subn(r"[',&:%\s;()–]", '', relurl)
 
