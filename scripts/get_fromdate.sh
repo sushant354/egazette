@@ -28,8 +28,7 @@ if [[ $last_id == '' ]]; then
   from_date=$(uv run python -c "from srcs.datasrcs_info import get_start_date; d = get_start_date('$src_name'); print('' if d is None else d.strftime('%d-%m-%Y'))")
 else
   echo "getting from date from the last id"
-  from_date=$(uvx --from internetarchive ia metadata $last_id | jq -r .metadata.date)
-  from_date=$(date -d "$from_date" +%d-%m-%Y)
+  from_date=$(uvx --from internetarchive ia metadata $last_id | jq -r .metadata.date | awk -v FS=- -v OFS=- '{print $3,$2,$1}')
 fi
 echo "got from date as: $from_date"
 [[ $from_date != '' ]] || exit 1
