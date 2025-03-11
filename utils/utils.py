@@ -6,8 +6,6 @@ import calendar
 import magic
 import datetime
 import sys
-import calendar
-import logging
 
 from PyPDF2 import PdfFileReader
 from xml.parsers.expat import ExpatError
@@ -397,29 +395,6 @@ def extract_links_from_pdf(fileobj):
                 if href:
                     links.append(href)
     return links
-
-def setup_logging(loglevel, logfile):
-    leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
-                 'warning': logging.WARNING,   'info': logging.INFO, \
-                 'debug': logging.DEBUG}
-
-    logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
-    datefmt = '%Y-%m-%d %H:%M:%S'
-    if logfile:
-        logging.basicConfig(\
-            level   = leveldict[loglevel], \
-            format  = logfmt, \
-            filename = logfile, \
-            datefmt = datefmt \
-        )
-    else:
-        logging.basicConfig(\
-            level   = leveldict[loglevel], \
-            format  = logfmt, \
-            datefmt = datefmt \
-        )
-
-
 
 
 if __name__ == '__main__':

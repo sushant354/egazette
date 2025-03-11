@@ -1,11 +1,11 @@
 import datetime
 import sys
 import os
-import logging
 import getopt
 import re
 
 from egazette.utils import utils
+from egazette.utils import basic
 from egazette.utils import download
 from egazette.utils.file_storage import FileManager
 from egazette.srcs import datasrcs
@@ -113,39 +113,17 @@ if __name__ == '__main__':
             print_usage(progname)
             sys.exit(0)
 
-    leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
-                 'warning': logging.WARNING, 'info': logging.INFO, \
-                 'debug': logging.DEBUG}
-
-    logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
-    datefmt = '%Y-%m-%d %H:%M:%S'
-
     if datadir == None:
         print('No data directory specified', file=sys.stderr)
         print_usage(progname)
         sys.exit(0)
 
-    statsdir = os.path.join(datadir, 'stats')
-    utils.mk_dir(statsdir)
-
-    if filename:
-        filename = os.path.join(statsdir, filename)
-
-    if filename:
-        logging.basicConfig(\
-            level   = leveldict[debuglevel], \
-            format  = logfmt, \
-            filename = filename, \
-            datefmt = datefmt \
-        )
-    else:
-        logging.basicConfig(\
-            level   = leveldict[debuglevel], \
-            format  = logfmt, \
-            datefmt = datefmt \
-        )
-
+    if not basic.setup_logging(debuglevel, filename, datadir=datadir):
+        print('Unknown log level %s' % debuglevel)
+        print_usage(progname)
+        sys.exit(0)
 
     storage = FileManager(datadir, updateMeta, updateRaw)
     execute(storage, srclist, agghosts, fromdate, todate, max_wait, all_dls)
+
 

@@ -11,6 +11,7 @@ from zipfile import ZipFile
 import codecs
 
 from internetarchive import upload, get_session, get_item, modify_metadata
+from egazette.utils import basic
 from egazette.utils.file_storage import FileManager
 
 from egazette.utils import reporting
@@ -637,14 +638,6 @@ if __name__ == '__main__':
             sys.exit(0)
 
 
-    leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
-                 'warning': logging.WARNING,   'info': logging.INFO, \
-                 'debug': logging.DEBUG}
-
-    if loglevel not in leveldict:
-        print('Unknown log level %s' % loglevel)             
-        print_usage(progname)
-        sys.exit(0)
 
     if not datadir:
         print('Directory not specified')
@@ -675,27 +668,10 @@ if __name__ == '__main__':
     if key_file and iadir:
         gvisionobj = Gvision(iadir, key_file)
         
-    logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
-    datefmt = '%Y-%m-%d %H:%M:%S'
-
-    if logfile:
-        statsdir = os.path.join(datadir, 'stats')
-        utils.mk_dir(statsdir)
-
-        logfile = os.path.join(statsdir, logfile)
-
-        logging.basicConfig(\
-            level   = leveldict[loglevel], \
-            format  = logfmt, \
-            filename = logfile, \
-            datefmt = datefmt \
-        )
-    else:
-        logging.basicConfig(\
-            level   = leveldict[loglevel], \
-            format  = logfmt, \
-            datefmt = datefmt \
-        )
+    if not basic.setup_logging(loglevel, logfile, datadir=datadir):
+        print('Unknown log level %s' % loglevel)
+        print_usage(progname)
+        sys.exit(0)
 
 
     storage = FileManager(datadir, False, False)

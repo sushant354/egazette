@@ -12,7 +12,7 @@ from google.cloud import speech
 from google.cloud.speech import LongRunningRecognizeResponse
 
 from egazette.tools import gstorage
-from egazette.utils.utils import setup_logging
+from egazette.utils.basic import setup_logging
 
 def to_flac(infile, outfile):
     command = ['ffmpeg', '-i', infile, '-ar', '16000', '-vn', '-acodec', 'flac', outfile]
