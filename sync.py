@@ -1,11 +1,11 @@
 import datetime
 import sys
 import os
-import logging
 import getopt
 import re
 
 from egazette.utils import utils
+from egazette.utils import basic
 from egazette.utils import download
 from egazette.utils.file_storage import FileManager
 from egazette.srcs import datasrcs
@@ -118,13 +118,12 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
-    statsdir = os.path.join(datadir, 'stats')
-    utils.mk_dir(statsdir)
-
-    if filename:
-        filename = os.path.join(statsdir, filename)
-    utils.setup_logging(debuglevel, filename)
+    if not basic.setup_logging(debuglevel, filename, datadir=datadir):
+        print('Unknown log level %s' % debuglevel)
+        print_usage(progname)
+        sys.exit(0)
 
     storage = FileManager(datadir, updateMeta, updateRaw)
     execute(storage, srclist, agghosts, fromdate, todate, max_wait, all_dls)
+
 

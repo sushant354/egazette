@@ -6,10 +6,10 @@ import re
 
 from . import proxylist
 
-from . import utils
+from . import basic
 
 def sync(hostname, gazetteobjs, fromdate, todate, event):
-    utils.setup_logging_if_needed()
+    basic.setup_logging_if_needed()
     if hostname in proxylist.hostdict:
         proxy = urllib.request.ProxyHandler(proxylist.hostdict[hostname])
         opener = urllib.request.build_opener(proxy)
@@ -22,7 +22,7 @@ def sync(hostname, gazetteobjs, fromdate, todate, event):
             obj.sync(fromdate, todate, event)
 
 def all_downloads(hostname, gazetteobjs, event):
-    utils.setup_logging_if_needed()
+    basic.setup_logging_if_needed()
     for obj in gazetteobjs:
         obj.all_downloads(event)
 

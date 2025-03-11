@@ -18,6 +18,7 @@ from egazette.ocr.djvuxml import Djvu
 from egazette.ocr.abbyxml import Abby
 from egazette.ocr.hocr import HOCR
 from egazette.ocr.htmlmaker import HtmlMaker
+from egazette.utils.basic import setup_logging
 import internetarchive 
 from internetarchive import download, upload, get_session, modify_metadata
 
@@ -810,30 +811,10 @@ if __name__ == '__main__':
         print_usage(progname)
         sys.exit(0)
 
-    leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
-                 'warning': logging.WARNING,   'info': logging.INFO, \
-                 'debug': logging.DEBUG}
-
-    if loglevel not in leveldict:
+    if not setup_logging(loglevel, logfile):
         print('Unknown log level %s' % loglevel)             
         print_usage(progname)
         sys.exit(0)
-
-    logfmt  = '%(asctime)s: %(name)s: %(levelname)s %(message)s'
-    datefmt = '%Y-%m-%d %H:%M:%S'
-    if logfile:
-        logging.basicConfig(\
-            level   = leveldict[loglevel], \
-            format  = logfmt, \
-            filename = logfile, \
-            datefmt = datefmt \
-        )
-    else:
-        logging.basicConfig(\
-            level   = leveldict[loglevel], \
-            format  = logfmt, \
-            datefmt = datefmt \
-        )
 
     logger = logging.getLogger('gvision')
 
