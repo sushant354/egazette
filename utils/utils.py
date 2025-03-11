@@ -1,4 +1,3 @@
-import os
 import re
 import types
 import urllib.parse
@@ -200,10 +199,6 @@ def tag_contents_without_recurse(tag):
             contents.append(content)
 
     return contents
- 
-def mk_dir(dirname):
-    if not os.path.exists(dirname):
-        os.mkdir(dirname)
 
 def pad_zero(t):
     if t < 10:

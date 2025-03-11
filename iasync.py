@@ -89,10 +89,6 @@ class Gvision:
         self.client = get_google_client(key_file)
         self.iadir  = iadir
 
-    def mkdir(self, path):
-        if not os.path.exists(path):
-            os.mkdir(path)
-
     def convert_to_jpg_hocr(self, identifier, filepath):
         path, filename  = os.path.split(filepath)
         name, n = re.subn('.pdf$', '', filename)
@@ -102,9 +98,9 @@ class Gvision:
         gocrdir   = os.path.join(item_path, name + '_gocr')
         hocrfile  = os.path.join(item_path, name + '_chocr.html')
 
-        self.mkdir(item_path)
-        self.mkdir(jpgdir)
-        self.mkdir(gocrdir)
+        basic.mk_dir(item_path)
+        basic.mk_dir(jpgdir)
+        basic.mk_dir(gocrdir)
 
         success = pdf_to_jpg(filepath, jpgdir, 300)
         if not success:

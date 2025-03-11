@@ -18,7 +18,7 @@ from egazette.ocr.djvuxml import Djvu
 from egazette.ocr.abbyxml import Abby
 from egazette.ocr.hocr import HOCR
 from egazette.ocr.htmlmaker import HtmlMaker
-from egazette.utils.basic import setup_logging
+from egazette.utils.basic import setup_logging, mk_dir
 import internetarchive 
 from internetarchive import download, upload, get_session, modify_metadata
 
@@ -533,8 +533,7 @@ class IA:
             return None
 
         jpg_path, n = re.subn('_jp2$', '_jpg', jp2_path)
-        if not os.path.exists(jpg_path):
-            os.mkdir(jpg_path)
+        mk_dir(jpg_path)
 
         plist = []
         for filename in os.listdir(jp2_path):
@@ -686,8 +685,7 @@ def process_item(client, ia, ia_item, jp2_filter, out_format, \
                     f.extractall(item_path)
                     f.close()
 
-            if not os.path.exists(gocr_dir):
-                os.mkdir(gocr_dir)
+            mk_dir(gocr_dir)
 
             if out_format == 'abby':
                 out_file, n = re.subn('_jpg$', '_abbyy.xml', jpgdir)   

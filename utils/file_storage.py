@@ -3,12 +3,8 @@ import logging
 import glob
 import time
 
-from . import utils
+from . import basic
 from . import xml_ops
-
-def mk_dir(dirname):
-    if not os.path.exists(dirname):
-        os.mkdir(dirname)
 
 
 class FileManager:
@@ -21,14 +17,14 @@ class FileManager:
         self.updateRaw  = updateRaw
         self.updateMeta = updateMeta
 
-        mk_dir(self.rawdir)
-        mk_dir(self.metadir)
+        basic.mk_dir(self.rawdir)
+        basic.mk_dir(self.metadir)
 
     def create_dirs(self, dirname, relurl):
         words = relurl.split('/')
         for word in words[:-1]: 
             dirname = os.path.join(dirname, word)
-            mk_dir(dirname)
+            basic.mk_dir(dirname)
 
     def get_metainfo(self, relurl):
         metapath = os.path.join(self.metadir, '%s.xml' % relurl)
