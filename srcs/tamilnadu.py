@@ -5,6 +5,7 @@ import urllib.request, urllib.parse, urllib.error
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
                 
 class TamilNadu(BaseGazette):
     def __init__(self, name, storage):
@@ -150,7 +151,7 @@ class TamilNadu(BaseGazette):
 
     def process_ordinary_row(self, minfos, tr, order, dateobj, url):
         i = 0
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         
         for td in tr.find_all('td'):
             if i < len(order): 
@@ -215,7 +216,7 @@ class TamilNadu(BaseGazette):
                 continue    
 
             i = 0
-            metainfo = utils.MetaInfo()
+            metainfo = MetaInfo()
             metainfo.set_gztype('Ordinary')
             metainfo['gznum'] = gznum
             metainfo.set_date(dateobj)
@@ -287,7 +288,7 @@ class TamilNadu(BaseGazette):
 
     def process_extraordinary_row(self, minfos, tr, order, dateobj, url):
         i = 0
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         for td in tr.find_all('td'):
             if i < len(order): 
                 txt = utils.get_tag_contents(td)

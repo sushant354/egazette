@@ -5,6 +5,7 @@ import datetime
 
 from ..utils import utils
 from .basegazette import BaseGazette
+from ..utils.metainfo import MetaInfo
 
 class Odisha(BaseGazette):
     def __init__(self, name, storage):
@@ -42,7 +43,7 @@ class Odisha(BaseGazette):
         return order
                 
     def process_row(self, tr, order, dateobj):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
         i = 0
         for td in tr.find_all('td'):

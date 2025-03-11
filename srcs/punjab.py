@@ -7,6 +7,7 @@ import base64
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class Punjab(BaseGazette):
     def __init__(self, name, storage):
@@ -122,7 +123,7 @@ class Punjab(BaseGazette):
         return urllib.parse.urljoin(self.searchurl, href)
 
     def process_row(self, tr, order, dateobj):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
         i = 0
         for td in tr.find_all('td'):
@@ -182,7 +183,7 @@ class PunjabDSA(BaseGazette):
         return dls
 
     def get_metainfo(self, d, dateobj):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
 
         if 'Request_Id' in d:

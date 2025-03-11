@@ -6,6 +6,7 @@ from http.cookiejar import CookieJar
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class Uttarakhand(BaseGazette):
     def __init__(self, name, storage):
@@ -194,7 +195,7 @@ class Uttarakhand(BaseGazette):
         return None                
     
     def process_row(self, tr, order, dateobj):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)    
 
         i = 0

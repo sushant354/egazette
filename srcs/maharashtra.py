@@ -3,6 +3,7 @@ import os
 
 from .andhra import AndhraArchive
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class Maharashtra(AndhraArchive):
     def __init__(self, name, storage):
@@ -63,7 +64,7 @@ class Maharashtra(AndhraArchive):
         return order
 
     def process_result_row(self, tr, metainfos, dateobj, order):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
 
         i = 0

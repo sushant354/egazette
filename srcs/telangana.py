@@ -5,6 +5,7 @@ import urllib.parse
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class Telangana(BaseGazette):
     def __init__(self, name, storage):
@@ -44,7 +45,7 @@ class Telangana(BaseGazette):
         return None    
 
     def parse_row(self, tr, order, dateobj, gztype):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
         metainfo.set_gztype(gztype)
 

@@ -3,6 +3,7 @@ import os
 
 from .andhra import AndhraArchive
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class Jharkhand(AndhraArchive):
     def __init__(self, name, storage):
@@ -69,7 +70,7 @@ class Jharkhand(AndhraArchive):
         if len(tds) != len(order):
             return
 
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfos.append(metainfo)
         metainfo.set_date(dateobj)
 

@@ -5,6 +5,7 @@ import os
 from ..utils import utils
 from .basegazette import BaseGazette
 from .central import CentralBase
+from ..utils.metainfo import MetaInfo
 
 class Andhra(BaseGazette):
     def __init__(self, name, storage):
@@ -107,7 +108,7 @@ class Andhra(BaseGazette):
         return minfos
 
     def parse_row(self, tr, order, dateobj):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
 
         i = 0
@@ -253,7 +254,7 @@ class AndhraArchive(CentralBase):
         if not download:
             return
  
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfos.append(metainfo)
         metainfo.set_date(dateobj)
         metainfo['download'] = download
