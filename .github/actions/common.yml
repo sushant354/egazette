@@ -71,13 +71,11 @@ jobs:
           mkdir -p data
 
           if [[ $from_date == '' ]]; then
-            if [[ ! -e data/from_date.txt ]]; then
-              if [[ $testing == 'true' ]]; then
-                export TESTING=1
-              fi
-              scripts/get_fromdate.sh $src_name data/from_date.txt
+            if [[ $testing == 'true' ]]; then
+              export TESTING=1
             fi
-            from_date=$(cat data/from_date.txt)
+            scripts/get_fromdate.sh $src_name from_date.txt
+            from_date=$(cat from_date.txt)
           fi
 
           if [[ $to_date == '' ]]; then
@@ -96,7 +94,7 @@ jobs:
           if [[ $testing == 'true' ]]; then
             extra_args=' -S'
           fi
-          uv run --with-requirements requirements/iasync.in iasync.py -D data/ -a ${{ secrets.IA_ACCESS_KEY }} -k ${{ inputs.IA_SECRET_KEY }} -f '' $extra_args
+          uv run --with-requirements requirements/iasync.in iasync.py -u -D data/ -a ${{ secrets.IA_ACCESS_KEY }} -k ${{ secrets.IA_SECRET_KEY }} -f '' $extra_args
         id: push
 
       - name: Cleanup
