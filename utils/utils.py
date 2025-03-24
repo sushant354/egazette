@@ -35,6 +35,36 @@ def remove_spaces(x):
     x, n = re.subn('\s+', ' ', x)
     return x.strip()
 
+def get_selected_option(select):
+    option = select.find('option', {'selected': 'selected'})
+    if option == None:
+        option = select.find('option')
+
+    if option == None:
+        return ''
+
+    val = option.get('value')
+    if val == None:
+        val = ''
+
+    return val
+
+def replace_field(formdata, k, v):
+    newdata = []
+    for k1, v1 in formdata:
+        if k1 == k:
+            newdata.append((k1, v))
+        else:
+            newdata.append((k1, v1))
+    return newdata
+
+def remove_fields(postdata, fields):
+    newdata = []
+    for k, v in postdata:
+        if k not in fields:
+            newdata.append((k, v))
+    return newdata
+
 def check_next_page(tr, pagenum):
     links    = tr.findAll('a')
 
