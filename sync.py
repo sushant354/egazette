@@ -1,3 +1,4 @@
+import multiprocessing
 import datetime
 import sys
 import os
@@ -145,6 +146,12 @@ if __name__ == '__main__':
             datefmt = datefmt \
         )
 
+    if sys.platform == 'darwin':
+        # logging setup is lost in child processes if we use the default 'spawn' start_method on mac
+        # to make logging work, we need to either reinitialize it or change the start method
+        # picking changing the start method as it is simpler
+        # it is considered unsafe.. needs to be undone if we actually see crashes
+        multiprocessing.set_start_method('fork')
 
     storage = FileManager(datadir, updateMeta, updateRaw)
     execute(storage, srclist, agghosts, fromdate, todate, max_wait, all_dls)
