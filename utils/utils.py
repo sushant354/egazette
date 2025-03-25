@@ -65,6 +65,29 @@ def remove_fields(postdata, fields):
             newdata.append((k, v))
     return newdata
 
+
+def find_next_page(el, pagenum):
+    nextpage = None
+
+    links = el.findAll('a')
+
+    if len(links) <= 0:
+        return None
+
+    for link in links:
+        contents = get_tag_contents(link)
+        try:
+            val = int(contents)
+        except ValueError:
+            continue
+
+        if val == pagenum + 1 and link.get('href'):
+            nextpage = {'href': link.get('href'), 'title': f'{val}'}
+            break
+
+    return nextpage
+
+
 def check_next_page(tr, pagenum):
     links    = tr.findAll('a')
 
