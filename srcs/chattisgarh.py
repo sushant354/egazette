@@ -15,7 +15,7 @@ class ChattisgarhWeekly(CentralBase):
         self.baseurl      = 'https://egazette.cg.nic.in/FileSearch.aspx'
         self.search_endp  = 'FileSearch.aspx'
         self.file_url     = 'https://egazette.cg.nic.in/FileCS1.ashx?Id=%s'
-        self.result_table = 'ContentPlaceHolder2_GridView2'
+        self.result_table = 'ctl00_ContentPlaceHolder2_GridView2'
         self.gztype       = '1'
         self.gznum_re     = re.compile('\u0930\u093e\u091c\u092a\u0924\u094d\u0930\s*\u0915\u094d\u0930\u092e\u093e\u0902\u0915')
         self.partnum_re   = re.compile('\s*\u092d\u093e\u0917\s+(?P<num>.+)')
@@ -191,7 +191,7 @@ class ChattisgarhExtraordinary(ChattisgarhWeekly):
 
         self.gztype         = '2'
         self.filenum_cookie ='id123'
-        self.result_table   = 'ContentPlaceHolder2_GridView1'
+        self.result_table   = 'ctl00_ContentPlaceHolder2_GridView1'
         self.file_url       = 'http://egazette.cg.nic.in/FileCS.ashx?Id=%s'
         self.gazette_type   = 'Extraordinary'
 
