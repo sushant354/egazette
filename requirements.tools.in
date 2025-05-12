@@ -1,4 +1,4 @@
-PyPDF2
+pymupdf
 beautifulsoup4
 python-magic
 google-cloud-storage

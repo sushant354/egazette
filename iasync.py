@@ -16,6 +16,7 @@ from egazette.utils.file_storage import FileManager
 from egazette.utils import reporting
 from egazette.srcs  import datasrcs 
 from egazette.utils import utils
+from egazette.utils import pdf_ops
 from egazette.gvision import get_google_client, to_hocr, pdf_to_jpg, compress_file, LangTags
 
 class Stats:
@@ -147,6 +148,10 @@ class GazetteIA:
 
         self.session = get_session({'s3': session_data, 'logging': logconfig})
         self.logger = logging.getLogger('iasync')
+
+        self.num_upload_retries = 100
+        self.num_reattempts = 5
+        self.reattempt_delay_secs = 300
    
     def get_identifier(self, relurl, metainfo):
         srcname    = self.get_srcname(relurl)
@@ -275,7 +280,7 @@ class GazetteIA:
             item = self.get_ia_item(identifier)
             if item:
                 break
-            time.sleep(300)
+            time.sleep(self.reattempt_delay_secs)
 
         rawfile  = self.file_storage.get_rawfile_path(relurl)
         metafile = self.file_storage.get_metafile_path(relurl)
@@ -316,76 +321,128 @@ class GazetteIA:
             metadata['ocr'] = 'google-cloud-vision IndianKanoon 1.0'
             metadata['fts-ignore-ingestion-lang-filter'] = 'true'
 
-        count = 5
-        while count > 0:
-           success = self.ia_upload(identifier, metadata, to_upload, files, rawfile)
-           if success:
-               break
-           count = count - 1 
-           time.sleep(300)    
+        success = self.ia_upload(identifier, metadata, to_upload, files)
 
         if success:
             self.logger.info('Successfully uploaded %s', identifier)
-        else:    
+        else:
             self.logger.warning('Error in uploading %s', identifier)
 
         if self.gvisionobj and to_upload:
             for filepath in to_upload:
                 os.remove(filepath)
 
-            
         return success
 
-    def ia_upload(self, identifier, metadata, to_upload, files, rawfile):
-        success = False
-        try: 
-            if metadata:
-                r = upload(identifier, to_upload, metadata = metadata, \
+    def pop_rawfile(self, to_upload):
+        idx = -1
+        for i,file in enumerate(to_upload):
+            if file.endswith('.pdf'):
+                idx = i
+                break
+
+        if idx == -1:
+            return None
+        
+        return to_upload.pop(idx)
+
+    def ia_upload(self, identifier, metadata, to_upload, files):
+        uploaded = False
+        bad_pdf_detected = False
+        to_del = []
+
+        count = self.num_reattempts
+        while count > 0:
+            try:
+                if metadata:
+                    upload(identifier, to_upload, metadata = metadata, \
                            access_key = self.access_key, \
                            secret_key = self.secret_key, \
-                           retries=100)
-            else:               
-                r = upload(identifier, to_upload, \
+                           retries=self.num_upload_retries)
+                else:               
+                    upload(identifier, to_upload, \
                            access_key = self.access_key, \
                            secret_key = self.secret_key, \
-                           retries=100)
-            success = True
-        except HTTPError as e:
-           self.logger.warning('Error in upload for %s: %s', identifier, e)
-           msg = '%s' % e
-           if re.search('Syntax error detected in pdf data', msg) or \
-                  re.search('error checking pdf file', msg):
-              r = self.upload_bad_pdf(identifier, rawfile, files)
-              success = True
+                           retries=self.num_upload_retries)
+                uploaded = True
+                break
+            except HTTPError as e:
+                self.logger.warning('Error in upload for %s: %s', identifier, e)
 
-        except Exception as e:
-           self.logger.warning('Error in upload for %s: %s', identifier, e)
-           success = False
-        return success   
+                msg = str(e)
+                if re.search('Syntax error detected in pdf data', msg) or \
+                       re.search('error checking pdf file', msg):
+                    if bad_pdf_detected:
+                        self.logger.warning('Already attempted fixing bad pdf, giving up for %s: %s', \
+                                            identifier, e)
+                        break
+                    bad_pdf_detected = True
 
-    def upload_bad_pdf(self, identifier, rawfile, files):
+                    rawfile = self.pop_rawfile(to_upload)
+
+                    if rawfile is None:
+                        self.logger.error('Unable to locate the bad pdf for %s', identifier)
+                        break
+
+                    renamed_pdf_file = self.rename_bad_pdf(rawfile)
+                    to_del.append(renamed_pdf_file)
+                    if renamed_pdf_file in files:
+                        self.logger.warning('Renamed PDF file already exists. Ignoring. for %s', identifier)
+                    else:
+                        to_upload.append(renamed_pdf_file)
+
+                    corrected_pdf_file = self.create_corrected_pdf(rawfile)
+                    if corrected_pdf_file is not None:
+                        to_upload.append(corrected_pdf_file)
+                        to_del.append(corrected_pdf_file)
+                    continue
+
+                elif re.search('pdf requires a password', msg):
+
+                    rawfile = self.pop_rawfile(to_upload)
+
+                    if rawfile is None:
+                        self.logger.error('Unable to locate the bad locked pdf for %s', identifier)
+                        break
+
+                    renamed_pdf_file = self.rename_bad_pdf(rawfile)
+                    to_del.append(renamed_pdf_file)
+                    if renamed_pdf_file in files:
+                        self.logger.warning('Renamed PDF file already exists. Ignoring. for %s', identifier)
+                    else:
+                        to_upload.append(renamed_pdf_file)
+                    continue
+
+            except Exception as e:
+                self.logger.warning('Error in upload for %s: %s', identifier, e)
+
+            count = count - 1 
+            time.sleep(self.reattempt_delay_secs)
+
+        for file in to_del:
+            os.remove(file)
+
+        return uploaded
+
+
+    def rename_bad_pdf(self, rawfile):
         name = '%s-' %rawfile.split('/')[-1]
-        if name in files:
-            return False
         tmpfile = '/tmp/%s' % name
         shutil.copyfile(rawfile, tmpfile)
-        while 1:
-            if self.upload_file(identifier, tmpfile):
-                break
-            time.sleep(300)
+        return tmpfile
 
-        self.logger.info('Successfully uploaded %s to %s', name, identifier)
-        os.remove(tmpfile)
-        return True
+    def create_corrected_pdf(self, rawfile):
+        name = '%s' %rawfile.split('/')[-1]
 
-    def upload_file(self, identifier, filepath):
+        tmpfile = '/tmp/%s' % name
+
         try:
-            upload(identifier, [filepath], access_key = self.access_key, \
-                   secret_key = self.secret_key)
-        except Exception as e: 
-           self.logger.warning('Error in upload for %s: %s', filepath, e)
-           return False 
-        return True   
+            pdf_ops.convert_to_image_pdf_file(rawfile, tmpfile)
+            return tmpfile
+        except Exception as ex:
+            self.logger.error('Unable to convert unacceptble pdf file to image pdf file, ex: %s', ex)
+            return None
+
 
     def get_title(self, src, metainfo):
         category = datasrcs.categories[src]
@@ -504,7 +561,7 @@ class GazetteIA:
             item = self.get_ia_item(identifier)
             if item:
                 break
-            time.sleep(300)
+            time.sleep(self.reattempt_delay_secs)
 
         if not item.exists:
             return self.upload(relurl)
@@ -513,7 +570,7 @@ class GazetteIA:
             while 1:
                 if self.ia_modify_metadat(identifier, metadata):
                     break
-                time.sleep(300)    
+                time.sleep(self.reattempt_delay_secs)    
  
         return True
 
