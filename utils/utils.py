@@ -9,11 +9,9 @@ import sys
 import calendar
 import logging
 
-from PyPDF2 import PdfFileReader
 from xml.parsers.expat import ExpatError
 from xml.dom import minidom, Node
 from bs4 import BeautifulSoup, NavigableString, Tag
-from functools import reduce
 
 def parse_xml(xmlpage):
     try: 
@@ -377,7 +375,6 @@ def stats_to_message(stats):
  
     return '\n'.join(messagelist)
 
-
 def get_file_type(filepath):
     mtype = magic.from_file(filepath, mime = True)
 
@@ -402,25 +399,6 @@ def get_file_extension(mtype):
         return 'png'
     return 'unkwn'
 
-def extract_links_from_pdf(fileobj):
-    doc = PdfFileReader(fileobj)
-    annots = [page.get('/Annots') for page in doc.pages]
-
-    annots = [note.getObject() for note in annots if note is not None]
-
-    annots = reduce(lambda x, y: x + y, annots)
-
-    links = []
-    for note in annots:
-        link = note.getObject().get('/A')
-        if link:
-            launch = link.getObject().get('/F')
-            if launch:
-                href = launch.getObject().get('/F')
-                if href:
-                    links.append(href)
-    return links
-
 def setup_logging(loglevel, logfile):
     leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
                  'warning': logging.WARNING,   'info': logging.INFO, \
@@ -444,7 +422,4 @@ def setup_logging(loglevel, logfile):
 
 
 
-
-if __name__ == '__main__':
-    print(extract_links_from_pdf(open(sys.argv[1], 'rb')))
 
