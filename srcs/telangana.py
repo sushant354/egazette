@@ -1,6 +1,5 @@
 import re
 import os
-import datetime
 from http.cookiejar import CookieJar
 import urllib.parse
 
@@ -22,7 +21,6 @@ class Telangana(BaseGazette):
         self.baseurl      = f'https://{HOST_IP}/homeAllGazetteSearch' + '?type={}'
         self.hostname     = 'tggazette.cgg.gov.in'
         self.search_endp  = 'searchGazettesNow'
-        self.start_date   = datetime.datetime(2014, 1, 1)
 
     def get_field_order(self, tr):
         i = 0

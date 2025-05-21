@@ -3,7 +3,6 @@ import urllib.parse
 import urllib.error
 import re
 import os
-import datetime
 
 from .basegazette import BaseGazette
 from ..utils import utils
@@ -14,7 +13,6 @@ class Goa(BaseGazette):
         self.hostname = 'goaprintingpress.gov.in'
         self.searchurl = 'https://goaprintingpress.gov.in/search-e-gazettes-by-date/?'\
                          'task=search_by_date&Itemid=177&type=ALL&series=ALL&sdate={0}&edate={0}&action=search'
-        self.start_date = datetime.datetime(1908, 1, 1)
 
     def download_gazette(self, metainfo, searchurl, relpath):
         link = metainfo.pop('download')

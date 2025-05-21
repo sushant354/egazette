@@ -4,7 +4,6 @@ import os
 from PIL import Image
 import io
 import urllib.request, urllib.parse, urllib.error
-import datetime
 
 from .andhra import AndhraArchive
 from ..utils import utils
@@ -21,7 +20,6 @@ class Haryana(AndhraArchive):
         self.search_endp  = 'home.aspx'
         self.result_table = 'ContentPlaceHolder1_GridView1'
         self.captcha_url  = urllib.parse.urljoin(self.baseurl, '/Handler.ashx')
-        self.start_date   = datetime.datetime(2014, 1, 1)
         self.gazette_js   = 'window.open\(\'(?P<href>Gazette[^\']+)'
         self.captcha_field = 'ctl00$ContentPlaceHolder1$txtcaptcha'
         self.solve_captcha = decode_captcha.haryana_captcha
@@ -231,7 +229,6 @@ class HaryanaArchive(Haryana):
         self.hostname     = 'www.egazetteharyana.gov.in'
         self.search_endp  = 'ArchiveNotifications.aspx'
         self.gazette_js   = 'window.open\(\'(?P<href>ArchiveNotifications[^\']+)'
-        self.start_date   = datetime.datetime(1958, 1, 1)
 
     def get_post_data(self, tags, dateobj, category):
         datestr  = utils.dateobj_to_str(dateobj, '-', reverse = True)

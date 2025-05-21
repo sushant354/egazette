@@ -20,7 +20,6 @@ class ChattisgarhWeekly(CentralBase):
         self.gznum_re     = re.compile('\u0930\u093e\u091c\u092a\u0924\u094d\u0930\s*\u0915\u094d\u0930\u092e\u093e\u0902\u0915')
         self.partnum_re   = re.compile('\s*\u092d\u093e\u0917\s+(?P<num>.+)')
         self.filenum_cookie = 'id'
-        self.start_date   = datetime.datetime(2000, 11, 1)
         self.gazette_type = 'Ordinary'
         
     def get_post_data(self, tags, dateobj):

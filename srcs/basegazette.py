@@ -9,6 +9,8 @@ from requests.packages.urllib3.util.retry import Retry
 
 from ..utils import utils
 
+from .datasrcs_info import get_start_date
+
 class WebResponse:
    def __init__(self):
        self.srvresponse  = None
@@ -31,7 +33,6 @@ class WebResponse:
 class Downloader:
     def __init__(self, name, storage_manager):
         self.hostname    = None
-        self.start_date  = None
         self.name        = name
 
         self.storage_manager = storage_manager
@@ -48,8 +49,9 @@ class Downloader:
         self.useragent   = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0'
 
     def all_downloads(self, event):
-        assert self.start_date != None
-        return self.sync(self.start_date, datetime.datetime.today(), event)
+        start_date = get_start_date(self.name)
+        assert start_date != None
+        return self.sync(start_date, datetime.datetime.today(), event)
 
     def sync_daily(self, event):
         todate = datetime.datetime.today() #- datetime.timedelta(days = 1)
@@ -224,7 +226,6 @@ class BaseGazette(Downloader):
     def __init__(self, name, storage_manager):
         Downloader.__init__(self, name, storage_manager)
         self.hostname    = None
-        self.start_date  = None
         self.parser      = 'lxml'
 
     def is_valid_gazette(self, doc, min_size):
