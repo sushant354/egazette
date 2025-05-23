@@ -10,30 +10,48 @@ class TamilNadu(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
         self.hostname = 'www.stationeryprinting.tn.gov.in'
-        self.baseurl  = 'http://www.stationeryprinting.tn.gov.in'
+        self.baseurl  = 'https://www.stationeryprinting.tn.gov.in'
+        self.archives_url = 'https://www.stationeryprinting.tn.gov.in/archives.php'
+        self.start_date   = datetime.datetime(2008, 1, 1)
 
-        self.ordinary_byyear = '/gazette/gazette_list%d.php'
-        self.extraordinary_byyear = '/extraordinary/extraord_list%d.php'
+    def get_links(self, dateobj):
+        ordinary_url = None
+        extraordinary_url = None
 
-        self.ordinary_latest      = '/gazette/gazette_list.php'
-        self.extraordinary_latest = '/extraordinary/extraord_list.php'
-        self.start_date           = datetime.datetime(2008, 1, 1)
+        response = self.download_url(self.archives_url)
+        if response == None or response.webpage == None:
+            self.logger.warning('Could not fetch %s for the day %s', self.archive_url, dateobj)
+            return ordinary_url, extraordinary_url
+
+        d = utils.parse_webpage(response.webpage, self.parser)
+        if d == None:
+            self.logger.warning('Could not parse archive page for the day %s', dateobj)
+            return ordinary_url, extraordinary_url
+
+        section = d.find('section', {'id': 'paragraph'})
+        if section == None:
+            self.logger.warning('Could not locate section in archive page for the day %s', dateobj)
+            return ordinary_url, extraordinary_url
+
+        year = dateobj.year
+        ordinary_reobj = re.compile(rf'^Gazette\s+Publication:\s+{year}$')              
+        extraordinary_reobj = re.compile(rf'^Extra\s+Ordinary\s+Gazette\s+Publication:\s+{year}$')              
+        links = section.find_all('a')
+        for link in links:
+            txt = utils.get_tag_contents(link)
+            txt = txt.strip()
+            if ordinary_reobj.match(txt):
+                ordinary_url = link.get('href')
+            if extraordinary_reobj.match(txt):
+                extraordinary_url = link.get('href')
+        return ordinary_url, extraordinary_url
+
 
     def download_oneday(self, relpath, dateobj):
         dls = []
-        today = datetime.date.today()
 
-        ordinary_url      = None
-        extraordinary_url = None
+        ordinary_url, extraordinary_url = self.get_links(dateobj)
 
-        start_date = self.start_date.date()
-        if today.year == dateobj.year:
-            ordinary_url      = self.ordinary_latest
-            extraordinary_url = self.extraordinary_latest
-        elif dateobj >= start_date:
-            ordinary_url      = self.ordinary_byyear % dateobj.year    
-            extraordinary_url = self.extraordinary_byyear % dateobj.year    
-        
         if ordinary_url:
             self.download_ordinary(ordinary_url, dls, relpath, dateobj)
 
@@ -115,8 +133,9 @@ class TamilNadu(BaseGazette):
     def ordinary_field_order(self, tr):
         order = []
         found = False
-        for td in tr.find_all('td'):
+        for td in tr.find_all('th'):
             txt = utils.get_tag_contents(td)
+            txt = txt.strip()
             if txt and re.search('Issue\s+No', txt, re.IGNORECASE):
                 order.append('gznum')
                 found = True
@@ -137,7 +156,7 @@ class TamilNadu(BaseGazette):
         for td in tr.find_all('td'):
             if i < len(order): 
                 if order[i] == 'subject':
-                    metainfo.set_subject([utils.get_tag_contents(li) for li in td.find_all('li')])
+                    metainfo.set_subject(list(td.stripped_strings))
                 elif order[i] == 'gznum':
                     link = td.find('a')
                     if link and link.get('href'):
@@ -145,7 +164,7 @@ class TamilNadu(BaseGazette):
                         metainfo.set_url(urllib.parse.urljoin(url, href))
 
                     txt = utils.get_tag_contents(td)
-                    reobj = re.search('(?P<gznum>\w+)[\s-]*dt[.\s-]*(?P<day>\d+)-(?P<month>\d+)-(?P<year>\d+)', txt)
+                    reobj = re.search('(?P<gznum>\w+)[\s-]*dated:[.\s-]*(?P<day>\d+)-(?P<month>\d+)-(?P<year>\d+)', txt)
                     if reobj:
                         groupdict = reobj.groupdict()
                         metainfo['gznum'] = groupdict['gznum']
@@ -168,7 +187,7 @@ class TamilNadu(BaseGazette):
     def get_listing_order(self, tr):
         order = [] 
         found = False
-        for td in tr.find_all('td'): 
+        for td in tr.find_all('th'): 
             txt = utils.get_tag_contents(td)
             if txt and re.search('Click\s+to', txt):
                 order.append('download')
@@ -206,7 +225,8 @@ class TamilNadu(BaseGazette):
                 if i < len(order):
                     if order[i] == 'subject':
                         lis = [li.extract() for li in td.find_all('li')]
-                        notifications = [utils.get_tag_contents(li) for li in lis]
+                        notifications = list(td.stripped_strings)
+                        notifications = [ n for n in notifications if n.strip() != '' ]
                         metainfo['notifications'] = notifications
                         txt = utils.get_tag_contents(td)
                         if txt:
@@ -216,6 +236,7 @@ class TamilNadu(BaseGazette):
                         link = td.find('a')
                         if link and link.get('href'):
                             href = link.get('href')
+                            href = href.replace('\\', '/')
                             metainfo.set_url(urllib.parse.urljoin(url, href))
                         txt = utils.get_tag_contents(td)
                         if txt:
@@ -234,8 +255,9 @@ class TamilNadu(BaseGazette):
     def extraordinary_field_order(self, tr):
         order = []
         found = False
-        for td in tr.find_all('td'):
+        for td in tr.find_all('th'):
             txt = utils.get_tag_contents(td)
+            txt = txt.strip()
             if txt and re.search('Issue\s+No', txt, re.IGNORECASE):
                 order.append('gznum')
                 found = True
@@ -250,6 +272,12 @@ class TamilNadu(BaseGazette):
                 found = True
             elif txt and re.search('Subject', txt, re.IGNORECASE):
                 order.append('subject')
+                found = True
+            elif txt and re.search('Department', txt, re.IGNORECASE):
+                order.append('department')
+                found = True
+            elif txt and re.search('G\.O\s+No', txt, re.IGNORECASE):
+                order.append('notification_num')
                 found = True
             else:
                 order.append('')    
@@ -270,11 +298,6 @@ class TamilNadu(BaseGazette):
                     continue
 
                 if order[i] == 'gznum':
-                    link = td.find('a')
-                    if link and link.get('href'):
-                        href = link.get('href')
-                        metainfo.set_url(urllib.parse.urljoin(url, href))
-
                     if txt:
                         metainfo['gznum'] = txt
                 elif order[i] == 'date':
@@ -286,6 +309,10 @@ class TamilNadu(BaseGazette):
                         except:    
                             self.logger.warning('Unable to create date from %s', txt)
                 elif order[i] == 'partnum':
+                    link = td.find('a')
+                    if link and link.get('href'):
+                        href = link.get('href')
+                        metainfo.set_url(urllib.parse.urljoin(url, href))
                     section = None
                     reobj = re.search('Part[\s-]*\w+', txt)
                     if reobj:
@@ -301,7 +328,7 @@ class TamilNadu(BaseGazette):
                     if section:
                         metainfo['section'] = section
 
-                elif order[i] in ['subject', 'extraordinary_type']:
+                elif order[i] in ['subject', 'extraordinary_type', 'department', 'notification_num']:
                     metainfo[order[i]] = txt                    
  
             i += 1

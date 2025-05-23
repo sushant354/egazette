@@ -210,19 +210,6 @@ class Haryana(AndhraArchive):
                 elif t[0] == 'ctl00$ContentPlaceHolder1$ctl03':
                     t = (t[0], '10')
                 newpost.append(t)
-        
-            response = self.download_url(search_url, postdata = newpost, \
-                                         loadcookies= cookiejar)
-            if not response or not response.webpage:
-                self.logger.warning('Could not get the page for %s' % metainfo)
-                continue
-            webpage = response.webpage.decode('utf-8', 'ignore') 
-            reobj = re.search(self.gazette_js, webpage)
-            if not reobj:
-                self.logger.warning('Could not get url link for %s' % metainfo)
-                continue
-            href  = reobj.groupdict()['href']
-            gzurl = urllib.parse.urljoin(search_url, href)
 
             num = metainfo['notification_num']
             if 'gztype' in metainfo:
@@ -230,7 +217,9 @@ class Haryana(AndhraArchive):
             num, n = re.subn('[\s/().\[\]]+', '-', num)
             relurl = os.path.join(relpath, num)
 
-            if self.save_gazette(relurl, gzurl, metainfo):
+            if self.save_gazette(relurl, search_url, metainfo, \
+                                 postdata = newpost, referer = search_url, \
+                                 cookiefile = cookiejar):
                 dls.append(relurl)
 
         return dls
@@ -238,7 +227,7 @@ class Haryana(AndhraArchive):
 class HaryanaArchive(Haryana):
     def __init__(self, name, storage):
         Haryana.__init__(self, name, storage)
-        self.baseurl      = 'http://www.egazetteharyana.gov.in/ArchiveNotifications.aspx'
+        self.baseurl      = 'https://www.egazetteharyana.gov.in/ArchiveNotifications.aspx'
         self.hostname     = 'www.egazetteharyana.gov.in'
         self.search_endp  = 'ArchiveNotifications.aspx'
         self.gazette_js   = 'window.open\(\'(?P<href>ArchiveNotifications[^\']+)'
@@ -318,7 +307,6 @@ class HaryanaArchive(Haryana):
         categories = self.find_categories(d)
         for category in categories:
             dls.extend(self.download_onecat(relpath, dateobj, category))
-            break
 
         return dls 
 
@@ -397,4 +385,53 @@ class HaryanaArchive(Haryana):
         response = self.download_url(search_url, savecookies = cookiejar, \
                                    loadcookies = cookiejar, postdata = newpost)
         return response
+
+    def download_metainfos(self, relpath, metainfos, search_url, \
+                           postdata, cookiejar):
+        dls = []
+        for metainfo in metainfos:
+            if 'download' not in metainfo or 'notification_num' not in metainfo:
+                self.logger.warning('Required fields not present. Ignoring- %s' % metainfo) 
+                continue
+
+            href = metainfo.pop('download')
+            reobj = re.search('javascript:__doPostBack\(\'(?P<event_target>[^\']+)\'', href)
+            if not reobj:
+                self.logger.warning('No event_target in the gazette link. Ignoring - %s' % metainfo)
+                continue 
+
+            groupdict    = reobj.groupdict()
+            event_target = groupdict['event_target']
+
+            newpost = []
+            for t in postdata:
+                if t[0] == '__EVENTTARGET':
+                    t = (t[0], event_target)
+                elif t[0] == 'ctl00$ContentPlaceHolder1$ctl03':
+                    t = (t[0], '10')
+                newpost.append(t)
+
+            response = self.download_url(search_url, postdata = newpost, \
+                                         loadcookies= cookiejar)
+            if not response or not response.webpage:
+                self.logger.warning('Could not get the page for %s' % metainfo)
+                continue
+            webpage = response.webpage.decode('utf-8', 'ignore') 
+            reobj = re.search(self.gazette_js, webpage)
+            if not reobj:
+                self.logger.warning('Could not get url link for %s' % metainfo)
+                continue
+            href  = reobj.groupdict()['href']
+            gzurl = urllib.parse.urljoin(search_url, href)
+
+            num = metainfo['notification_num']
+            if 'gztype' in metainfo:
+                num = '%s_%s' % (metainfo['gztype'], num)
+            num, n = re.subn('[\s/().\[\]]+', '-', num)
+            relurl = os.path.join(relpath, num)
+
+            if self.save_gazette(relurl, gzurl, metainfo):
+                dls.append(relurl)
+
+        return dls
 

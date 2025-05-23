@@ -9,11 +9,9 @@ import sys
 import calendar
 import logging
 
-from PyPDF2 import PdfFileReader
 from xml.parsers.expat import ExpatError
 from xml.dom import minidom, Node
 from bs4 import BeautifulSoup, NavigableString, Tag
-from functools import reduce
 
 def parse_xml(xmlpage):
     try: 
@@ -34,6 +32,59 @@ def get_node_value(xmlNodes):
 def remove_spaces(x):
     x, n = re.subn('\s+', ' ', x)
     return x.strip()
+
+def get_selected_option(select):
+    option = select.find('option', {'selected': 'selected'})
+    if option == None:
+        option = select.find('option')
+
+    if option == None:
+        return ''
+
+    val = option.get('value')
+    if val == None:
+        val = ''
+
+    return val
+
+def replace_field(formdata, k, v):
+    newdata = []
+    for k1, v1 in formdata:
+        if k1 == k:
+            newdata.append((k1, v))
+        else:
+            newdata.append((k1, v1))
+    return newdata
+
+def remove_fields(postdata, fields):
+    newdata = []
+    for k, v in postdata:
+        if k not in fields:
+            newdata.append((k, v))
+    return newdata
+
+
+def find_next_page(el, pagenum):
+    nextpage = None
+
+    links = el.findAll('a')
+
+    if len(links) <= 0:
+        return None
+
+    for link in links:
+        contents = get_tag_contents(link)
+        try:
+            val = int(contents)
+        except ValueError:
+            continue
+
+        if val == pagenum + 1 and link.get('href'):
+            nextpage = {'href': link.get('href'), 'title': f'{val}'}
+            break
+
+    return nextpage
+
 
 def check_next_page(tr, pagenum):
     links    = tr.findAll('a')
@@ -324,7 +375,6 @@ def stats_to_message(stats):
  
     return '\n'.join(messagelist)
 
-
 def get_file_type(filepath):
     mtype = magic.from_file(filepath, mime = True)
 
@@ -349,25 +399,6 @@ def get_file_extension(mtype):
         return 'png'
     return 'unkwn'
 
-def extract_links_from_pdf(fileobj):
-    doc = PdfFileReader(fileobj)
-    annots = [page.get('/Annots') for page in doc.pages]
-
-    annots = [note.getObject() for note in annots if note is not None]
-
-    annots = reduce(lambda x, y: x + y, annots)
-
-    links = []
-    for note in annots:
-        link = note.getObject().get('/A')
-        if link:
-            launch = link.getObject().get('/F')
-            if launch:
-                href = launch.getObject().get('/F')
-                if href:
-                    links.append(href)
-    return links
-
 def setup_logging(loglevel, logfile):
     leveldict = {'critical': logging.CRITICAL, 'error': logging.ERROR, \
                  'warning': logging.WARNING,   'info': logging.INFO, \
@@ -391,7 +422,4 @@ def setup_logging(loglevel, logfile):
 
 
 
-
-if __name__ == '__main__':
-    print(extract_links_from_pdf(open(sys.argv[1], 'rb')))
 

@@ -10,43 +10,64 @@ from ..utils import utils
 class DelhiWeekly(CentralBase):
     def __init__(self, name, storage):
         CentralBase.__init__(self, name, storage)
-        self.baseurl     = 'https://www.egazette.nic.in'
+        self.baseurl     = 'https://egazette.gov.in'
         self.start_date   = datetime.datetime(2016, 5, 1)
 
     def download_oneday(self, relpath, dateobj):
         dls = []
-        response = self.download_url(self.baseurl)
-        if not response:
-            self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
-            return dls
-
         cookiejar  = CookieJar()
+        postdata = None
+        while postdata == None:
+            response = self.download_url(self.baseurl, savecookies = cookiejar, loadcookies = cookiejar)
+            if not response:
+                self.logger.warning('Could not fetch %s for the day %s', self.baseurl, dateobj)
+                return dls
 
-        curr_url = response.response_url
-        postdata = self.get_form_data(response.webpage, dateobj, 'default.aspx')
+            curr_url = response.response_url
+            postdata = self.get_form_data(response.webpage, dateobj, 'default.aspx')
         postdata.append(('ImgMessage_OK.x', 60))
         postdata.append(('ImgMessage_OK.y', 21))
-        response = self.download_url(curr_url, referer = curr_url, postdata = postdata)
-
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                     loadcookies = cookiejar, referer = curr_url, \
+                                     postdata = postdata)
+        if not response:
+            self.logger.warning('Could not fetch %s for the day %s', curr_url, dateobj)
+            return dls
 
         curr_url = response.response_url
         state_url = urllib.parse.urljoin(curr_url, 'StateGazette.aspx')
-        response = self.download_url(state_url, referer = curr_url)
+        response = self.download_url(state_url, savecookies = cookiejar, \
+                                     loadcookies = cookiejar, referer = curr_url)
         curr_url = urllib.parse.urljoin(curr_url, 'DelhiGazette.aspx')
-        response = self.download_url(curr_url, referer = state_url)
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                    loadcookies = cookiejar, referer = state_url)
+
+        postdata = self.get_form_data(response.webpage, dateobj, 'DelhiGazette.aspx')
+        self.remove_fields(postdata, set(['Before_ePublish']))
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                     loadcookies = cookiejar, referer = curr_url, \
+                                     postdata = postdata)
+        if not response:
+            self.logger.warning('Could not fetch %s for the day %s', curr_url, dateobj)
+            return dls
 
         state_url = curr_url
         curr_url = urllib.parse.urljoin(curr_url, 'SearchCategory.aspx')
-        response = self.download_url(curr_url, referer = state_url)
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                     loadcookies = cookiejar, referer = state_url)
+
         postdata = self.get_form_data(response.webpage, dateobj, \
                                      'SearchCategory.aspx')
-        response = self.download_url(curr_url, referer = curr_url, \
+        postdata = self.replace_field(postdata, '__EVENTTARGET', 'ddlGazetteCategory')
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                     loadcookies = cookiejar, referer = curr_url, \
                                      postdata = postdata)
         postdata = self.get_form_data(response.webpage, dateobj, \
                                      'SearchCategory.aspx')
         postdata.append(('ImgSubmitDetails_Delhi.x', '76'))
         postdata.append(('ImgSubmitDetails_Delhi.y', '20'))
-        response = self.download_url(curr_url, referer = curr_url, \
+        response = self.download_url(curr_url, savecookies = cookiejar, \
+                                     loadcookies = cookiejar, referer = curr_url, \
                                      postdata = postdata)
 
 

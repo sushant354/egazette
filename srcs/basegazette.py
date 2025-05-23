@@ -1,10 +1,11 @@
 import logging
 import datetime
 import urllib.request, urllib.parse, urllib.error
-import urllib.request, urllib.error, urllib.parse
-import urllib.parse
 import os
 import time
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 from ..utils import utils
 
@@ -36,6 +37,11 @@ class Downloader:
         self.storage_manager = storage_manager
         self.backoff  = 0
         self.lookback = 15 
+        self.num_http_retries = 3
+        self.retry_delay_base_secs = 100
+        self.retry_delay_max_secs = 300
+        self.request_timeout_secs = 400
+
     
         self.logger      = logging.getLogger('crawler.%s' % self.name)
 
@@ -67,12 +73,68 @@ class Downloader:
             fromdate += datetime.timedelta(days=1)
         return newdownloads
 
+    def get_session_retry(self):
+        retries = self.num_http_retries
+        retry = Retry(
+            total=retries,
+            read=retries,
+            connect=retries,
+            #backoff_max=self.retry_delay_max_secs,
+            backoff_factor=self.retry_delay_base_secs,
+            status_forcelist=set([503,504,403]),
+        )
+        return retry
+
+    def get_session(self):
+        s = requests.session()
+        retry = self.get_session_retry()
+        s.mount('http://', HTTPAdapter(max_retries=retry))
+        s.mount('https://', HTTPAdapter(max_retries=retry))
+        return s
+
+
+    def download_url_using_session(self, url, session = None, postdata = None, \
+                                   referer = None, headers = {}):
+        if session == None:
+            session = self.get_session()
+
+        webresponse = WebResponse()
+
+        headers['User-agent'] = self.useragent
+
+        if referer:
+            headers['Referer'] = referer
+
+        fixed_url = self.url_fix(url)        
+        req_kwargs = { 'timeout': self.request_timeout_secs }
+
+        try:
+            if postdata == None:
+                response = session.get(fixed_url, headers=headers, **req_kwargs)
+            else:
+                if type(postdata) == list:
+                    postdata = dict(postdata)
+                response = session.post(fixed_url, data=postdata, headers=headers, **req_kwargs)
+            self.logger.debug('Request url: %s headers: %s data: %s', \
+                              fixed_url, response.request.headers, postdata)
+            status_code = response.raise_for_status()
+            webresponse.set_webpage(response.content)
+            webresponse.set_srvresponse({ 'headers': response.headers, 'status': response.status_code })
+            webresponse.set_response_url(response.url)
+        except Exception as e:
+            webresponse.set_error(e)
+            self.logger.warning('Could not fetch: %s error: %s' % (url, e))
+            return webresponse
+
+        self.logger.info('Url: %s response_url: %s Status: %s' % (fixed_url, response.url, status_code))
+        return webresponse
+
     def download_url(self, url, loadcookies = None, savecookies = None, \
                      postdata = None, referer = None, \
                      encodepost= True, headers = {}):
-        for i in range(0, 3):
+        for i in range(0, self.num_http_retries):
             if i > 0:
-                time.sleep(i * 100)
+                time.sleep(i * self.retry_delay_base_secs)
             response = self.download_url_onetime(url, loadcookies, savecookies,\
                                                  postdata, referer, \
                                                  encodepost, headers)
@@ -116,7 +178,7 @@ class Downloader:
         self.logger.debug('Request url: %s headers: %s data: %s', \
                             request.full_url, request.headers, request.data)
         try:
-            opener  = urllib.request.urlopen(request, timeout = 400)
+            opener  = urllib.request.urlopen(request, timeout = self.request_timeout_secs)
             response = opener.info()
             webpage  = opener.read()
             

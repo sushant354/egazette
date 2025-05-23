@@ -9,7 +9,7 @@ from ..utils import utils
 class MadhyaPradesh(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl  = 'http://govtpressmp.nic.in/gazette.html'
+        self.baseurl  = 'https://govtpressmp.nic.in/gazette.html'
         self.hostname = 'govtpressmp.nic.in'
 
         self.extraordinary_url =  '/history-gazette-extra-%d.html'
