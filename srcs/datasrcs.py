@@ -24,6 +24,7 @@ from . import stgeorge
 
 from . import goa
 from . import csl 
+from . import bis
 
 srcdict = { \
 'central_weekly'       : central.CentralWeekly, \
@@ -54,6 +55,7 @@ srcdict = { \
 'goa'                  : goa.Goa, \
 'csl_weekly'           : csl.CSLWeekly, \
 'csl_extraordinary'    : csl.CSLExtraordinary, \
+'bis'                  : bis.BIS, \
 }
 
 srcnames = { \
@@ -116,6 +118,7 @@ categories = { \
 'goa'                  : 'Goa Gazette', \
 'csl_weekly'           : 'Weekly Gazette of India' , \
 'csl_extraordinary'    : 'Extraordinary Gazette of India', \
+'bis'                  : 'Bureau of Indian Standards', \
 }
 
 languages = { \
@@ -147,9 +150,11 @@ languages = { \
 'goa'                  : ['eng', 'por'], \
 'csl_weekly'           : ['eng', 'hin'], \
 'csl_extraordinary'    : ['eng', 'hin'], \
+'bis'                  : ['eng'], \
 }
 
 srchierarchy = { \
+'statutory'  : ['bis'], \
 'central'    : ['central_weekly', 'central_extraordinary'], \
 'csl'        : ['csl_weekly' , 'csl_extraordinary'], \
 'delhi'      : ['delhi_weekly', 'delhi_extraordinary'], \

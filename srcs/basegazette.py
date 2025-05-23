@@ -203,8 +203,9 @@ class BaseGazette(Downloader):
             self.logger.info('rawdoc already exists %s' % relurl)
         if validurl:
             metainfo.set_url(self.url_fix(gurl))
-        if self.storage_manager.save_metainfo(self.name, relurl, metainfo): 
-            updated = True
-            self.logger.info('Saved metainfo %s' % relurl)
+        if  updated:
+            if self.storage_manager.save_metainfo(self.name, relurl, metainfo): 
+                updated = True
+                self.logger.info('Saved metainfo %s' % relurl)
         return updated
 

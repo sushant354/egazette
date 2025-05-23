@@ -64,6 +64,10 @@ def haryana_captcha(img):
         return val.lower()
     return val    
 
+def bis_captcha(img):
+    val = tesseract(img)
+    return val
+
 def resize(img):
     m = 2.0 
     img = img.resize((int(img.size[0]*m), int(img.size[1]*m))).convert('RGBA')
