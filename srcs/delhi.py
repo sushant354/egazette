@@ -1,4 +1,3 @@
-import datetime
 import urllib.request, urllib.parse, urllib.error
 import re
 import os
@@ -11,7 +10,6 @@ class DelhiWeekly(CentralBase):
     def __init__(self, name, storage):
         CentralBase.__init__(self, name, storage)
         self.baseurl     = 'https://egazette.gov.in'
-        self.start_date   = datetime.datetime(2016, 5, 1)
 
     def download_oneday(self, relpath, dateobj):
         dls = []

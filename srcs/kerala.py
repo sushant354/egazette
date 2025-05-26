@@ -61,7 +61,6 @@ def get_callback_args(ast_dict):
 class KeralaCompose(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.start_date = datetime.datetime(2021, 10, 2)
         self.baseurl    = 'https://compose.kerala.gov.in'
         self.searchurl  = 'https://compose.kerala.gov.in/egazettelink1'
         self.hostname   = 'compose.kerala.gov.in'
@@ -317,7 +316,6 @@ class Kerala(BaseGazette):
         self.latest_url = 'http://www.egazette.kerala.gov.in/'
         self.baseurl    = self.latest_url
         self.parser     = 'html.parser'
-        self.start_date   = datetime.datetime(2007, 1, 1)
 
         self.year_href =  '/%d.php'
 

@@ -19,7 +19,6 @@ class MadhyaPradesh(BaseGazette):
             ('Part 3', '/history-gazette-3-%d.html'), \
             ('Part 4', '/history-gazette-4-%d.html'), \
         }
-        self.start_date = datetime.datetime(2010, 1, 1)   
 
     def download_oneday(self, relpath, dateobj):
         dls = []

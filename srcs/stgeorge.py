@@ -14,7 +14,6 @@ class StGeorge(Kerala):
         self.date_url = 'http://statelibrary.kerala.gov.in/fort_gazette/gazette.php'
         self.baseurl = 'http://statelibrary.kerala.gov.in/fort_gazette/'
         self.parser     = 'html.parser'
-        self.start_date   = datetime.datetime(1903, 1, 1)
         self.save_raw     = False 
         self.gzurl_format = 'sitemedia/TG%s/%s/%s_Page_%s.png' 
 
@@ -225,7 +224,6 @@ class KeralaLibrary(StGeorge):
         self.date_url = 'http://statelibrary.kerala.gov.in/gazette/gazette.php'
         self.baseurl = 'http://statelibrary.kerala.gov.in/gazette/'
         self.parser     = 'html.parser'
-        self.start_date   = datetime.datetime(1903, 1, 1)
         self.save_raw     = False 
         self.gzurl_format = 'sitemedia/%s/%s/%s_Page_%s.png'
          

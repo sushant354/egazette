@@ -12,7 +12,6 @@ class TamilNadu(BaseGazette):
         self.hostname = 'www.stationeryprinting.tn.gov.in'
         self.baseurl  = 'https://www.stationeryprinting.tn.gov.in'
         self.archives_url = 'https://www.stationeryprinting.tn.gov.in/archives.php'
-        self.start_date   = datetime.datetime(2008, 1, 1)
 
     def get_links(self, dateobj):
         ordinary_url = None

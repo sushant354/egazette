@@ -1,6 +1,5 @@
 import re
 import os
-import datetime
 
 from ..utils import utils
 from .central import CentralBase
@@ -12,7 +11,6 @@ class Bihar(CentralBase):
         self.baseurl    = 'http://egazette.bih.nic.in/SearchGazette.aspx'
         self.search_endp = 'SearchGazette.aspx'
         self.result_table = 'ctl00_ContentPlaceHolder1_DetailView'
-        self.start_date   = datetime.datetime(2008, 9, 24)
 
     def get_post_data(self, tags, dateobj):
         datestr  = utils.dateobj_to_str(dateobj, '/')

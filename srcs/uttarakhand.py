@@ -14,7 +14,6 @@ class Uttarakhand(BaseGazette):
         self.search_endp  = 'searchgazette.aspx'
         self.searchurl    = urllib.parse.urljoin(self.baseurl, self.search_endp)
         self.hostname     = 'gazettes.uk.gov.in'
-        self.start_date   = datetime.datetime(2014, 1, 1)
 
 	
     def get_search_form(self, webpage, endp):
