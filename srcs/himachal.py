@@ -1,4 +1,3 @@
-import datetime
 import urllib.request, urllib.parse, urllib.error
 
 from ..utils import utils
@@ -12,7 +11,6 @@ class Himachal(Haryana):
         self.baseurl  = 'http://rajpatrahimachal.nic.in/Default.aspx'
         self.search_endp = 'Default.aspx'
         self.result_table = 'GVNotification'
-        self.start_date   = datetime.datetime(2010, 1, 1)
         self.captcha_field = 'searchtext'
         self.solve_captcha = decode_captcha.himachal
         self.search_button = 'BtnSearch'

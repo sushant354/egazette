@@ -14,10 +14,10 @@ from internetarchive import upload, get_session, get_item, modify_metadata
 from egazette.utils.file_storage import FileManager
 
 from egazette.utils import reporting
-from egazette.srcs  import datasrcs 
 from egazette.utils import utils
 from egazette.utils import pdf_ops
 from egazette.gvision import get_google_client, to_hocr, pdf_to_jpg, compress_file, LangTags
+from egazette.srcs import datasrcs_info
 
 class Stats:
     def __init__(self):
@@ -153,96 +153,6 @@ class GazetteIA:
         self.num_reattempts = 5
         self.reattempt_delay_secs = 300
    
-    def get_identifier(self, relurl, metainfo):
-        srcname    = self.get_srcname(relurl)
-        #relurl     = relurl.decode('ascii', 'ignore')
-        identifier = None
-
-        dateobj = metainfo.get_date()
-
-        prefix    = 'in.gazette.' 
-        if srcname == 'central_extraordinary':
-            identifier = relurl.replace('/', '.')
-            identifier = re.sub('^central_extraordinary', 'central.e', identifier)
-        elif srcname == 'central_weekly':
-            identifier = relurl.replace('/', '.')
-            identifier = re.sub('^central_weekly', 'central.w', identifier)
-        elif srcname == 'bihar':
-            num = relurl.split('/')[-1]
-            identifier = 'bih.gazette.%s.%s' % (dateobj, num)
-            prefix    = 'in.gov.' 
-        elif srcname == 'delhi_weekly':    
-            identifier = relurl.replace('/', '.')
-            identifier = re.sub('^delhi_weekly', 'delhi.w', identifier)
-        elif srcname == 'delhi_extraordinary':    
-            identifier = relurl.replace('/', '.')
-            identifier = re.sub('^delhi_extraordinary', 'delhi.e', identifier)
-        elif srcname == 'cgweekly':    
-            identifier = relurl.replace('/', '.')
-            identifier = re.sub('^cgweekly', 'chhattisgarh.weekly', identifier)
-        elif srcname == 'cgextraordinary':    
-            identifier = relurl.replace('/', '.')
-            identifier = re.sub('^cgextraordinary', 'chhattisgarh.eo', identifier)
-        elif srcname == 'andhra' or srcname == 'andhraarchive':    
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'maharashtra':
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'telangana':
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'tamilnadu':
-            relurl, n  = re.subn('[()]', '', relurl)
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'odisha':
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'jharkhand':
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'madhyapradesh':
-            datestr = '%s' % metainfo['date']
-            gznum   = metainfo['gznum']
-            gztype  = metainfo['gztype']
-            identifier = 'madhya.%s.%s.%s'% (datestr, gznum, gztype)
-        elif srcname == 'punjab':
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'punjabdsa':
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'uttarakhand':
-            relurl, n  = re.subn('[()]', '', relurl)
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'haryana':
-            relurl, n  = re.subn("[',&:%\s;()–]", '', relurl)
-            identifier = relurl.replace('/', '.')
-        elif srcname == 'haryanaarchive':
-            identifier = relurl.replace('/', '.')
-            identifier = re.sub('^haryanaarchive', 'haryanaarch', identifier)
-        elif srcname == 'kerala':
-            relurl, n  = re.subn("[',&:%\s;()]", '', relurl)
-            identifier = relurl.replace('/', '.')
-            identifier = re.sub('^kerala', 'kerala_new', identifier)
-            identifier = identifier[:80]
-        elif srcname == 'karnataka':    
-            identifier = self.get_karnataka_identifier(relurl)
-            if 'links' in metainfo and metainfo['links']:
-                linkids = []
-                for link in metainfo['links']:
-                    linkids.append(prefix+self.get_karnataka_identifier(link))
-
-                metainfo['linkids'] = linkids
-        elif srcname == 'goa':    
-            prefix = 'in.goa.egaz.' 
-            gznum  = metainfo['gznum']
-            series = metainfo['series']
-            identifier = '%s.%s' % (gznum, series)
-        else:
-            identifier = relurl.replace('/', '.')
-         
-        identifier = prefix + identifier 
-        return identifier    
-
-    def get_karnataka_identifier(self, relurl):
-        identifier = relurl.replace('/', '.')
-        identifier = re.sub('^karnataka', 'karnataka_new', identifier)
-        return identifier
-
     def get_ia_item(self, identifier):
         try:
             item = get_item(identifier, archive_session = self.session)
@@ -265,6 +175,18 @@ class GazetteIA:
 
         return final
 
+    def get_identifier(self, relurl, metainfo):
+        return datasrcs_info.get_identifier(relurl, metainfo)
+
+
+    def update_links(self, relurl, metainfo):
+        if 'links' in metainfo and metainfo['links']:
+            linkids = []
+            for link in metainfo['links']:
+                linkids.append(self.get_identifier(link, metainfo))
+
+            metainfo['linkids'] = linkids
+
     def upload(self, relurl):
         metainfo = self.file_storage.get_metainfo(relurl)
         if metainfo == None:
@@ -275,6 +197,7 @@ class GazetteIA:
         if identifier == None:
             self.logger.warning('Could not form IA identifier. Ignoring upload for %s' % relurl) 
             return False
+        self.update_links(relurl, metainfo)
 
         while 1:
             item = self.get_ia_item(identifier)
@@ -445,7 +368,7 @@ class GazetteIA:
 
 
     def get_title(self, src, metainfo):
-        category = datasrcs.categories[src]
+        category = datasrcs_info.srcinfos[src]['category']
         title = [category]
 
         if 'date' in metainfo:
@@ -472,10 +395,11 @@ class GazetteIA:
 
     def to_ia_metadata(self, relurl, metainfo):
        src      = self.get_srcname(relurl) 
+       srcinfo  = datasrcs_info.srcinfos[src]
 
-       creator   = datasrcs.srcnames[src]
-       category  = datasrcs.categories[src]
-       languages = datasrcs.languages[src]
+       creator   = srcinfo['source']
+       category  = srcinfo['category']
+       languages = srcinfo['languages']
 
        title   = self.get_title(src, metainfo)
 
@@ -484,6 +408,7 @@ class GazetteIA:
            'language'   : languages, 'title': title, 'creator': creator, \
            'subject'    : category
        } 
+        
        dateobj = metainfo.get_date()
        if dateobj:
            metadata['date'] = '%s' % dateobj
@@ -556,6 +481,7 @@ class GazetteIA:
             return False
 
         identifier = self.get_identifier(relurl, metainfo)
+        self.update_links(relurl, metainfo)
 
         while 1:
             item = self.get_ia_item(identifier)
@@ -760,7 +686,7 @@ if __name__ == '__main__':
     stats        = Stats()
 
     if len(srcnames) == 0:
-        srcnames = datasrcs.srcdict.keys()
+        srcnames = datasrcs_info.srcinfos.keys()
 
     if relurls:
         for relurl in relurls:
