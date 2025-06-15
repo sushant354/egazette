@@ -26,6 +26,8 @@ from . import goa
 from . import csl 
 from . import bis
 
+from . import rsa
+
 from .datasrcs_info import srcinfos
 
 srcdict = { \
@@ -59,6 +61,7 @@ srcdict = { \
 'csl_weekly'           : csl.CSLWeekly, \
 'csl_extraordinary'    : csl.CSLExtraordinary, \
 'bis'                  : bis.BIS, \
+'rsa'                  : rsa.RajasthanStateArchive, \
 }
 
 srchierarchy = {
