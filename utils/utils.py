@@ -178,6 +178,18 @@ def parse_webpage(webpage, parser):
     except:
         return None
 
+def get_search_form(webpage, parser, search_endp):
+    d = parse_webpage(webpage, parser)
+    if d is None:
+        return None
+
+    search_form = d.find('form', {'action': search_endp})
+    if search_form is None:
+        return None 
+
+    return search_form
+
+
 def url_to_filename(url, catchpath, catchquery):
     htuple = urllib.parse.urlparse(url)
     path   = htuple[2]
