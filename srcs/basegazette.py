@@ -235,20 +235,30 @@ class BaseGazette(Downloader):
         mtype = utils.get_buffer_type(doc)
         return utils.get_file_extension(mtype)
 
+    def pull_gazette(self, gurl, referer = None, postdata = None,
+                     cookiefile = None, headers = {}, \
+                     encodepost = True):
+        if cookiefile:
+            response = self.download_url(gurl, referer = referer, \
+                                         postdata = postdata, loadcookies = cookiefile,\
+                                         headers = headers, encodepost = encodepost)
+        else:
+            response = self.download_url(gurl, postdata = postdata, \
+                                         encodepost = encodepost, \
+                                         headers = headers, \
+                                         referer = referer)
+
+        return response
+
     def save_gazette(self, relurl, gurl, metainfo, postdata = None, \
                      referer = None, cookiefile = None, validurl = True, \
                      min_size=0, count=0, hdrs = {}, encodepost = True):
         updated = False
         if self.storage_manager.should_download_raw(relurl, gurl, \
                                                     validurl = validurl):
-            if cookiefile:
-                response = self.download_url(gurl, referer = referer, \
-                                 postdata = postdata, loadcookies = cookiefile,\
-                                 headers = hdrs, encodepost = encodepost)
-            else:
-                response = self.download_url(gurl, postdata = postdata, \
-                                             encodepost = encodepost, \
-                                             referer = referer)
+            response = self.pull_gazette(gurl, referer = referer, \
+                                         postdata = postdata, cookiefile = cookiefile, \
+                                         headers = hdrs, encodepost = encodepost)
 
             if response == None:
                 return updated
