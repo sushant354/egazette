@@ -19,6 +19,7 @@ from . import haryana
 
 from . import kerala
 from . import himachal
+from . import mizoram
 
 from . import stgeorge
 
@@ -59,6 +60,7 @@ srcdict = { \
 'csl_weekly'           : csl.CSLWeekly, \
 'csl_extraordinary'    : csl.CSLExtraordinary, \
 'bis'                  : bis.BIS, \
+'mizoram'              : mizoram.Mizoram, \
 }
 
 srchierarchy = {

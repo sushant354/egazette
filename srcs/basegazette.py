@@ -133,13 +133,13 @@ class Downloader:
 
     def download_url(self, url, loadcookies = None, savecookies = None, \
                      postdata = None, referer = None, \
-                     encodepost= True, headers = {}):
+                     encodepost= True, headers = {}, fixurl = True):
         for i in range(0, self.num_http_retries):
             if i > 0:
                 time.sleep(i * self.retry_delay_base_secs)
             response = self.download_url_onetime(url, loadcookies, savecookies,\
                                                  postdata, referer, \
-                                                 encodepost, headers)
+                                                 encodepost, headers, fixurl)
             if response.error == None:
                 return response
             elif isinstance(response.error, urllib.error.HTTPError) and \
@@ -151,7 +151,7 @@ class Downloader:
         return None
 
     def download_url_onetime(self, url, loadcookies, savecookies, \
-                             postdata, referer, encodepost, headers):
+                             postdata, referer, encodepost, headers , fixurl):
 
         webresponse = WebResponse()
 
@@ -169,8 +169,11 @@ class Downloader:
                 encodedData = urllib.parse.urlencode(postdata).encode('utf-8')
             else:
                 encodedData = postdata
-
-        fixed_url = self.url_fix(url)        
+        
+        if fixurl:
+            fixed_url = self.url_fix(url) 
+        else:
+            fixed_url = url      
         request = urllib.request.Request(fixed_url, encodedData, headers)
 
         if loadcookies != None:
