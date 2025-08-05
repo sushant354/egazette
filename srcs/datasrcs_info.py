@@ -160,7 +160,7 @@ srcinfos = {
     },
     # 'in.gazette.mizoram.<year>.<id> start_year: 1972 end_year: 2024 count: 9704
     'mizoram'       : {
-        'languages' : ['eng', 'mizo'],
+        'languages' : ['eng', 'lus'],
         'source'    : 'Government of Mizoram',
         'category'  : 'Mizoram Gazette',
         'prefix'    : 'in.gazette.mizoram.',
