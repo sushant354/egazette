@@ -158,6 +158,14 @@ srcinfos = {
         'start_date': datetime(2010, 1, 1),
         'identifier_fn': madhyapradesh_identifier
     },
+    # 'in.gazette.mizoram.<year>.<id> start_year: 1972 end_year: 2024 count: 9704
+    'mizoram'       : {
+        'languages' : ['eng', 'mizo'],
+        'source'    : 'Government of Mizoram',
+        'category'  : 'Mizoram Gazette',
+        'prefix'    : 'in.gazette.mizoram.',
+        'start_date': datetime(1972,1,1)
+    },
     # 'in.gazette.punjab.<year>-<month>-<day>.<id>' start_date; 2016-01-01 end_date: 2020-04-09 count: 2332
     'punjab' : {
         'languages' : ['eng', 'pan'],
