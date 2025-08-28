@@ -7,8 +7,6 @@ from .basegazette import BaseGazette
 from ..utils import utils
 
 PATTERN = r"Volume No\s+([^\s/]+)/Issue No\s+(\d+)\s+of\s+(\d{4})"
-GZNUM = "gznum"
-YEAR = "year"
 
 class Mizoram(BaseGazette):
     def __init__(self, name, storage_manager):
@@ -154,7 +152,7 @@ class Mizoram(BaseGazette):
             a_tag = td.find('a', href=True)
             if c:
                 if i == 0:
-                    metainfo[GZNUM] = c
+                    metainfo.set_gznum(c)
                 elif i == 1:
                     metainfo.set_title(c)
                 elif i == 2:
@@ -177,7 +175,7 @@ class Mizoram(BaseGazette):
         
     def handle_link(self, tr, gazette_type, relpath, year):
         metainfo, gurl = self.parse_metainfo(tr)
-        metainfo[YEAR] = year
+        metainfo.set_year(year)
         filename = gazette_type + "-" + self.get_filename(metainfo.get("gznum"))
         tmprel = os.path.join(relpath,filename)
 

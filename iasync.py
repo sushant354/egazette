@@ -392,6 +392,13 @@ class GazetteIA:
     def get_srcname(self, relurl):
        words    = relurl.split('/')
        return words[0]
+    
+    def get_collection(self, src):
+        src_collection = {
+            'rsa' : 'ArchivesOfIndia'
+        }
+
+        return src_collection(src, 'gazetteofindia')
 
     def to_ia_metadata(self, relurl, metainfo):
        src      = self.get_srcname(relurl) 
@@ -402,13 +409,14 @@ class GazetteIA:
        languages = srcinfo['languages']
 
        title   = self.get_title(src, metainfo)
+       collection = self.get_collection(src)
 
        metadata = { \
-           'collection' : 'gazetteofindia', 'mediatype' :'texts', \
+           'collection' : collection, 'mediatype' :'texts', \
            'language'   : languages, 'title': title, 'creator': creator, \
            'subject'    : category
        } 
-        
+
        dateobj = metainfo.get_date()
        if dateobj:
            metadata['date'] = '%s' % dateobj
@@ -435,6 +443,12 @@ class GazetteIA:
          ('url',              'Gazette Source'), \
          ('num',              'Number'), \
          ('gazetteid',        'Gazette ID'), \
+        ('bundleno',     'Bundle Number'), \
+        ('city',         'City'), \
+        ('description',  'Description'), \
+        ('file',         'File'), \
+        ('topic',        'Topic'), \
+        ('year',         'Year') \
        ]
        for k, kdesc in keys:
            if k in metainfo:
