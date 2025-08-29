@@ -6,7 +6,7 @@ from http.cookiejar import CookieJar
 from .basegazette import BaseGazette
 from ..utils import utils
 
-PATTERN = r"Volume No\s+([^\s/]+)/Issue No\s+(\d+)\s+of\s+(\d{4})"
+PATTERN = r"Volume No\s+([^\s/]+)\s*/Issue\s+No\s+([\w()]+)\s+of\s+(\d{4})"
 GZNUM = "gznum"
 YEAR = "year"
 
@@ -171,7 +171,8 @@ class Mizoram(BaseGazette):
             volume_no = match.group(1)
             issue_no =  match.group(2)
             year = match.group(3)
-        
+        else:
+            print (gznum)
         filename = volume_no + "-" + issue_no + "-" + year
         return filename
         
