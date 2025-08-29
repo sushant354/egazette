@@ -26,6 +26,7 @@ from . import stgeorge
 from . import goa
 from . import csl 
 from . import bis
+from . import rsa
 
 from .datasrcs_info import srcinfos
 
@@ -61,6 +62,7 @@ srcdict = { \
 'csl_extraordinary'    : csl.CSLExtraordinary, \
 'bis'                  : bis.BIS, \
 'mizoram'              : mizoram.Mizoram, \
+'rsa'                  : rsa.RajasthanStateArchive, \
 }
 
 srchierarchy = {
