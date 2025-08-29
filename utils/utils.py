@@ -178,6 +178,17 @@ def parse_webpage(webpage, parser):
     except:
         return None
 
+def get_search_form(webpage, parser, search_endp):
+    d = parse_webpage(webpage, parser)
+    if d is None:
+        return None
+
+    search_form = d.find('form', {'action': search_endp})
+    if search_form is None:
+        return None 
+
+    return search_form
+
 def url_to_filename(url, catchpath, catchquery):
     htuple = urllib.parse.urlparse(url)
     path   = htuple[2]
@@ -286,6 +297,21 @@ DATE       = 'date'
 MINISTRY   = 'ministry'
 SUBJECT    = 'subject'
 GZTYPE     = 'gztype'
+GZNUM      = 'gznum'
+DEPARTMENT = 'department'
+OFFICE     = 'office'
+NOTIFICATION_NUM = 'notification_num'
+PART_NUM   = 'partnum'
+REF_NUM    = 'refnum'
+LINK_NAMES = 'linknames'
+NUM        = 'num'
+GZ_ID      = 'gazetteid'
+BUNDLE_NO  = 'bundleno'
+CITY       = 'city'
+DESCRIPTION = 'description'
+FILE       = 'file'
+TOPIC      = 'topic'
+YEAR       = 'year'
 
 _illegal_xml_chars_RE = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1F\uD800-\uDFFF\uFFFE\uFFFF]')
 
@@ -334,6 +360,51 @@ class MetaInfo(dict):
 
     def set_gztype(self, value):
         self.set_field(GZTYPE, value)
+    
+    def set_gznum(self, value):
+        self.set_field(GZNUM, value)
+
+    def set_department(self, value):
+        self.set_field(DEPARTMENT, value)
+
+    def set_office(self, value):
+        self.set_field(OFFICE, value)
+
+    def set_notification_num(self, value):
+        self.set_field(NOTIFICATION_NUM, value)
+
+    def set_partnum(self, value):
+        self.set_field(PART_NUM, value)
+
+    def set_refnum(self, value):
+        self.set_field(REF_NUM, value)
+
+    def set_linknames(self, value):
+        self.set_field(LINK_NAMES, value)
+
+    def set_num(self, value):
+        self.set_field(NUM, value)
+
+    def set_gazetteid(self, value):
+        self.set_field(GZ_ID, value)
+
+    def set_bundleno(self, value):
+        self.set_field(BUNDLE_NO, value)
+
+    def set_city(self, value):
+        self.set_field(CITY, value)
+
+    def set_description(self, value):
+        self.set_field(DESCRIPTION, value)
+
+    def set_file(self, value):
+        self.set_field(FILE, value)
+
+    def set_topic(self, value):
+        self.set_field(TOPIC, value)
+
+    def set_year(self, value):
+        self.set_field(YEAR, value)
 
     def get_url(self):
         return self.get_field(URL)
@@ -353,8 +424,53 @@ class MetaInfo(dict):
     def get_subject(self):
         return self.get_field(SUBJECT)
 
-    def get_gztype(self, value):
+    def get_gztype(self):
         return self.get_field(GZTYPE)
+
+    def get_gznum(self):
+        return self.get_field(GZNUM)
+
+    def get_department(self):
+        return self.get_field(DEPARTMENT)
+
+    def get_office(self):
+        return self.get_field(OFFICE)
+
+    def get_notification_num(self):
+        return self.get_field(NOTIFICATION_NUM)
+
+    def get_partnum(self):
+        return self.get_field(PART_NUM)
+
+    def get_refnum(self):
+        return self.get_field(REF_NUM)
+
+    def get_linknames(self):
+        return self.get_field(LINK_NAMES)
+
+    def get_num(self):
+        return self.get_field(NUM)
+
+    def get_gazetteid(self):
+        return self.get_field(GZ_ID)
+
+    def get_bundleno(self):
+        return self.get_field(BUNDLE_NO)
+
+    def get_city(self):
+        return self.get_field(CITY)
+
+    def get_description(self):
+        return self.get_field(DESCRIPTION)
+
+    def get_file(self):
+        return self.get_field(FILE)
+
+    def get_topic(self):
+        return self.get_field(TOPIC)
+
+    def get_year(self):
+        return self.get_field(YEAR)
 
 def stats_to_message(stats):
     rawstats  = stats[0]

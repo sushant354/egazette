@@ -154,7 +154,7 @@ class Mizoram(BaseGazette):
             a_tag = td.find('a', href=True)
             if c:
                 if i == 0:
-                    metainfo[GZNUM] = c
+                    metainfo.set_gznum(c)
                 elif i == 1:
                     metainfo.set_title(c)
                 elif i == 2:
@@ -171,14 +171,12 @@ class Mizoram(BaseGazette):
             volume_no = match.group(1)
             issue_no =  match.group(2)
             year = match.group(3)
-        else:
-            print (gznum)
         filename = volume_no + "-" + issue_no + "-" + year
         return filename
         
     def handle_link(self, tr, gazette_type, relpath, year):
         metainfo, gurl = self.parse_metainfo(tr)
-        metainfo[YEAR] = year
+        metainfo.set_year(year)
         filename = gazette_type + "-" + self.get_filename(metainfo.get("gznum"))
         tmprel = os.path.join(relpath,filename)
 

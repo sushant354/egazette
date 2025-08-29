@@ -267,6 +267,13 @@ srcinfos = {
         'source'    : 'Government of India',
         'category'  : 'Extrordinary Gazette of India',
         'enabled'   : False
+    },
+    
+    'rsa' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Rajasthan State Secretariat',
+        'category'  : 'Rajasthan State Archive',
+        'prefix'    : 'in.rajastahan.state.archive.'
     }
 }
 
