@@ -398,7 +398,7 @@ class GazetteIA:
             'rsa' : 'ArchivesOfIndia'
         }
 
-        return src_collection(src, 'gazetteofindia')
+        return src_collection.get(src, 'gazetteofindia')
 
     def to_ia_metadata(self, relurl, metainfo):
        src      = self.get_srcname(relurl) 
