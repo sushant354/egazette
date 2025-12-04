@@ -1,12 +1,14 @@
-from http.cookiejar import CookieJar, Cookie
-import urllib.request, urllib.parse, urllib.error
+from http.cookiejar import CookieJar
+import urllib.parse
 import re
 import os
-import http.client
-import datetime
 
 from ..utils  import utils
 from .central import CentralBase 
+
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 class ChattisgarhWeekly(CentralBase):
     def __init__(self, name, storage):
@@ -154,6 +156,11 @@ class ChattisgarhWeekly(CentralBase):
 
         return urllib.parse.urljoin(search_url, url)
 
+    def get_session(self):
+        # Override to disable SSL verification
+        s = super().get_session()
+        s.verify = False
+        return s
 
     def download_gazette(self, relpath, search_url, postdata, metainfo, cookiejar):
         relurl = self.get_relurl(relpath, metainfo)
