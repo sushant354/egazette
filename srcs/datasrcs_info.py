@@ -95,10 +95,15 @@ srcinfos = {
         'prefix'    : 'in.gazette.chhattisgarh.eo.'
     },
     # 'in.gazette.andhra.<year>-<month>-<day>.<id>' start_date: 2008-05-22 end_date: 2023-05-03 count: 19184
-    'andhra' : {
+    'andhra_extraordinary' : {
         'languages' : ['eng', 'tel'],
         'source'    : 'Government of Andhra Pradesh',
-        'category'  : 'Andhra Pradesh Gazette'
+        'category'  : 'Andhra Pradesh Extraordinary Gazette'
+    },
+    'andhra_weekly' : {
+        'languages' : ['eng', 'tel'],
+        'source'    : 'Government of Andhra Pradesh',
+        'category'  : 'Andhra Pradesh Weekly Gazette'
     },
     'andhraarchive' : { 
         'languages' : ['eng', 'tel'], 
@@ -110,11 +115,23 @@ srcinfos = {
     # 'in.gazette.karnataka.<year>-<month>-<day>' start_date: 2009-06-11 end_date: 2018-11-01 count: 463
     # 'in.gazette.karnataka_new.<year>-<month>-<day>.<id>' start_date; 2009-06-11 end_date: 2019-12-26 count: 8783
     # 'in.gazette.in.gazette.karnataka_new.<year>-<month>-<day>.<id>' start_date: 2018-10-04, end_date: 2018-10-04 count: 2
-    'karnataka' : { 
+    'karnataka_daily' : { 
         'languages' : ['eng', 'kan'], 
         'source'    : 'Government of Karnataka',
-        'category'  : 'Karnataka Gazette',
-        'prefix'    : 'in.gazette.karnataka_new.'
+        'category'  : 'Karnataka Daily Gazette',
+        'prefix'    : 'in.gazette.karnataka_d.'
+    },
+    'karnataka_weekly' : { 
+        'languages' : ['eng', 'kan'], 
+        'source'    : 'Government of Karnataka',
+        'category'  : 'Karnataka Weekly Gazette',
+        'prefix'    : 'in.gazette.karnataka_w.'
+    },
+    'karnataka_extraordinary' : { 
+        'languages' : ['eng', 'kan'], 
+        'source'    : 'Government of Karnataka',
+        'category'  : 'Karnataka ExtraOrdinary Gazette',
+        'prefix'    : 'in.gazette.karnataka_eo.'
     },
     # 'in.gazette.maharashtra.<year>-<month>-<day>.<id>' start_date: 2014-01-01 end_date:2023-05-04 count: 17545
     'maharashtra'   : {

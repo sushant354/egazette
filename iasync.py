@@ -541,9 +541,11 @@ def print_usage(progname):
                         [-p postmark_token]
                         [-E email_to_report]
                         [-s central_weekly -s central_extraordinary 
-                         -s andhra -s andhraarchive
+                         -s andhra_extraordinary -s andhra_weekly
+                         -s andhraarchive
                          -s bihar  -s cgweekly -s cgextraordinary
-                         -s delhi_weekly -s delhi_extraordinary -s karnataka
+                         -s delhi_weekly -s delhi_extraordinary -s karnataka_daily
+                         -s karnataka_weekly, -s karnataka_extraordinary
                          -s maharashtra -s telangana   -s tamilnadu
                          -s jharkhand   -s odisha      -s madhyapradesh
                          -s punjab      -s uttarakhand -s himachal

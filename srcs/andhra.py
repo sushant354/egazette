@@ -1,19 +1,26 @@
 from http.cookiejar import CookieJar
 import re
 import os
+from datetime import date
+import urllib
 
 from ..utils import utils
 from .basegazette import BaseGazette
 from .central import CentralBase
 
-class Andhra(BaseGazette):
+class AndhraBase(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
 
-        self.baseurl   = 'https://apegazette.cgg.gov.in/eGazetteSearch.do'
-        self.searchurl = self.baseurl
-        self.hostname  = 'apegazette.cgg.gov.in'
-        self.result_table= 'gvGazette'
+        self.baseurl          = 'https://apegazette.cgg.gov.in'
+        self.search_form_url  = urllib.parse.urljoin(self.baseurl, 'searchAllGazette')
+        self.searchurl        = urllib.parse.urljoin(self.baseurl, 'searchAllGazettes')
+        self.hostname         = 'apegazette.cgg.gov.in'
+        self.pdf_download_url = urllib.parse.urljoin(self.baseurl,\
+                                                     f'/uploadGazette_view?filePath=%s')
+
+        self.gazette_id       = '0'
+        self.table_field      = 'displaytable1'
 
     def get_field_order(self, tr):
         i = 0
@@ -21,14 +28,16 @@ class Andhra(BaseGazette):
         valid = False
         for th in tr.find_all('th'):
             txt = utils.get_tag_contents(th)
-            if txt and re.search('gazette\s+type', txt, re.IGNORECASE):
+            if txt and re.search('gazette\s*type', txt, re.IGNORECASE):
                 order.append('gztype')
             elif txt and re.search('department', txt, re.IGNORECASE):
                 order.append('department')
             elif txt and re.search('abstract', txt, re.IGNORECASE):
                 order.append('subject')
-            elif txt and re.search('Issue\s+No', txt, re.IGNORECASE):
+            elif txt and re.search('Gazette\s+No', txt, re.IGNORECASE):
                 order.append('gznum')
+            elif txt and re.search('Issue\s+No', txt, re.IGNORECASE):
+                order.append('issue_num')
             elif txt and re.search('Notification\s+No', txt, re.IGNORECASE):
                 order.append('notification_num')
             elif txt and re.search('Download', txt, re.IGNORECASE):
@@ -45,41 +54,26 @@ class Andhra(BaseGazette):
             return order
         return None    
 
-    def get_post_data(self, dateobj):
+    def get_post_data(self, dateobj, gazette_id, department, \
+                      csrf_token):
         datestr = utils.dateobj_to_str(dateobj, '')
+        today_date_str = utils.dateobj_to_str(date.today(), '/')
 
         postdata = [\
-            ('mode',                  'unspecified'),  \
-            ('property(abstract)',    ''  ), \
-            ('property(department)',  '0'), \
-            ('property(docid)',       ''), \
-            ('property(fromdate)',    datestr), \
-            ('property(gazetteno)',   ''), \
-            ('property(gazettePart)', '0'), \
-            ('property(gazetteType)', '0'), \
-            ('property(month1)',      '0'), \
-            ('property(search)',      'search'), \
-            ('property(todate)',      datestr), \
-            ('property(year1)',       '0'), \
-        ]
-        return postdata
-
-    def get_postdata_for_doc(self, docid, dateobj):
-        postdata = [\
-            ('mode',                  'viewDocument'),  \
-            ('property(abstract)',    ''  ), \
-            ('property(department)',  '0'), \
-            ('property(docid)',       docid), \
-            ('property(fromdate)',    ''), \
-            ('property(gazetteno)',   ''), \
-            ('property(gazettePart)', '0'), \
-            ('property(gazetteType)', '0'), \
-            ('property(month1)',      '0'), \
-            ('property(search)',      'search'), \
-            ('property(todate)',      ''), \
-            ('property(year1)',       '0'), \
-            ('x',                     '16'), \
-            ('y',                     '16'), \
+            ('_csrf',                  csrf_token), \
+            ('mode',                   'unspecified'),  \
+            ('hdnCurDate' ,            today_date_str), \
+            ('departmentId',           department), \
+            ('gazeeteTypeId',          gazette_id), \
+            ('gazeetePartId',          ''), \
+            ('year',                   ''), \
+            ('month1',                 ''), \
+            ('fromdate',               datestr), \
+            ('todate',                 datestr), \
+            ('gazetteno',              ''), \
+            ('abstract1',               ''), \
+            ('_csrf',                  csrf_token), \
+            
         ]
         return postdata
 
@@ -90,7 +84,7 @@ class Andhra(BaseGazette):
             self.logger.warning('Unable to parse results page for date %s', dateobj)
             return minfos
 
-        table = d.find('table', {'id': 'displaytable'})
+        table = d.find('table', {'id': self.table_field})
         if not table:
             self.logger.warning('Unable to find result table for date %s', dateobj)
             return minfos
@@ -118,9 +112,9 @@ class Andhra(BaseGazette):
                 col = order[i]
                 if col == 'gztype':
                     words = txt.split('/')
-                    metainfo['gztype'] = words[0].strip()
+                    metainfo.set_gztype(words[0].strip())
                     if len(words) > 1:
-                        metainfo['partnum'] = words[1].strip()
+                        metainfo.set_partnum(words[1].strip())
                     if len(words) > 2:
                         metainfo['district'] = words[2].strip()
                 elif col == 'download':
@@ -130,43 +124,80 @@ class Andhra(BaseGazette):
                 elif col in ['notification_num', 'gznum', 'department']:
                     metainfo[col] = txt
                 elif col == 'subject':
-                    metainfo.set_subject(txt)    
+                    metainfo.set_subject(txt)
             i += 1
         return metainfo
 
+    def get_departments(self, webpage):
+        d = utils.parse_webpage(webpage, self.parser)
+        if not d:
+            return []
+        departments = [opt['value'] for opt in d.select('#departmentId option[value]') \
+                       if opt['value']]
+        return departments
+    
+    def get_csrf_token(self, webpage):       
+        d = utils.parse_webpage(webpage, self.parser)
+        if not d:
+            return ''
+        csrf = d.find('meta', {'name': '_csrf'}).get('content', '')
+        return csrf
+    
     def download_oneday(self, relpath, dateobj):
         dls = []
         cookiejar  = CookieJar()
-        response = self.download_url(self.baseurl, savecookies = cookiejar)
-        postdata = self.get_post_data(dateobj)
-        response = self.download_url(self.searchurl, postdata = postdata, \
-                               loadcookies = cookiejar, savecookies = cookiejar)
 
+        response = self.download_url(self.search_form_url, savecookies = cookiejar)
         if not response or not response.webpage:
             return dls
 
-        metainfos = self.parse_search_results(response.webpage, dateobj)
-        for metainfo in metainfos:
-            relurl = self.download_metainfo(metainfo, relpath, dateobj, cookiejar)
-            if relurl:
-                dls.append(relurl)
+        departments = self.get_departments(response.webpage)
+        csrf_token = self.get_csrf_token(response.webpage)
+
+        if (not departments) or (not csrf_token):
+            return dls
+        
+        for department in departments:
+            postdata = self.get_post_data(dateobj, self.gazette_id,  \
+                                department, csrf_token)
+            response = self.download_url(self.searchurl, postdata = postdata, \
+                                loadcookies = cookiejar, savecookies = cookiejar)
+
+            if not response or not response.webpage:
+                continue
+
+            metainfos = self.parse_search_results(response.webpage, dateobj)
+            for metainfo in metainfos:
+                relurl = self.download_metainfo(metainfo, relpath, cookiejar)
+                if relurl:
+                    dls.append(relurl)
 
         return dls
 
-    def download_metainfo(self, metainfo, relpath, dateobj, cookiejar):
-        reobj = re.search('openDocument\(\'(?P<num>\d+)\'\)', metainfo['download'])        
+    def download_metainfo(self, metainfo, relpath, cookiejar):
+        reobj = re.search(r"openDocument\(\s*'(?P<content>[^']*)'\s*\)", metainfo['download'])
         if not reobj:
             return None
-        docid = reobj.groupdict()['num']    
-        postdata = self.get_postdata_for_doc(docid, dateobj)
+        docid = reobj.group('content') 
+        
         metainfo.pop('download')
-        relurl = os.path.join(relpath, docid)
-
-        if self.save_gazette(relurl, self.searchurl, metainfo, \
+        relurl = os.path.join(relpath, docid.replace('/','-'))
+        doc_url = self.pdf_download_url % docid
+        if self.save_gazette(relurl, doc_url, metainfo, \
                              cookiefile = cookiejar, \
-                             postdata = postdata, validurl = False):
+                             validurl = True):
             return relurl
-        return None    
+        return None
+
+class AndhraExtraOrdinary(AndhraBase):
+    def __init__(self, name, storage):
+        AndhraBase.__init__(self, name, storage)
+        self.gazette_id = '1' #extra ordinary's id
+
+class AndhraWeekly(AndhraBase):
+    def __init__(self, name, storage):
+        AndhraBase.__init__(self, name, storage)
+        self.gazette_id = '2' # weekly's id
 
 class AndhraArchive(CentralBase):
     def __init__(self, name, storage):
