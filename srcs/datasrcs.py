@@ -31,38 +31,41 @@ from . import rsa
 from .datasrcs_info import srcinfos
 
 srcdict = { \
-'central_weekly'       : central.CentralWeekly, \
-'central_extraordinary': central.CentralExtraordinary, \
-'bihar'                : bihar.Bihar, \
-'delhi_weekly'         : delhi.DelhiWeekly, \
-'delhi_extraordinary'  : delhi.DelhiExtraordinary, \
-'cgweekly'             : chattisgarh.ChattisgarhWeekly, \
-'cgextraordinary'      : chattisgarh.ChattisgarhExtraordinary, \
-'andhra'               : andhra.Andhra, \
-'andhraarchive'        : andhra.AndhraArchive, \
-'karnataka'            : karnataka.Karnataka, \
-'maharashtra'          : maharashtra.Maharashtra, \
-'telangana'            : telangana.Telangana, \
-'tamilnadu'            : tamilnadu.TamilNadu, \
-'odisha'               : odisha.Odisha, \
-'jharkhand'            : jharkhand.Jharkhand, \
-'madhyapradesh'        : madhyapradesh.MadhyaPradesh, \
-'punjab'               : punjab.Punjab, \
-'punjabdsa'            : punjab.PunjabDSA, \
-'uttarakhand'          : uttarakhand.Uttarakhand, \
-'himachal'             : himachal.Himachal, \
-'haryana'              : haryana.Haryana, \
-'haryanaarchive'       : haryana.HaryanaArchive, \
-'kerala'               : kerala.Kerala, \
-'keralacompose'        : kerala.KeralaCompose, \
-'stgeorge'             : stgeorge.StGeorge, \
-'keralalibrary'        : stgeorge.KeralaLibrary, \
-'goa'                  : goa.Goa, \
-'csl_weekly'           : csl.CSLWeekly, \
-'csl_extraordinary'    : csl.CSLExtraordinary, \
-'bis'                  : bis.BIS, \
-'mizoram'              : mizoram.Mizoram, \
-'rsa'                  : rsa.RajasthanStateArchive, \
+'central_weekly'            : central.CentralWeekly, \
+'central_extraordinary'     : central.CentralExtraordinary, \
+'bihar'                     : bihar.Bihar, \
+'delhi_weekly'              : delhi.DelhiWeekly, \
+'delhi_extraordinary'       : delhi.DelhiExtraordinary, \
+'cgweekly'                  : chattisgarh.ChattisgarhWeekly, \
+'cgextraordinary'           : chattisgarh.ChattisgarhExtraordinary, \
+'andhra_extraordinary'      : andhra.AndhraExtraOrdinary, \
+'andhra_weekly'             : andhra.AndhraWeekly, \
+'andhraarchive'             : andhra.AndhraArchive, \
+'karnataka_extraordinary'   : karnataka.KarnatakaExtraOrdinary, \
+'karnataka_weekly'          : karnataka.KarnatakaWeekly, \
+'karnataka_daily'           : karnataka.KarnatakaDaily, \
+'maharashtra'               : maharashtra.Maharashtra, \
+'telangana'                 : telangana.Telangana, \
+'tamilnadu'                 : tamilnadu.TamilNadu, \
+'odisha'                    : odisha.Odisha, \
+'jharkhand'                 : jharkhand.Jharkhand, \
+'madhyapradesh'             : madhyapradesh.MadhyaPradesh, \
+'punjab'                    : punjab.Punjab, \
+'punjabdsa'                 : punjab.PunjabDSA, \
+'uttarakhand'               : uttarakhand.Uttarakhand, \
+'himachal'                  : himachal.Himachal, \
+'haryana'                   : haryana.Haryana, \
+'haryanaarchive'            : haryana.HaryanaArchive, \
+'kerala'                    : kerala.Kerala, \
+'keralacompose'             : kerala.KeralaCompose, \
+'stgeorge'                  : stgeorge.StGeorge, \
+'keralalibrary'             : stgeorge.KeralaLibrary, \
+'goa'                       : goa.Goa, \
+'csl_weekly'                : csl.CSLWeekly, \
+'csl_extraordinary'         : csl.CSLExtraordinary, \
+'bis'                       : bis.BIS, \
+'mizoram'                   : mizoram.Mizoram, \
+'rsa'                       : rsa.RajasthanStateArchive, \
 }
 
 srchierarchy = {
@@ -71,13 +74,19 @@ srchierarchy = {
     'csl'        : ['csl_weekly' , 'csl_extraordinary'],
     'delhi'      : ['delhi_weekly', 'delhi_extraordinary'],
     'chattisgarh': ['cgweekly', 'cgextraordinary'],
-    'states'     : ['delhi', 'chattisgarh'] + 
+    'karnataka'  : ['karnataka_daily', 'karnataka_weekly', \
+                    'karnataka_extraordinary'],
+    'andhra'     : ['andhra_extraordinary', 'andhra_weekly'],
+    'states'     : ['delhi', 'chattisgarh', 'karnataka', 'andhra'] + 
                    list(set(srcdict.keys()) -
                         set(['statutory',
                              'central_weekly', 'central_extraordinary',
                              'csl_weekly', 'csl_extraordinary',
                              'delhi_weekly', 'delhi_extraordinary',
-                             'cgweekly', 'cgextraordinary']))
+                             'cgweekly', 'cgextraordinary'
+                             'karnataka_daily', 'karnataka_weekly',
+                             'karnataka_extraordinary', 'andhra_weekly',
+                             'andhra_extraordinary']))
 }
 
 def get_srcobjs(srclist, storage):
