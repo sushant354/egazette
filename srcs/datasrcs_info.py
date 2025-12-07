@@ -95,6 +95,11 @@ srcinfos = {
         'prefix'    : 'in.gazette.chhattisgarh.eo.'
     },
     # 'in.gazette.andhra.<year>-<month>-<day>.<id>' start_date: 2008-05-22 end_date: 2023-05-03 count: 19184
+    # 'andhra' : {
+    #     'languages' : ['eng', 'tel'],
+    #     'source'    : 'Government of Andhra Pradesh',
+    #     'category'  : 'Andhra Pradesh Gazette'
+    # },
     'andhra_extraordinary' : {
         'languages' : ['eng', 'tel'],
         'source'    : 'Government of Andhra Pradesh',
@@ -115,6 +120,12 @@ srcinfos = {
     # 'in.gazette.karnataka.<year>-<month>-<day>' start_date: 2009-06-11 end_date: 2018-11-01 count: 463
     # 'in.gazette.karnataka_new.<year>-<month>-<day>.<id>' start_date; 2009-06-11 end_date: 2019-12-26 count: 8783
     # 'in.gazette.in.gazette.karnataka_new.<year>-<month>-<day>.<id>' start_date: 2018-10-04, end_date: 2018-10-04 count: 2
+    # 'karnataka' : { 
+    #     'languages' : ['eng', 'kan'], 
+    #     'source'    : 'Government of Karnataka',
+    #     'category'  : 'Karnataka Gazette',
+    #     'prefix'    : 'in.gazette.karnataka_new.'
+    # },
     'karnataka_daily' : { 
         'languages' : ['eng', 'kan'], 
         'source'    : 'Government of Karnataka',

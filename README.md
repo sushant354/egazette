@@ -33,12 +33,12 @@ Usage: python sync.py [-l level(critical, error, warn, info, debug)]
                       [-s central_weekly -s central_extraordinary -s central
                        -s states 
                        -s andhra_extraordinary -s andhra_weekly
-                       -s andhraarchive 
+                       -s andhra -s andhraarchive 
                        -s bihar 
                        -s chattisgarh -s cgweekly -s cgextraordinary 
                        -s delhi -s delhi_weekly -s delhi_extraordinary
                        -s karnataka_daily -s karnataka_weekly
-                       -s karnataka_extraordinary
+                       -s karnataka_extraordinary -s karnataka
                        -s maharashtra -s telangana   -s tamilnadu
                        -s jharkhand   -s odisha      -s madhyapradesh
                        -s punjab      -s uttarakhand -s himachal

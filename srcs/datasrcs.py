@@ -38,9 +38,11 @@ srcdict = { \
 'delhi_extraordinary'       : delhi.DelhiExtraordinary, \
 'cgweekly'                  : chattisgarh.ChattisgarhWeekly, \
 'cgextraordinary'           : chattisgarh.ChattisgarhExtraordinary, \
+# 'andhra'                    : andhra.Andhra, \
 'andhra_extraordinary'      : andhra.AndhraExtraOrdinary, \
 'andhra_weekly'             : andhra.AndhraWeekly, \
 'andhraarchive'             : andhra.AndhraArchive, \
+# 'karnataka'                 : karnataka.Karnataka, \
 'karnataka_extraordinary'   : karnataka.KarnatakaExtraOrdinary, \
 'karnataka_weekly'          : karnataka.KarnatakaWeekly, \
 'karnataka_daily'           : karnataka.KarnatakaDaily, \
