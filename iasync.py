@@ -549,7 +549,8 @@ def print_usage(progname):
                          -s karnataka
                          -s maharashtra -s telangana   -s tamilnadu
                          -s jharkhand   -s odisha      -s madhyapradesh
-                         -s punjab      -s uttarakhand -s himachal
+                         -s punjab      -s uttarakhand -s uttarakhand_daily
+                         -s uttarakhand_weekly -s himachal
                          -s haryana     -s kerala      -s haryanaarchive
                          -s stgeorge    -s himachal    -s keralalibrary
                         ] 

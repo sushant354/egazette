@@ -209,11 +209,23 @@ srcinfos = {
         'category'  : 'Punjab Gazette'
     },
     # 'in.gazette.uttarakhand.<year>-<month>-<day>.<id>' start_date: 2013-01-11 end_date: 2024-06-01 count: 611
-    'uttarakhand' : {
+    # 'uttarakhand' : {
+    #     'languages' : ['eng', 'hin'],
+    #     'source'    : 'Government of Uttarakhand',
+    #     'category'  : 'Uttarakhand Gazette',
+    #     'start_date': datetime(2014, 1, 1)
+    # },
+    'uttarakhand_daily' : {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of Uttarakhand',
-        'category'  : 'Uttarakhand Gazette',
-        'start_date': datetime(2014, 1, 1)
+        'category'  : 'Uttarakhand Daily Gazette',
+        'start_date': datetime(2024, 1, 1)
+    },
+    'uttarakhand_weekly' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Government of Uttarakhand',
+        'category'  : 'Uttarakhand Weekly Gazette',
+        'start_date': datetime(2024, 1, 1)
     },
     'himachal' : {
         'languages' : ['eng', 'hin'],

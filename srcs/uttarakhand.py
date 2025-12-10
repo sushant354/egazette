@@ -1,5 +1,6 @@
 import re
 import os
+import json
 import datetime
 import urllib.request, urllib.parse, urllib.error
 from http.cookiejar import CookieJar
@@ -211,3 +212,112 @@ class Uttarakhand(BaseGazette):
             metainfo['url'] = urllib.parse.urljoin(self.searchurl, href)
 
         return metainfo 
+
+class UttarakhandBase(BaseGazette):
+    def __init__(self, name, storage_manager):
+        BaseGazette.__init__(self, name, storage_manager)
+        self.baseurl     = 'https://gazettes.uk.gov.in/'
+        self.search_endp = 'en/Search/SearchGazette'
+        self.gz_id     = '0'                         # default, not indicates any gz id
+        self.gz_type   = ''                           # default, not indicates any gz type
+        self.cookiejar   = CookieJar()
+    
+    def get_cookies(self):
+        url = urllib.parse.urljoin(self.baseurl, 'en/Search/index')
+        self.download_url(url, savecookies = self.cookiejar)
+    
+    def get_payload(self, dateobj):
+        date_to_str = dateobj.strftime("%Y-%m-%d")
+        payload = {
+            'BhagID'        : '',
+            'CategoryID'    : '',
+            'DepartmentID'  : '',
+            'EntryType'     : self.gz_id,
+            'fromdate'      : date_to_str,
+            'GONo'          : '',
+            'SectionID'     : '',
+            'Subject'       : '',
+            'todate'        : date_to_str,
+            'WeekDate2'     : '',
+        }
+        return payload
+    
+    def get_search_results(self, payload):
+        search_url = urllib.parse.urljoin(self.baseurl, self.search_endp)
+
+        response   = self.download_url(search_url, postdata = payload,\
+                                       loadcookies = self.cookiejar, 
+                                       savecookies = self.cookiejar)
+        
+        if (not response) or (not response.webpage):
+            return None
+        try:
+            results = response.webpage.decode('utf-8')
+            return json.loads(results)
+        
+        except Exception as e:
+            self.logger.warning('unable to decode the response')
+            return None
+    
+    def extract_metainfo(self, row, dateobj):
+        metainfo = utils.MetaInfo()
+        metainfo.set_date(dateobj)
+        metainfo.set_gztype(self.gz_type)
+        notification_num = row.get('GONO','')
+        part_num = row.get('BhagNameE', '')
+        subject = row.get('SubjectE', '')
+        department = row.get('DepartmentNameE', '')
+        file_path  = row.get('File_Path_PDF','')
+        file_name  = row.get('FileName_PDF', '')
+        if notification_num:
+            metainfo.set_notification_num(notification_num)
+        if part_num and part_num.lower() != 'none':
+            metainfo.set_partnum(part_num)
+        if subject and subject.lower() != 'none':
+            metainfo.set_subject(subject)
+        if department and department.lower() != 'none':
+            metainfo.set_department(department)
+        if file_path and file_path.lower() != 'none':
+            metainfo['filepath'] = file_path
+        if file_name and file_name.lower() != 'none':
+            name, _ = os.path.splitext(file_name)
+            metainfo['filename'] = name
+        return metainfo
+
+    def get_metainfos(self, results, dateobj):
+        metainfos = []
+        for row in results:
+            metainfos.append(self.extract_metainfo(row, dateobj))
+        return metainfos
+    
+    def download_oneday(self, relpath, dateobj):
+        self.get_cookies()
+        dls = []
+        payload = self.get_payload(dateobj)
+        results = self.get_search_results(payload)
+        if not results:
+            return dls
+        
+        metainfos = self.get_metainfos(results, dateobj)
+        for metainfo in metainfos:
+            if 'filepath' in metainfo and 'filename' in metainfo:
+                doc_name = metainfo.pop('filename')
+                file_path = metainfo.pop('filepath')
+                relurl = os.path.join(relpath, doc_name)
+                pdf_url = urllib.parse.urljoin(self.baseurl, file_path)
+                if self.save_gazette(relurl, pdf_url , metainfo,\
+                                      cookiefile = self.cookiejar):
+                    dls.append(relurl)
+        return dls
+
+class UttarakhandDaily(UttarakhandBase):
+    def __init__(self, name, storage_manager):
+        UttarakhandBase.__init__(self, name, storage_manager)
+        self.gz_id   = '1'
+        self.gz_type = 'Daily'
+
+class UttarakhandWeekly(UttarakhandBase):
+    def __init__(self, name, storage_manager):
+        UttarakhandBase.__init__(self, name, storage_manager)
+        self.gz_id   = '2'
+        self.gz_type = 'Weekly'

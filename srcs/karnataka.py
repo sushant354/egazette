@@ -2,6 +2,7 @@ import re
 import os
 import urllib.parse
 from http.cookiejar import CookieJar
+from cgi import parse_header
 import datetime
 from io import BytesIO
 
@@ -143,7 +144,8 @@ class KarnatakaBase(BaseGazette):
         post_data['__EVENTTARGET'] = self.category_field
         return post_data
     
-    def get_additional_payload(self, d):
+    def get_additional_payload(self, d, dateobj):
+        formatted_date = dateobj.strftime('%d-%b-%Y')
         post_data = {}
         fields = [
             'ctl00$ContentPlaceHolder1$ddlministry',
@@ -159,15 +161,23 @@ class KarnatakaBase(BaseGazette):
                 if selected_opt and selected_opt.has_attr('value'):
                     value = selected_opt['value'].strip()
                     post_data[name] = value
-
-        btn_elem = d.find('input', {'name': 'ctl00$ContentPlaceHolder1$btndet'})
+        
+        select_part_field = 'ctl00$ContentPlaceHolder1$ddlPartSection'
+        select_part = d.find('select', {'name' : select_part_field})
+        if select_part:
+            option = select_part.find('option', {'value': 'Select Part'})
+            if option:
+                post_data[select_part_field] = option['value'].strip() 
+        btn_elem = d.find('input', {'name': 'ctl00$ContentPlaceHolder1$btnstd'})
         if btn_elem and btn_elem.has_attr('value'):
-            post_data['ctl00$ContentPlaceHolder1$btndet'] = btn_elem['value'].strip()
+            post_data['ctl00$ContentPlaceHolder1$btnstd'] = btn_elem['value'].strip()
+        
+        post_data['ctl00$ContentPlaceHolder1$txtDateIssueF'] = formatted_date
+        post_data['ctl00$ContentPlaceHolder1$txtDateIssueT'] = formatted_date
 
         return post_data
 
     def build_search_payload(self, dateobj, postdata):
-        formatted_date = dateobj.strftime('%d-%b-%Y')
         post_data = {}
         response = self.download_url(self.search_url, postdata= postdata, \
                                      savecookies= self.cookiejar, loadcookies= self.cookiejar, 
@@ -183,24 +193,19 @@ class KarnatakaBase(BaseGazette):
             return  post_data
         
         post_data['__EVENTTARGET'] = ''
-        post_data['ctl00$ContentPlaceHolder1$txtDateIssueF'] = formatted_date
-        post_data['ctl00$ContentPlaceHolder1$txtDateIssueT'] = formatted_date
         post_data.update(self.extract_post_data(d))
-        post_data.update(self.get_additional_payload(d))
+        post_data.update(self.get_additional_payload(d, dateobj))
         return post_data
         
     def get_pdf_payload(self, webpage, dateobj):
-        formatted_date = dateobj.strftime('%d-%b-%Y')
         post_data = {} 
         d = utils.parse_webpage(webpage, self.parser)
         if not d:
             return  post_data
         
         post_data['__EVENTTARGET'] = ''
-        post_data['ctl00$ContentPlaceHolder1$txtDateIssueF'] = formatted_date
-        post_data['ctl00$ContentPlaceHolder1$txtDateIssueT'] = formatted_date
         post_data.update(self.extract_post_data(d))
-        post_data.update(self.get_additional_payload(d))
+        post_data.update(self.get_additional_payload(d, dateobj))
         return post_data
     
     def download_oneday(self, relpath, dateobj):
@@ -218,9 +223,9 @@ class KarnatakaBase(BaseGazette):
             return dls
 
         
-        postdata['ctl00$ContentPlaceHolder1$ddlcate'] = self.gztype
+        postdata[self.category_field] = self.gztype
         payload = self.build_search_payload(dateobj, postdata)
-        payload['ctl00$ContentPlaceHolder1$ddlcate'] = self.gztype
+        payload[self.category_field] = self.gztype
         response = self.download_url(self.search_url, postdata=payload, savecookies= self.cookiejar, \
                                         loadcookies= self.cookiejar, referer=self.search_url, \
                                     encodepost= True)
@@ -230,6 +235,7 @@ class KarnatakaBase(BaseGazette):
         self.curr_url = response.response_url
         self.search_url = urllib.parse.urljoin(self.curr_url, self.search_endp)
         payload_for_pdf = self.get_pdf_payload(response.webpage, dateobj)
+        payload_for_pdf[self.category_field] = self.gztype
         metainfos = self.process_search_results(response.webpage)
 
         if not metainfos:
@@ -243,19 +249,39 @@ class KarnatakaBase(BaseGazette):
                 dls.append(dls1)
         return dls
     
+    def get_doc_id(self, payload):
+        response = self.download_url(self.search_url, loadcookies = self.cookiejar,\
+                                     postdata = payload, referer = self.search_url)
+        
+        if not response:
+            return None
+        
+        cd = response.srvresponse.get("Content-Disposition", "")
+        value, params = parse_header(cd)
+        filename = params.get("filename", "").strip()
+        
+        if (not filename) or (not filename.endswith('.pdf')):
+            return None
+        
+        docid, _ = os.path.splitext(filename)
+        return docid
+
     def download_gazette(self, payload, metainfo, relpath):
         if 'download' in metainfo:
                 newpost = dict(payload)
                 name = metainfo.pop('download')
                 newpost['%s.x' % name] = '6'
                 newpost['%s.y' % name] = '12'
-                newpost.pop('ctl00$ContentPlaceHolder1$btndet')
-                relurl = os.path.join(relpath,metainfo.get_refnum())
+                newpost.pop('ctl00$ContentPlaceHolder1$btnstd')
+                doc_id = self.get_doc_id(newpost)
+                if not doc_id:
+                    return None
+                relurl = os.path.join(relpath, doc_id)
                 if self.save_gazette(relurl, self.search_url, metainfo = metainfo,\
                                      postdata = newpost,\
                                     referer= self.search_url ,cookiefile =  self.cookiejar):
                     return relurl
-                
+        return None
     def get_column_order(self, tr):
         order = []
 
@@ -298,7 +324,7 @@ class KarnatakaBase(BaseGazette):
                     txt = txt.strip()
 
                 if col == 'department/institution':
-                    metainfo.set_ministry(txt)
+                    metainfo.set_department(txt)
                 elif col == 'subject':
                     metainfo.set_subject(txt)
                 elif col == 'part':
