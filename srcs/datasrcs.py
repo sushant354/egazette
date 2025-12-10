@@ -54,7 +54,9 @@ srcdict = { \
 'madhyapradesh'             : madhyapradesh.MadhyaPradesh, \
 'punjab'                    : punjab.Punjab, \
 'punjabdsa'                 : punjab.PunjabDSA, \
-'uttarakhand'               : uttarakhand.Uttarakhand, \
+# 'uttarakhand'               : uttarakhand.Uttarakhand, \
+'uttarakhand_daily'         : uttarakhand.UttarakhandDaily, \
+'uttarakhand_weekly'        : uttarakhand.UttarakhandWeekly, \
 'himachal'                  : himachal.Himachal, \
 'haryana'                   : haryana.Haryana, \
 'haryanaarchive'            : haryana.HaryanaArchive, \
@@ -79,7 +81,9 @@ srchierarchy = {
     'karnataka'  : ['karnataka_daily', 'karnataka_weekly', \
                     'karnataka_extraordinary'],
     'andhra'     : ['andhra_extraordinary', 'andhra_weekly'],
-    'states'     : ['delhi', 'chattisgarh', 'karnataka', 'andhra'] + 
+    'uttarakhand': ['uttarakhand_daily', 'uttarakhand_weekly'],
+    'states'     : ['delhi', 'chattisgarh', 'karnataka', 'andhra', \
+                    'uttarakhand'] + 
                    list(set(srcdict.keys()) -
                         set(['statutory',
                              'central_weekly', 'central_extraordinary',
@@ -88,7 +92,8 @@ srchierarchy = {
                              'cgweekly', 'cgextraordinary'
                              'karnataka_daily', 'karnataka_weekly',
                              'karnataka_extraordinary', 'andhra_weekly',
-                             'andhra_extraordinary']))
+                             'andhra_extraordinary', 'uttarakhand_daily',
+                             'uttarakhand_weekly']))
 }
 
 def get_srcobjs(srclist, storage):
