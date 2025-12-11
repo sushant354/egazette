@@ -45,6 +45,7 @@ Usage: python sync.py [-l level(critical, error, warn, info, debug)]
                        -s uttarakhand_weekly -s himachal
                        -s haryana     -s kerala      -s haryanaarchive
                        -s stgeorge    -s himachal    -s keralalibrary
+                       -s manipur
                        ]
                       [-D datadir]
 ```
