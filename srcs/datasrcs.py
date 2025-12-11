@@ -27,6 +27,7 @@ from . import goa
 from . import csl 
 from . import bis
 from . import rsa
+from . import manipur
 
 from .datasrcs_info import srcinfos
 
@@ -70,6 +71,7 @@ srcdict = { \
 'bis'                       : bis.BIS, \
 'mizoram'                   : mizoram.Mizoram, \
 'rsa'                       : rsa.RajasthanStateArchive, \
+'manipur'                   : manipur.Manipur, \
 }
 
 srchierarchy = {

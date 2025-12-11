@@ -36,6 +36,7 @@ def print_usage(progname):
                         -s uttarakhand_weekly -s himachal
                         -s haryana     -s kerala      -s haryanaarchive
                         -s stgeorge    -s himachal    -s keralalibrary
+                        -s manipur
                        ]
                        ''' % progname)
 

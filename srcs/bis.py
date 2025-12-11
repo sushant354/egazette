@@ -185,6 +185,7 @@ class BIS(BaseGazette):
                 continue 
 
             num, n = re.subn('\s+', '', num)
+            num, n = re.subn('/', '-', num)
             relurl = os.path.join(relpath, num)
 
             if not href:

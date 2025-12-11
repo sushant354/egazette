@@ -314,6 +314,14 @@ srcinfos = {
         'source'    : 'Rajasthan State Secretariat',
         'category'  : 'Rajasthan State Archive',
         'prefix'    : 'in.rajastahan.state.archive.'
+    },
+     # 'in.gazette.manipur.<year>-<month>-<day>.<gznum>' start_date: 2010-04-01 end_date: 2025-11-21
+    'manipur'   :  {
+        'languages' : ['eng', 'mni'],
+        'source'    : 'Government of Manipur',
+        'category'  : 'Manipur Gazette',
+        'prefix'    : 'in.gazette.manipur.',
+        'start_date': datetime(2010,4,1)
     }
 }
 
