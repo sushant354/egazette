@@ -58,7 +58,7 @@ srcinfos = {
     'bihar' : { 
         'languages' : ['eng', 'hin'], 
         'source'    : 'Government of Bihar',
-        'category'  : 'Gazette of Bihar',
+        'category'  : 'Bihar Gazette',
         'prefix'    : 'in.gov.bih.gazette.',
         'start_date': datetime(2008, 9, 24),
         'identifier_fn': bihar_identifier
