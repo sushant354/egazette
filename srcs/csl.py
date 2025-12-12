@@ -6,6 +6,7 @@ import re
 
 from .central import CentralBase
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class CSLWeekly(CentralBase):
     def __init__(self, name, storage):
@@ -200,7 +201,7 @@ class CSLWeekly(CentralBase):
         return minfos
 
     def process_result_row(self, tr, metainfos, dateobj, order):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfos.append(metainfo)
         metainfo.set_gztype(self.gztype)
 

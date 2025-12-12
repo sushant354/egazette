@@ -8,6 +8,7 @@ from requests_toolbelt.adapters.host_header_ssl import HostHeaderSSLAdapter
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 
 # needed because the DNS entries for the hostname is broken
@@ -53,7 +54,7 @@ class Telangana(BaseGazette):
         return None    
 
     def parse_row(self, tr, order, dateobj, gztype):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
         metainfo.set_gztype(gztype)
 

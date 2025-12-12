@@ -6,6 +6,7 @@ from http.cookiejar import CookieJar
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class MadhyaPradesh(BaseGazette):
     def __init__(self, name, storage):
@@ -55,7 +56,7 @@ class MadhyaPradesh(BaseGazette):
         return None     
 
     def process_row(self, metainfos, tr, order):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         i = 0
         for td in tr.find_all('td'):
             txt = utils.get_tag_contents(td)
@@ -296,7 +297,7 @@ class MadhyaPradeshOld(BaseGazette):
                 if date != dateobj:
                     continue
                                 
-                metainfo = utils.MetaInfo()
+                metainfo = MetaInfo()
                 metainfo.set_gztype(gztype)
                 metainfo.set_date(dateobj)
                 metainfo.set_url(url)
@@ -371,7 +372,7 @@ class MadhyaPradeshOld(BaseGazette):
         return None     
     
     def process_row(self, tr, order, dateobj):    
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         i = 0
         for td in tr.find_all('td'):
             txt = utils.get_tag_contents(td)

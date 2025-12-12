@@ -8,6 +8,7 @@ import urllib.request, urllib.parse, urllib.error
 from .andhra import AndhraArchive
 from ..utils import utils
 from ..utils import decode_captcha
+from ..utils.metainfo import MetaInfo
 
 import ssl
 
@@ -160,7 +161,7 @@ class Haryana(AndhraArchive):
         if not download:
             return
 
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfos.append(metainfo)
         metainfo.set_date(dateobj)
         metainfo['download'] = download

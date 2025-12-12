@@ -5,6 +5,7 @@ from http.cookiejar import CookieJar
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 PATTERN = r"Volume No\s+([^\s/]+)\s*/Issue\s+No\s+([\w()]+)\s+of\s+(\d{4})"
 GZNUM = "gznum"
@@ -145,7 +146,7 @@ class Mizoram(BaseGazette):
         return newdls
     
     def parse_metainfo(self,tr):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
 
         tds = tr.find_all('td')
         gurl = None

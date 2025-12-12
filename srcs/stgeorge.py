@@ -5,6 +5,7 @@ import calendar
 
 from .kerala import Kerala
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 
 class StGeorge(Kerala):
@@ -180,7 +181,7 @@ class StGeorge(Kerala):
         gzurl = self.baseurl +  self.gzurl_format % (gzyear, accno, accno, pagenumber)
 
         
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_url(gzurl)       
         metainfo.set_date(d)
         metainfo['relurl'] =  '%s_Page_%s' % (accno, pagenumber)

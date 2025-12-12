@@ -8,6 +8,7 @@ import hashlib
 from PIL import Image
 
 from ..utils import utils, decode_captcha
+from ..utils.metainfo import MetaInfo
 from .basegazette import BaseGazette
 #dummy345654 test345654*
 class BIS(BaseGazette):
@@ -246,7 +247,7 @@ class BIS(BaseGazette):
         return minfos
 
     def get_meta_info(self, div):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         title_div = div.find('div', {'class': 'div-abc1'})
         if title_div:
             title_spans = title_div.find_all('span')

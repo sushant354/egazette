@@ -1,11 +1,10 @@
 from xml.sax import saxutils
 from xml.parsers.expat import ExpatError
-import types
 import datetime
 import logging
 import codecs
 from xml.dom import minidom, Node
-from .utils import MetaInfo
+from .metainfo import MetaInfo
 
 def print_tag_file(filepath, feature):
     filehandle = codecs.open(filepath, 'w', 'utf8')

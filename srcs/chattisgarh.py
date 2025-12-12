@@ -5,6 +5,7 @@ import os
 
 from ..utils  import utils
 from .central import CentralBase 
+from ..utils.metainfo import MetaInfo
 
 import ssl
 
@@ -88,7 +89,7 @@ class ChattisgarhWeekly(CentralBase):
                     gznum = txt
                 elif col.startswith('partnum'):
                     h, partnum = col.split('|')
-                    metainfo = utils.MetaInfo()
+                    metainfo = MetaInfo()
                     metainfos.append(metainfo)
                     metainfo.set_date(dateobj)
                     metainfo.set_gztype(self.gazette_type)
@@ -236,7 +237,7 @@ class ChattisgarhExtraordinary(ChattisgarhWeekly):
         return order
 
     def process_result_row(self, tr, metainfos, dateobj, order):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_gztype(self.gazette_type)
         metainfos.append(metainfo)
         metainfo.set_date(dateobj)

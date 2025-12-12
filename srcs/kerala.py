@@ -14,6 +14,7 @@ from calmjs.parse.asttypes import FunctionCall
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 def tokenize(number):
     token = ''
@@ -201,7 +202,7 @@ class KeralaCompose(BaseGazette):
     def get_metainfos_extraordinary(self, results, dateobj):
         minfos = []
         for result in results:
-            metainfo = utils.MetaInfo()
+            metainfo = MetaInfo()
             metainfo.set_date(dateobj)
 
             metainfo['gztype']     = 'Extraordinary'
@@ -223,7 +224,7 @@ class KeralaCompose(BaseGazette):
             if gzdate != dateobj:
                 continue
 
-            metainfo = utils.MetaInfo()
+            metainfo = MetaInfo()
             metainfo.set_date(dateobj)
 
             metainfo['gztype']     = 'Ordinary'
@@ -466,7 +467,7 @@ class Kerala(BaseGazette):
                         title = utils.get_tag_contents(x)
                         title = utils.remove_spaces(title)
 
-                        metainfo = utils.MetaInfo()
+                        metainfo = MetaInfo()
                         minfos.append(metainfo)
 
                         metainfo.set_title(title)

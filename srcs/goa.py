@@ -6,6 +6,7 @@ import os
 
 from .basegazette import BaseGazette
 from ..utils import utils
+from ..utils.metainfo import MetaInfo
 
 class Goa(BaseGazette):
     def __init__(self, name, storage):
@@ -61,7 +62,7 @@ class Goa(BaseGazette):
         return order        
 
     def get_metainfo(self, order, tr, dateobj):
-        metainfo = utils.MetaInfo()
+        metainfo = MetaInfo()
         metainfo.set_date(dateobj)
 
         i = 0
