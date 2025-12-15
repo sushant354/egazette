@@ -28,6 +28,10 @@ from . import csl
 from . import bis
 from . import rsa
 from . import manipur
+from . import ladakh
+from . import chandigarh
+from . import nagaland
+from . import puducherry
 
 from .datasrcs_info import srcinfos
 
@@ -72,6 +76,10 @@ srcdict = { \
 'mizoram'                   : mizoram.Mizoram, \
 'rsa'                       : rsa.RajasthanStateArchive, \
 'manipur'                   : manipur.Manipur, \
+'ladakh'                    : ladakh.Ladakh, \
+'chandigarh'                : chandigarh.Chandigarh, \
+# 'nagaland'                  : nagaland.Nagaland, \
+'puducherry'                : puducherry.Puducherry, \
 }
 
 srchierarchy = {
