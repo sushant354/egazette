@@ -231,7 +231,17 @@ srcinfos = {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of Himachal Pradesh',
         'category'  : 'Himachal Pradesh Gazette',
-        'start_date': datetime(2010, 1, 1)
+        'start_date': datetime(2010, 1, 1),
+        'list_fields': {
+            'notifications': {
+                'display_name': 'Notifications',
+                'fields': [
+                    ('number', 'Number'),
+                    ('department', 'Department'), 
+                    ('subject', 'Subject')
+                ]
+            }
+        }
     },
     # 'in.gazette.haryana.<year>-<month>-<day>.<id>' start_date: 2014-10-27 end_date: 2025-03-06 count: 14106
     'haryana' : {
@@ -322,6 +332,41 @@ srcinfos = {
         'category'  : 'Manipur Gazette',
         'prefix'    : 'in.gazette.manipur.',
         'start_date': datetime(2010,4,1)
+    },
+    'ladakh' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Ladakh Administration',
+        'category'  : 'Ladakh Gazette',
+        'start_date': datetime(2020, 9, 18),
+    },
+    'chandigarh' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Chandigarh Administration',
+        'category'  : 'Chandigarh Gazette',
+        'start_date': datetime(2019, 10, 1),
+        'list_fields': {
+            'notifications': {
+                'display_name': 'Notifications',
+                'fields': [
+                    ('number', 'Number'),
+                    ('department', 'Department'),
+                    ('category', 'Category'),
+                    ('date', 'Date')
+                ]
+            }
+        }
+    },
+    # 'nagaland' : {
+    #     'languages' : ['eng'],
+    #     'source'    : 'Government of Nagaland',
+    #     'category'  : 'Nagaland Gazette',
+    #     'start_date': datetime(2017, 1, 1)
+    # },
+    'puducherry' : {
+        'languages' : ['eng', 'tam', 'fre'],
+        'source'    : 'Government of Puducherry',
+        'category'  : 'Puducherry Gazette',
+        'start_date': datetime(2011, 1, 1),
     }
 }
 

@@ -421,11 +421,36 @@ class GazetteIA:
        if dateobj:
            metadata['date'] = '%s' % dateobj
        
-       metadata['description'] = self.get_description(metainfo)
+       metadata['description'] = self.get_description(metainfo, src)
        return metadata
 
-    def get_description(self, metainfo):       
+    def format_list_field(self, field_name, field_value, srcinfo):
+        list_config = srcinfo.get('list_fields', {}).get(field_name)
+        if not list_config or not isinstance(field_value, list):
+            return str(field_value)
+        
+        fields = list_config.get('fields', [])
+        
+        formatted_items = []
+        for item in field_value:
+            if isinstance(item, dict):
+                item_parts = []
+                for field_key, field_label in fields:
+                    value = item.get(field_key, '')
+                    if value:
+                        item_parts.append(f"{field_label}: {value}")
+                
+                if item_parts:
+                    formatted_items.append(" | ".join(item_parts))
+        
+        if formatted_items:
+            return "<br/>".join(formatted_items)
+        
+        return ''
+
+    def get_description(self, metainfo, src):       
        desc = []
+       srcinfo = datasrcs_info.srcinfos.get(src, {})
 
        ignore_keys  = set(['linknames', 'links', 'linkids'])
        keys = [ \
@@ -449,39 +474,53 @@ class GazetteIA:
         ('file',         'File'), \
         ('topic',        'Topic'), \
         ('year',         'Year'), \
-        ('title',        'Title')
+        ('title',        'Title'), \
+        ('notifications', 'Notifications'), \
+        ('issuedate', 'Issue Date'), \
+        ('category' , 'Category'), \
        ]
        for k, kdesc in keys:
            if k in metainfo:
                v = metainfo[k]
-               if k == 'date':
+
+               if isinstance(v, list) and k in srcinfo.get('list_fields', {}):
+                   v = self.format_list_field(k, v, srcinfo)
+               elif k == 'date':
                    v = '%s' % v
                elif k == 'linknames':
-                  linkids = metainfo['linkids']
+                  linkids = metainfo.get('linkids', [])
                   i = 0
-                  v = []
+                  formatted_links = []
                   for linkname in metainfo[k]:
-                      identifier = linkids[i]
-                      v.append('<a href="/details/%s">%s</a>' % \
-                              (identifier, linkname))
-                      i += 1
-                  v = '<br/>'.join(v)
+                      if i < len(linkids):
+                          identifier = linkids[i]
+                          formatted_links.append('<a href="/details/%s">%s</a>' % 
+                                              (identifier, linkname))
+                          i += 1
+                  v = '<br/>'.join(formatted_links)
                elif k == 'url':
                   v = '<a href="%s">URL</a>' % v
-               else:    
-                   v = metainfo[k].strip()
+               elif isinstance(v, list):
+                   v = '<br/>'.join(str(item) for item in v)
+               elif isinstance(v, str):
+                   v = v.strip()
                    
                if v:
                    desc.append((kdesc, v))
 
        known_keys = set([k for k, kdesc in keys])
+       list_fields = srcinfo.get('list_fields', {})
 
        for k, v in metainfo.items():
            if k not in known_keys and k not in ignore_keys:
-               if type(v) in (str,):
-                   v = v.strip()
+               if isinstance(v, list) and k in list_fields:
+                   v = self.format_list_field(k, v, srcinfo)
                elif isinstance(v, list):
-                   v = '%s' % v    
+                   # Fallback for other list types
+                   v = '<br/>'.join(str(item) for item in v)
+               elif isinstance(v, str):
+                   v = v.strip()
+               
                if v:
                    desc.append((k.title(), v))
 
@@ -554,7 +593,8 @@ def print_usage(progname):
                          -s uttarakhand_weekly -s himachal
                          -s haryana     -s kerala      -s haryanaarchive
                          -s stgeorge    -s himachal    -s keralalibrary
-                         -s manipur
+                         -s manipur     -s puducherry     -s ladakh
+                         -s chandigarh  -s nagaland
                         ] 
     ''')                     
 

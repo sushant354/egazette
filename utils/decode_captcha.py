@@ -222,7 +222,7 @@ def himachal(img, outfile = None):
 
     #img = img.resize((int(img.size[0]*m), int(img.size[1]*m)))
     val = tesseract(img)
-    return val.upper() 
+    return val
 
 def allahabad(img, outfile = None):
     img = img.convert('RGBA')
