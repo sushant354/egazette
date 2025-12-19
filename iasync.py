@@ -468,16 +468,28 @@ class GazetteIA:
          ('url',              'Gazette Source'), \
          ('num',              'Number'), \
          ('gazetteid',        'Gazette ID'), \
-        ('bundleno',     'Bundle Number'), \
-        ('city',         'City'), \
-        ('description',  'Description'), \
-        ('file',         'File'), \
-        ('topic',        'Topic'), \
-        ('year',         'Year'), \
-        ('title',        'Title'), \
-        ('notifications', 'Notifications'), \
-        ('issuedate', 'Issue Date'), \
-        ('category' , 'Category'), \
+         ('bundleno',         'Bundle Number'), \
+         ('city',             'City'), \
+         ('description',      'Description'), \
+         ('file',             'File'), \
+         ('topic',            'Topic'), \
+         ('year',             'Year'), \
+         ('title',            'Title'), \
+         ('notifications',    'Notifications'), \
+         ('issuedate',        'Issue Date'), \
+         ('category' ,        'Category'), \
+         ('publisher',        'Publisher'), \
+         ('subdepartment',    'Sub Department'), \
+         ('document_type',    'Document Type'), \
+         ('volume_num',       'Volume Number'), \
+         ('keywords',         'Keywords'),  \
+         ('bookheadno',       'Book Head No.'), \
+         ('source_url',       'Source URL'), \
+         ('filename',         'File Name'), \
+         ('bookid',           'Book ID'), \
+         ('creator',          'Creator'), \
+         ('disk_name',        'Disk Name'), \
+         ('language',         'Language'), \
        ]
        for k, kdesc in keys:
            if k in metainfo:
@@ -498,7 +510,7 @@ class GazetteIA:
                                               (identifier, linkname))
                           i += 1
                   v = '<br/>'.join(formatted_links)
-               elif k == 'url':
+               elif k == 'url' or k == 'source_url':
                   v = '<a href="%s">URL</a>' % v
                elif isinstance(v, list):
                    v = '<br/>'.join(str(item) for item in v)
@@ -594,7 +606,15 @@ def print_usage(progname):
                          -s haryana     -s kerala      -s haryanaarchive
                          -s stgeorge    -s himachal    -s keralalibrary
                          -s manipur     -s puducherry     -s ladakh
-                         -s chandigarh  -s nagaland
+                         -s chandigarh  -s nagaland     -s dadranagarhaveli
+                         -s gujarat     -s jammuandkashmir -s andaman
+                         -s arunachal   -s assam_extraordinary -s sikkim
+                         -s assam_weekly -s lakshadweep    -s meghalaya
+                         -s rajasthan_extraordinary  -s rajasthan_ordinary
+                         -s tripura_extraordinary    -s triupura_ordinary
+                         -s uttarpradesh_extraordinary 
+                         -s uttarpradesh_ordinary
+                         -s wbsl   -s westbengal
                         ] 
     ''')                     
 

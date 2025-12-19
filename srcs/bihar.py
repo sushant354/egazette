@@ -13,7 +13,7 @@ class Bihar(CentralBase):
         self.result_table = 'ctl00_ContentPlaceHolder1_DetailView'
 
     def get_post_data(self, tags, dateobj):
-        datestr  = utils.dateobj_to_str(dateobj, '/')
+        datestr  = dateobj.strftime('%m/%d/%Y')
         postdata = []
         gztype   = None
         for tag in tags:
