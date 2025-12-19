@@ -7,13 +7,13 @@ from .central import CentralBase
 class Bihar(CentralBase):
     def __init__(self, name, storage):
         CentralBase.__init__(self, name, storage)
-        self.hostname   = 'egazette.bih.nic.in'
-        self.baseurl    = 'http://egazette.bih.nic.in/SearchGazette.aspx'
+        self.hostname   = 'egazette.bihar.gov.in'
+        self.baseurl    = 'http://egazette.bihar.gov.in/SearchGazette.aspx'
         self.search_endp = 'SearchGazette.aspx'
         self.result_table = 'ctl00_ContentPlaceHolder1_DetailView'
 
     def get_post_data(self, tags, dateobj):
-        datestr  = utils.dateobj_to_str(dateobj, '/')
+        datestr  = dateobj.strftime('%m/%d/%Y')
         postdata = []
         gztype   = None
         for tag in tags:

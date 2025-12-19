@@ -30,6 +30,10 @@ def goa_identifier(relurl, metainfo):
     identifier = f'{gznum}.{series}'
     return identifier
 
+def wbsl_identifier(relurl, metainfo):
+    bookid = metainfo.get('bookid')
+    return bookid
+
 srcinfos = {
     'bis' : {
         'languages' : ['eng'],
@@ -95,11 +99,12 @@ srcinfos = {
         'prefix'    : 'in.gazette.chhattisgarh.eo.'
     },
     # 'in.gazette.andhra.<year>-<month>-<day>.<id>' start_date: 2008-05-22 end_date: 2023-05-03 count: 19184
-    # 'andhra' : {
-    #     'languages' : ['eng', 'tel'],
-    #     'source'    : 'Government of Andhra Pradesh',
-    #     'category'  : 'Andhra Pradesh Gazette'
-    # },
+    'andhra' : {
+        'languages' : ['eng', 'tel'],
+        'source'    : 'Government of Andhra Pradesh',
+        'category'  : 'Andhra Pradesh Gazette',
+        'enabled'   : False
+    },
     'andhra_extraordinary' : {
         'languages' : ['eng', 'tel'],
         'source'    : 'Government of Andhra Pradesh',
@@ -120,12 +125,13 @@ srcinfos = {
     # 'in.gazette.karnataka.<year>-<month>-<day>' start_date: 2009-06-11 end_date: 2018-11-01 count: 463
     # 'in.gazette.karnataka_new.<year>-<month>-<day>.<id>' start_date; 2009-06-11 end_date: 2019-12-26 count: 8783
     # 'in.gazette.in.gazette.karnataka_new.<year>-<month>-<day>.<id>' start_date: 2018-10-04, end_date: 2018-10-04 count: 2
-    # 'karnataka' : { 
-    #     'languages' : ['eng', 'kan'], 
-    #     'source'    : 'Government of Karnataka',
-    #     'category'  : 'Karnataka Gazette',
-    #     'prefix'    : 'in.gazette.karnataka_new.'
-    # },
+    'karnataka' : { 
+        'languages' : ['eng', 'kan'], 
+        'source'    : 'Government of Karnataka',
+        'category'  : 'Karnataka Gazette',
+        'prefix'    : 'in.gazette.karnataka_new.',
+        'enabled'   : False
+    },
     'karnataka_daily' : { 
         'languages' : ['eng', 'kan'], 
         'source'    : 'Government of Karnataka',
@@ -209,12 +215,13 @@ srcinfos = {
         'category'  : 'Punjab Gazette'
     },
     # 'in.gazette.uttarakhand.<year>-<month>-<day>.<id>' start_date: 2013-01-11 end_date: 2024-06-01 count: 611
-    # 'uttarakhand' : {
-    #     'languages' : ['eng', 'hin'],
-    #     'source'    : 'Government of Uttarakhand',
-    #     'category'  : 'Uttarakhand Gazette',
-    #     'start_date': datetime(2014, 1, 1)
-    # },
+    'uttarakhand' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Government of Uttarakhand',
+        'category'  : 'Uttarakhand Gazette',
+        'start_date': datetime(2014, 1, 1),
+        'enabled'   : False
+    },
     'uttarakhand_daily' : {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of Uttarakhand',
@@ -356,18 +363,132 @@ srcinfos = {
             }
         }
     },
-    # 'nagaland' : {
-    #     'languages' : ['eng'],
-    #     'source'    : 'Government of Nagaland',
-    #     'category'  : 'Nagaland Gazette',
-    #     'start_date': datetime(2017, 1, 1)
-    # },
+    'nagaland' : {
+        'languages' : ['eng'],
+        'source'    : 'Government of Nagaland',
+        'category'  : 'Nagaland Gazette',
+        'start_date': datetime(2017, 1, 1),
+        'enabled'   : False
+    },
     'puducherry' : {
         'languages' : ['eng', 'tam', 'fre'],
         'source'    : 'Government of Puducherry',
         'category'  : 'Puducherry Gazette',
         'start_date': datetime(2011, 1, 1),
-    }
+    },
+    'dadranagarhaveli': {
+        'languages' : ['eng', 'hin', 'guj'],
+        'source'    : 'Dadra And Nagar Haveli And Daman And Diu Administration',
+        'category'  : 'Gazette of DNH And DD',
+        'start_date': datetime(2021, 1, 1)
+    },
+    'gujarat' : {
+        'languages' : ['eng', 'guj'],
+        'source'    : 'Government of Gujarat',
+        'category'  : 'Gujarat Gazette',
+        'start_date': datetime(1991, 1, 1)
+    },
+    'jammuandkashmir' : {
+        'languages' : ['eng', 'urd'],
+        'source'    : 'Government of Jammu and Kashmir',
+        'category'  : 'Jammu and Kashmir Gazette',
+        'start_date': datetime(2014, 1, 1),
+    },
+    'andaman' : {
+        'languages' : ['eng'], 
+        'source'    : 'Andaman and Nicobar Administration',
+        'category'  : 'Andaman and Nicobar Gazette',
+        'start_date': datetime(1996, 1, 1),
+        'enabled'   : False
+    },
+    'arunachal' : {
+        'languages' : ['eng'],
+        'source'    : 'Government of Arunachal pradesh',
+        'category'  : 'Arunachal Pradesh Gazette',
+        #'start_date': datetime(2020, 1, 1),
+        'start_date': datetime(2025, 7, 1)
+    },
+    'assam_extraordinary' : {
+        'languages' : ['eng', 'asm'],
+        'source'    : 'Government of Assam',
+        'category'  : 'Assam Extraordinary Gazette',
+        'start_date': datetime(2016, 1, 1)
+    },
+    'assam_weekly' : {
+        'languages' : ['eng', 'asm'],
+        'source'    : 'Government of Assam',
+        'category'  : 'Assam Weekly Gazette',
+        'start_date': datetime(2016, 1, 1)
+    },
+    'meghalaya' : {
+        'languages' : ['eng'],
+        'source'    : 'Government of Meghalaya',
+        'category'  : 'Meghalaya Gazette',
+        'start_date': datetime(2006, 3, 1)
+    },
+    'tripura_ordinary' : {
+        'languages' : ['eng'],
+        'source'    : 'Government of Tripura',
+        'category'  : 'Tripura Ordinary Gazette',
+        # 'start_date': datetime(2018, 1, 1), for the previous verison of the source
+        'start_date': datetime(2025, 8, 30)
+    },
+    'tripura_extraordinary' : {
+        'languages' : ['eng'],
+        'source'    : 'Government of Tripura',
+        'category'  : 'Tripura Extraordinary Gazette',
+        # 'start_date': datetime(2018, 1, 1), for the previous verison of the source
+        'start_date': datetime(2025, 8, 30)
+    },
+    'lakshadweep' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Lakshadweep Administration',
+        'category'  : 'Lakshadweep Gazette',
+        'start_date': datetime(2016, 1, 1)
+    },
+    'uttarpradesh_extraordinary' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Government of Uttar Pradesh',
+        'category'  : 'Uttar Pradesh Extraordinary Gazette',
+        'start_date': datetime(2018, 12, 21),
+    },
+    'uttarpradesh_ordinary' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Government of Uttar Pradesh',
+        'category'  : 'Uttar Pradesh Ordinary Gazette',
+        'start_date': datetime(2018, 12, 21),
+    },
+    'sikkim' : {
+        'languages' : ['eng'],
+        'source'    : 'Government of Sikkim',
+        'category'  : 'Sikkim Gazette',
+        'start_date': datetime(1975, 9, 8),
+    },
+    'rajasthan_extraordinary' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Government of Rajasthan',
+        'category'  : 'Rajasthan Extraordinary Gazette',
+        'start_date': datetime(2019, 4, 1),
+    },
+    'rajasthan_ordinary' : {
+        'languages' : ['eng', 'hin'],
+        'source'    : 'Government of Rajasthan',
+        'category'  : 'Rajasthan Ordinary Gazette',
+        'start_date': datetime(2019, 4, 1),
+    },
+    'westbengal' : {
+        'languages' : ['eng', 'ben', 'urd'],
+        'source'    : 'Government of West Bengal',
+        'category'  : 'The Kolkata Gazette',
+        'start_date': datetime(1832, 1, 1),
+    },
+    'wbsl' : {
+        'languages' : ['eng', 'ben', 'urd', 'fre', 'ita'],
+        'category'  : 'West Bengal Secretariat Library Archive',
+        'start_date': datetime(1742, 1, 1),
+        'prefix'    : 'wbsl.',
+        'identifier_fn': wbsl_identifier,
+    },
 }
 
 def get_prefix(srcname):

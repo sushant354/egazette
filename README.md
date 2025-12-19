@@ -46,7 +46,15 @@ Usage: python sync.py [-l level(critical, error, warn, info, debug)]
                        -s haryana     -s kerala      -s haryanaarchive
                        -s stgeorge    -s himachal    -s keralalibrary
                        -s manipur     -s puducherry     -s ladakh
-                       -s chandigarh  -s nagaland 
+                       -s chandigarh  -s nagaland    -s dadranagarhaveli
+                       -s gujarat     -s jammuandkashmir -s andaman
+                       -s arunachal   -s assam_extraordinary -s sikkim
+                       -s assam_weekly -s lakshadweep    -s meghalaya
+                       -s rajasthan_extraordinary  -s rajasthan_ordinary
+                       -s tripura_extraordinary    -s triupura_ordinary
+                       -s uttarpradesh_extraordinary 
+                       -s uttarpradesh_ordinary
+                       -s wbsl   -s westbengal
                        ]
                       [-D datadir]
 ```

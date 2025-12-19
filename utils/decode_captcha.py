@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import tempfile
+import captchabreaker
 from PIL import Image
 from PIL import ImageFilter
 
@@ -323,6 +324,8 @@ def clean(s):
     # remove non-alpha numeric text
     return re.sub('[\W]', '', s)
 
+def tripura(img):
+    return captchabreaker.solve(img)
 
 
 if __name__ == '__main__':

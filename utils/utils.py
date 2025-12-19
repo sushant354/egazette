@@ -312,6 +312,10 @@ DESCRIPTION = 'description'
 FILE       = 'file'
 TOPIC      = 'topic'
 YEAR       = 'year'
+PUBLISHER  = 'publisher'
+SUBDEPARTMENT = 'subdepartment'
+DOCTYPE    = 'doctype'
+CATEGORY   = 'category'
 
 _illegal_xml_chars_RE = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1F\uD800-\uDFFF\uFFFE\uFFFF]')
 
@@ -406,6 +410,18 @@ class MetaInfo(dict):
     def set_year(self, value):
         self.set_field(YEAR, value)
 
+    def set_publisher(self, value):
+        self.set_field(PUBLISHER, value)
+    
+    def set_subdepartment(self, value):
+        self.set_field(SUBDEPARTMENT, value)
+
+    def set_doctype(self, value):
+        self.set_field(DOCTYPE, value)
+    
+    def set_category(self, value):
+        self.set_category(CATEGORY, value)
+
     def get_url(self):
         return self.get_field(URL)
 
@@ -471,6 +487,18 @@ class MetaInfo(dict):
 
     def get_year(self):
         return self.get_field(YEAR)
+
+    def get_publisher(self):
+        return self.get_field(PUBLISHER)
+    
+    def get_subdepartment(self):
+        return self.get_field(SUBDEPARTMENT)
+    
+    def get_doctype(self):
+        return self.get_field(DOCTYPE)
+    
+    def get_category(self):
+        return self.get_field(CATEGORY)
 
 def stats_to_message(stats):
     rawstats  = stats[0]
