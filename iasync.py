@@ -489,7 +489,7 @@ class GazetteIA:
          ('bookid',           'Book ID'), \
          ('creator',          'Creator'), \
          ('disk_name',        'Disk Name'), \
-         ('language',         'language'), \
+         ('language',         'Language'), \
        ]
        for k, kdesc in keys:
            if k in metainfo:
