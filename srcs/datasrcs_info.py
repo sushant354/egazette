@@ -175,7 +175,20 @@ srcinfos = {
     'odisha' : {
         'languages' : ['eng', 'ori'],
         'source'    : 'Government of Odisha',
-        'category'  : 'Odisha Gazette'
+        'category'  : 'Odisha Gazette',
+        'enabled'   : False,
+    },
+    'odisha_govpress' : {
+        'languages' : ['eng', 'ori'],
+        'source'    : 'Government of Odisha',
+        'category'  : 'Odisha Gazette',
+        'start_date': datetime(2022, 11, 11)
+    },
+    'odisha_egaz' : {
+        'languages' : ['eng', 'ori'],
+        'source'    : 'Government of Odisha',
+        'category'  : 'Odisha Gazette',
+        'start_date': datetime(2022, 1, 1)
     },
     # 'in.gazette.jharkhand.<year>-<month>-<day>.<id>' start_date: 2014-01-09 end_date: 2025-02-28 count: count: 8783
     'jharkhand' : {

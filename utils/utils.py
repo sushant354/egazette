@@ -420,7 +420,7 @@ class MetaInfo(dict):
         self.set_field(DOCTYPE, value)
     
     def set_category(self, value):
-        self.set_category(CATEGORY, value)
+        self.set_field(CATEGORY, value)
 
     def get_url(self):
         return self.get_field(URL)

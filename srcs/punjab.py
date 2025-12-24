@@ -4,6 +4,7 @@ import os
 import ssl
 import json
 import base64
+import datetime
 
 from .basegazette import BaseGazette
 from ..utils import utils
@@ -202,6 +203,19 @@ class PunjabDSA(BaseGazette):
 
         if 'Notification_Title' in d:
             metainfo.set_title(d['Notification_Title'])
+        
+        if 'Gazette_Category_Name' in d:
+            metainfo.set_category(d['Gazette_Category_Name'])
+        
+        if 'Notification_Date' in d:
+            date_str = datetime.datetime.strptime(\
+                       d['Notification_Date'] , "%m/%d/%Y %H:%M:%S"\
+                    ).strftime("%d-%m-%Y")
+
+            metainfo['notification_date'] =  date_str
+        
+        if 'Notification_For_Name' in d:
+            metainfo['notification_for'] = d['Notification_For_Name']
 
         return metainfo
 
