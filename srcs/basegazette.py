@@ -3,6 +3,7 @@ import datetime
 import urllib.request, urllib.parse, urllib.error
 import os
 import time
+import ssl
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
@@ -189,7 +190,13 @@ class Downloader:
         self.logger.debug('Request url: %s headers: %s data: %s', \
                             request.full_url, request.headers, request.data)
         try:
-            opener  = urllib.request.urlopen(request, timeout = self.request_timeout_secs)
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            ssl_context.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
+            ssl_context.set_ciphers('HIGH:!DH:!3DES')
+            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+            opener  = urllib.request.urlopen(request, timeout = self.request_timeout_secs, context=ssl_context)
             response = opener.info()
             webpage  = opener.read()
             
