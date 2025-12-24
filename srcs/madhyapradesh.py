@@ -206,7 +206,8 @@ class MadhyaPradesh(BaseGazette):
             self.sync_oneyear(year, dls, fromdate, todate, event)
             if event.is_set():
                 break
-
+        self.logger.info(f'Got {len(dls)} Gazettes from {fromdate.date()} to {todate.date()}')
+        return dls
 
 class MadhyaPradeshOld(BaseGazette):
     def __init__(self, name, storage):

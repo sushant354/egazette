@@ -112,6 +112,8 @@ srcdict = { \
 'rajasthan_ordinary'        : rajasthan.RajasthanOrdinaryCitizen, \
 'westbengal'                : westbengal.KolkataWBSL, \
 'wbsl'                      : wbsl.WBSL, \
+'odisha_egaz'               : odisha.OdishaEGazette, \
+'odisha_govpress'          : odisha.OdishaGovPress, \
 }
 
 srchierarchy = {
@@ -129,9 +131,10 @@ srchierarchy = {
     'uttarpradesh'  : ['uttarpradesh_extraordinary', 
                        'uttarpradesh_ordinary'],
     'rajasthan'     : ['rajasthan_extraordinary', 'rajasthan_ordinary'],
+    'odisha'        : ['odisha_egaz', 'odisha_govpress'],
     'states'        : ['delhi', 'chattisgarh', 'karnataka', 'andhra', \
                        'uttarakhand', 'assam', 'tripura', 'uttarpradesh', \
-                       'rajasthan'] + 
+                       'rajasthan', 'odisha'] + 
                    list(set(srcdict.keys()) -
                         set(['statutory',
                              'central_weekly', 'central_extraordinary',
@@ -146,7 +149,8 @@ srchierarchy = {
                              'tripura_extraordinary', 'rajasthan_extraordinary',
                              'rajasthan_ordinary', 
                              'uttarpradesh_extraordinary',
-                             'uttarpradesh_ordinary']))
+                             'uttarpradesh_ordinary', 'odisha_egaz',
+                             'odisha_govpress']))
 }
 
 def get_srcobjs(srclist, storage):

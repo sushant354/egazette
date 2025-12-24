@@ -45,7 +45,8 @@ def print_usage(progname):
                        -s tripura_extraordinary    -s triupura_ordinary
                        -s uttarpradesh_extraordinary 
                        -s uttarpradesh_ordinary
-                       -s wbsl   -s westbengal
+                       -s wbsl   -s westbengal    -s odisha_egaz
+                       -s odisha_govpress
                        ]
                        ''' % progname)
 
