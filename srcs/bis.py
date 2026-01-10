@@ -140,27 +140,43 @@ class BIS(BaseGazette):
             self.logger.warning('Unable to parse search page')
             return dls
 
-        d1 = self.search(d, dateobj,  'ctl00$ContentPlaceHolder1$btn_search')
+        d1 = self.search(d, dateobj,  'ctl00$ContentPlaceHolder1$btn_search', None)
         if not d:
             return dls
 
         dls = self.process_search_results(d1, relpath, dateobj)
 
+        view_state = None
         while True:
             next_page = d1.find('a', {'id':'ctl00_ContentPlaceHolder1_T1_lbtnNext'})
             if not next_page:
                 break
 
             self.logger.info('Going to the next page for %s', dateobj)
-            d1= self.search(d, dateobj, 'ctl00$ContentPlaceHolder1$T1$lbtnNext')
+            d1= self.search(d, dateobj, 'ctl00$ContentPlaceHolder1$T1$lbtnNext', view_state)
             if not d1:
                 self.logger.warning('Unable to download next page %s', dateobj)
-                break 
+                break
+
+            view_state = self.extract_state(d1)
+            print (d1)
             dls.extend(self.process_search_results(d1, relpath, dateobj))
         return dls
 
-    def search(self, d, dateobj, event_target):
-        postdata = self.get_search_data(d, dateobj, event_target) 
+    def extract_state(self, d):
+        webpage = '%s' % d
+
+        reobj = re.search('__VIEWSTATE\|(?P<state>[^|]+)\|', webpage)
+        state = None
+
+        if reobj:
+            groupdict = reobj.groupdict()
+            state     = groupdict['state']
+        print ('STATENEW', state)    
+        return state
+
+    def search(self, d, dateobj, event_target, view_state):
+        postdata = self.get_search_data(d, dateobj, event_target, view_state) 
 
         response = self.download_url(self.searchurl, postdata = postdata, \
                        loadcookies = self.cookiejar, savecookies=self.cookiejar)
@@ -185,7 +201,6 @@ class BIS(BaseGazette):
                 continue 
 
             num, n = re.subn('\s+', '', num)
-            num, n = re.subn('/', '-', num)
             relurl = os.path.join(relpath, num)
 
             if not href:
@@ -300,15 +315,17 @@ class BIS(BaseGazette):
 
             for span in dldiv.find_all('span'):
                 spanid = span.get('id')
-                if spanid and re.search('lblPrintPrice$', spanid):
+                if spanid and (re.search('lblPrintPrice$', spanid)  or \
+                              re.search('lblINRPrice$', spanid)):
                     metainfo['inr'] = utils.get_tag_contents(span)
 
-                if spanid and re.search('lblPrintPriceUSD$', spanid):
+                if spanid and (re.search('lblPrintPriceUSD$', spanid) or \
+                               re.search('lblUSDPrice$', spanid)):
                     metainfo['usd'] = utils.get_tag_contents(span)
 
         return metainfo
 
-    def get_search_data(self, d, dateobj, event_target):
+    def get_search_data(self, d, dateobj, event_target, view_state):
         form = d.find('form', {'name': 'aspnetForm'})
         datestr  = utils.dateobj_to_str(dateobj, '-', reverse = True)
         postdata = [('ctl00$ToolkitScriptManager1', \
@@ -330,6 +347,8 @@ class BIS(BaseGazette):
                     continue
                 elif name == 'ctl00$ContentPlaceHolder1$T1$btn_refresh_wish':
                     continue
+                elif view_state != None and name == '__VIEWSTATE':
+                    value = view_state
 
                 if value == None:
                     value = ''
