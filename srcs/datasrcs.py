@@ -79,8 +79,8 @@ srcdict = { \
 'himachal'                  : himachal.Himachal, \
 'haryana'                   : haryana.Haryana, \
 'haryanaarchive'            : haryana.HaryanaArchive, \
-'kerala'                    : kerala.Kerala, \
-'keralacompose'             : kerala.KeralaCompose, \
+#'kerala'                    : kerala.Kerala, \
+'kerala'                    : kerala.KeralaCompose, \
 'stgeorge'                  : stgeorge.StGeorge, \
 'keralalibrary'             : stgeorge.KeralaLibrary, \
 'goa'                       : goa.Goa, \
