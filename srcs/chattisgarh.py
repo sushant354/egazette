@@ -10,6 +10,15 @@ import ssl
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
+import json
+
+PDF_BASE_URL = 'https://egazette.cg.nic.in/node-backend/uploads/fileForSigns/'
+API_URL = (
+    'https://egazette.cg.nic.in/node-backend/GetSearchGazetteByCitizenDashboard_new'
+    '?noticeLevel=G&gztype=%s&dept=&selectedDist=&category=&sector='
+    '&gazetteNo=&notificationNo=&subject=&startDate=%s&endDate=%s'
+)
+
 class ChattisgarhWeekly(CentralBase):
     def __init__(self, name, storage):
         CentralBase.__init__(self, name, storage)
@@ -269,3 +278,128 @@ class ChattisgarhExtraordinary(ChattisgarhWeekly):
                             metainfo[col] = name
 
             i += 1
+
+"""
+Chattisgarh Gazette has a new API which is being used for fetching both ordinary and extraordinary gazettes.
+Previous API was using ASP.NET now that has been migrated to Nodejs. 
+New API is returning JSON data which is easier to parse and also has more metadata. 
+Hence we are using the new API for both ordinary and extraordinary gazettes. 
+Old code for ASP.NET based scraping is being kept in case we need to fallback to it.
+"""
+
+class ChattisgarhWeeklyNew(CentralBase):
+    def __init__(self, name, storage):
+        CentralBase.__init__(self, name, storage)
+        self.hostname     = 'egazette.cg.nic.in'
+        self.gztype       = 'O'
+        self.gazette_type = 'Ordinary'
+
+    def get_session(self):
+        s = super().get_session()
+        s.verify = False
+        return s
+
+    def get_relurl(self, relpath, metainfo):
+        partnum, _ = re.subn(r'[\s()]+', '_', metainfo['partnum'])
+        partnum = partnum.strip(' _')
+        gznum   = metainfo.get('gznum', 'unkwn')
+        num     = '%s-%s' % (gznum, partnum)
+        num     = num.strip(' \t\r\n_-')
+        return os.path.join(relpath, num)
+
+    def download_oneday(self, relpath, dateobj):
+        dls     = []
+        datestr = utils.dateobj_to_str(dateobj, '-', reverse=True)
+        url     = API_URL % (self.gztype, datestr, datestr)
+
+        response = self.download_url_using_session(url, session=self.get_session())
+        if response is None or response.webpage is None:
+            self.logger.warning('Unable to fetch gazette list for %s', dateobj)
+            return dls
+
+        try:
+            result = json.loads(response.webpage)
+        except Exception:
+            self.logger.warning('Unable to parse JSON for %s', dateobj)
+            return dls
+
+        if not result.get('status'):
+            self.logger.info('No data for %s', dateobj)
+            return dls
+
+        for entry in result.get('data', []):
+            gznum = str(entry.get('gz_no', ''))
+            for section in ['Sec1', 'Sec2', 'Sec3A', 'Sec3B', 'Sec4']:
+                pdf_name = entry.get(section)
+                if not pdf_name:
+                    continue
+                metainfo = utils.MetaInfo()
+                metainfo.set_date(dateobj)
+                metainfo.set_gztype(self.gazette_type)
+                metainfo['gznum']   = gznum
+                metainfo['partnum'] = section
+                dept = entry.get('DistDept%s' % section)
+                if dept:
+                    metainfo['department'] = dept
+
+                relurl  = self.get_relurl(relpath, metainfo)
+                fileurl = PDF_BASE_URL + pdf_name
+                if self.save_gazette(relurl, fileurl, metainfo, validurl=False):
+                    dls.append(relurl)
+        return dls
+
+
+class ChattisgarhExtraordinaryNew(ChattisgarhWeekly):
+    def __init__(self, name, storage):
+        ChattisgarhWeekly.__init__(self, name, storage)
+        self.gztype       = 'E'
+        self.gazette_type = 'Extraordinary'
+
+    def get_relurl(self, relpath, metainfo):
+        if 'gznum' not in metainfo:
+            return None
+        return os.path.join(relpath, str(metainfo['gznum']))
+
+    def download_oneday(self, relpath, dateobj):
+        dls     = []
+        datestr = utils.dateobj_to_str(dateobj, '-', reverse=True)
+        url     = API_URL % (self.gztype, datestr, datestr)
+
+        response = self.download_url_using_session(url, session=self.get_session())
+        if response is None or response.webpage is None:
+            self.logger.warning('Unable to fetch gazette list for %s', dateobj)
+            return dls
+
+        try:
+            result = json.loads(response.webpage)
+        except Exception:
+            self.logger.warning('Unable to parse JSON for %s', dateobj)
+            return dls
+
+        if not result.get('status'):
+            self.logger.info('No data for %s', dateobj)
+            return dls
+
+        for entry in result.get('data', []):
+            pdf_name = entry.get('pdf_name')
+            if not pdf_name:
+                continue
+            metainfo = utils.MetaInfo()
+            metainfo.set_date(dateobj)
+            metainfo.set_gztype(self.gazette_type)
+            metainfo['gznum'] = str(entry.get('gz_no', ''))
+            if entry.get('nt_subject_h'):
+                metainfo.set_subject(entry['nt_subject_h'])
+            if entry.get('dept_name_hi'):
+                metainfo['department'] = entry['dept_name_hi']
+            if entry.get('nt_sno'):
+                metainfo['notification_num'] = entry['nt_sno']
+
+            relurl = self.get_relurl(relpath, metainfo)
+            if not relurl:
+                self.logger.warning('Not able to form relurl for %s', metainfo)
+                continue
+            fileurl = PDF_BASE_URL + pdf_name
+            if self.save_gazette(relurl, fileurl, metainfo, validurl=False):
+                dls.append(relurl)
+        return dls
