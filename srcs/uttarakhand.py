@@ -1,6 +1,8 @@
 import re
 import os
+import ssl
 import json
+import time
 import datetime
 import urllib.request, urllib.parse, urllib.error
 from http.cookiejar import CookieJar
@@ -213,6 +215,21 @@ class Uttarakhand(BaseGazette):
 
         return metainfo 
 
+'''
+SEARCH API
+ID=4519  File=4519-010626110427.pdf  GoDate=23-04-2026
+
+ID=4515  File=4515-010626104148.pdf  GoDate=07-05-2026   ← uploaded June 1
+ID=4519  File=4519-010626110427.pdf  GoDate=23-04-2026   ← uploaded June 1, GoDate April 23
+ID=4522  File=4522-010626111801.pdf  GoDate=09-04-2026   ← uploaded June 1, GoDate April 9
+
+4519  -  01  06  26  11  04  27  .pdf
+ ID      DD  MM  YY  HH  MM  SS
+                 ↑
+         This is the UPLOAD date (June 1, 2026)
+         NOT the gazette date
+'''
+
 class UttarakhandBase(BaseGazette):
     def __init__(self, name, storage_manager):
         BaseGazette.__init__(self, name, storage_manager)
@@ -221,6 +238,76 @@ class UttarakhandBase(BaseGazette):
         self.gz_id     = '0'                         # default, not indicates any gz id
         self.gz_type   = ''                           # default, not indicates any gz type
         self.cookiejar   = CookieJar()
+        self.lookback    = 15
+
+        # gazettes.uk.gov.in requires legacy TLS renegotiation.
+        # Build a dedicated SSL context so this doesn't affect other crawlers.
+        # Making this global would be overriden by other crawler imports in datasrcs
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode    = ssl.CERT_NONE
+        ctx.options       |= 0x4  # OP_LEGACY_SERVER_CONNECT
+        self._ssl_ctx      = ctx
+
+    def download_url_onetime(self, url, loadcookies, savecookies,
+                             postdata, referer, encodepost, headers, fixurl, method):
+        from .basegazette import WebResponse
+        webresponse = WebResponse()
+
+        if self.backoff > 0:
+            time.sleep(self.backoff)
+
+        headers['User-agent'] = self.useragent
+        if referer:
+            headers['Referer'] = referer
+
+        encodedData = None
+        if postdata:
+            if encodepost:
+                encodedData = urllib.parse.urlencode(postdata).encode('utf-8')
+            else:
+                encodedData = postdata
+
+        fixed_url = self.url_fix(url) if fixurl else url
+
+        if method is None:
+            request = urllib.request.Request(fixed_url, encodedData, headers)
+        else:
+            request = urllib.request.Request(fixed_url, encodedData, headers, method=method)
+
+        if loadcookies is not None:
+            loadcookies.add_cookie_header(request)
+            if 'Cookie' in request.unredirected_hdrs:
+                request.headers['Cookie'] = request.unredirected_hdrs.pop('Cookie')
+
+        self.logger.debug('Request url: %s headers: %s data: %s',
+                          request.full_url, request.headers, request.data)
+        try:
+            https_handler = urllib.request.HTTPSHandler(context=self._ssl_ctx)
+            opener        = urllib.request.build_opener(https_handler)
+            response_obj  = opener.open(request, timeout=self.request_timeout_secs)
+            response      = response_obj.info()
+            webpage       = response_obj.read()
+
+            webresponse.set_webpage(webpage)
+            webresponse.set_srvresponse(response)
+            webresponse.set_response_url(response_obj.geturl())
+
+            self.logger.info('Url: %s response_url: %s Status: %s',
+                             fixed_url, response_obj.geturl(), response_obj.getcode())
+        except Exception as e:
+            webresponse.set_error(e)
+            self.logger.warning('Could not fetch: %s error: %s', url, e)
+            return webresponse
+
+        self.logger.debug('Server response: %s', response)
+
+        if 'Set-Cookie' in response:
+            cookie = response['Set-Cookie']
+            if savecookies is not None and cookie:
+                savecookies.extract_cookies(response_obj, request)
+
+        return webresponse
     
     def get_cookies(self):
         url = urllib.parse.urljoin(self.baseurl, 'en/Search/index')
