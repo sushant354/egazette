@@ -53,6 +53,7 @@ class Downloader:
         ctx.check_hostname = False
         ctx.verify_mode    = ssl.CERT_NONE
         ctx.options       |= 0x4  # OP_LEGACY_SERVER_CONNECT
+        ctx.set_ciphers('HIGH:!DH:!aNULL')
         self._ssl_ctx      = ctx
 
     def all_downloads(self, event):
@@ -239,7 +240,10 @@ class Downloader:
         if 'Set-Cookie' in response: 
             cookie = response['Set-Cookie']
             if savecookies != None and cookie:
-                savecookies.extract_cookies(opener, request)
+                if legacy_ssl_context:
+                    savecookies.extract_cookies(response_obj, request)
+                else:
+                    savecookies.extract_cookies(opener, request)
 
         return webresponse
 

@@ -1,6 +1,5 @@
 import os
 import urllib.parse
-import ssl
 import re
 import json
 import time
@@ -16,16 +15,6 @@ from ..utils import utils
 
 # Create custom SSL context to handle weak DH key on wbsl.gov.in
 warnings.filterwarnings('ignore', message='.*unverified.*')
-
-def create_weak_ssl_context():
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    # Use ciphers that exclude DH to avoid DH_KEY_TOO_SMALL error
-    ctx.set_ciphers('HIGH:!DH:!aNULL')
-    return ctx
-
-ssl._create_default_https_context = create_weak_ssl_context
 
 
 class KolkataWBSL(BaseGazette):
@@ -206,7 +195,7 @@ class KolkataWBSL(BaseGazette):
         # AJAX endpoint uses GET with query parameters
         url = self.ajax_url + '?' + urllib.parse.urlencode(params)
         
-        response = self.download_url(url, loadcookies=cookiejar, savecookies=cookiejar, referer=referer)
+        response = self.download_url(url, loadcookies=cookiejar, savecookies=cookiejar, referer=referer, legacy_ssl_context = True)
         if not response or not response.webpage:
             self.logger.warning('Could not fetch gazette list at offset %d', display_start)
             return None
@@ -247,7 +236,7 @@ class KolkataWBSL(BaseGazette):
         # AJAX endpoint uses GET with query parameters
         url = self.ajax_url + '?' + urllib.parse.urlencode(params)
         
-        response = self.download_url(url)
+        response = self.download_url(url, legacy_ssl_context = True)
         if not response or not response.webpage:
             self.logger.warning('Could not fetch gazette list at offset %d', display_start)
             return None
@@ -288,7 +277,7 @@ class KolkataWBSL(BaseGazette):
         
         url = f'{self.bookreader_url}?bookId={bookid}'
         
-        response = self.download_url(url)
+        response = self.download_url(url, legacy_ssl_context = True)
         if not response or not response.webpage:
             self.logger.warning('Could not fetch book reader page for bookid %s', bookid)
             return None
@@ -420,7 +409,7 @@ class KolkataWBSL(BaseGazette):
             
             img_url = f'{base_url}{page_str}.jpg'
             
-            response = self.download_url(img_url)
+            response = self.download_url(img_url, legacy_ssl_context = True)
             if not response or not response.webpage:
                 self.logger.warning('Could not download page %d from %s', page_num, img_url)
                 continue
@@ -548,7 +537,7 @@ class KolkataWBSL(BaseGazette):
         # Establish session by visiting main page first
         cookiejar = CookieJar()
         
-        response = self.download_url(self.baseurl, savecookies=cookiejar)
+        response = self.download_url(self.baseurl, savecookies=cookiejar, legacy_ssl_context = True)
         if not response or not response.webpage:
             self.logger.warning('Could not establish session at %s', self.baseurl)
             return dls
