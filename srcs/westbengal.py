@@ -3,6 +3,7 @@ import urllib.parse
 import re
 import json
 import time
+import datetime
 import warnings
 import shutil
 from http.cookiejar import CookieJar
@@ -561,5 +562,201 @@ class KolkataWBSL(BaseGazette):
         self.download_metainfos(dls, metainfos, from_year, to_year, event)
         
         self.logger.info(f'Got {len(dls)} Gazettes from {fromdate} to {todate}')
+
+        return dls
+
+
+class WBGazettePart2(BaseGazette):
+    def __init__(self, name, storage):
+        BaseGazette.__init__(self, name, storage)
+        self.baseurl  = 'https://www.wbgazettepart2.in/'
+        self.hostname = 'www.wbgazettepart2.in'
+
+    def parse_table(self, webpage):
+        entries = []
+
+        d = utils.parse_webpage(webpage, self.parser)
+        if d is None:
+            return entries
+
+        for tr in d.find_all('tr', {'class': 'trdata'}):
+            tds = tr.find_all('td')
+            if len(tds) < 5:
+                continue
+
+            datestr = utils.get_tag_contents(tds[0]).strip()
+            try:
+                dateobj = datetime.datetime.strptime(datestr, '%d/%m/%y').date()
+            except ValueError:
+                self.logger.warning('Unable to parse date: %s', datestr)
+                continue
+
+            link = tds[4].find('a', {'class': 'aprint'})
+            if link is None:
+                continue
+
+            applno = link.get('data-appno')
+            applid = link.get('data-printid')
+            if not applno or not applid:
+                continue
+
+            entries.append({
+                'date'   : dateobj,
+                'gznum'  : utils.get_tag_contents(tds[1]).strip(),
+                'refnum' : utils.get_tag_contents(tds[2]).strip(),
+                'subject': utils.get_tag_contents(tds[3]).strip(),
+                'applno' : applno,
+                'applid' : applid,
+            })
+
+        return entries
+
+    def get_metainfo(self, entry):
+        metainfo = utils.MetaInfo()
+        metainfo.set_date(entry['date'])
+        if entry['gznum']:
+            metainfo.set_gznum(entry['gznum'])
+        if entry['refnum']:
+            metainfo.set_refnum(entry['refnum'])
+        if entry['subject']:
+            metainfo.set_subject(entry['subject'])
+        return metainfo
+
+    def sync(self, fromdate, todate, event):
+        dls = []
+
+        fromdate = fromdate.date()
+        todate   = todate.date()
+
+        response = self.download_url(self.baseurl)
+        if not response or not response.webpage:
+            self.logger.warning('Could not download %s', self.baseurl)
+            return dls
+
+        entries = self.parse_table(response.webpage)
+        self.logger.info('Found %d entries in total', len(entries))
+
+        for entry in entries:
+            if event.is_set():
+                self.logger.warning('Exiting prematurely as timer event is set')
+                break
+
+            if entry['date'] < fromdate or entry['date'] > todate:
+                continue
+
+            metainfo = self.get_metainfo(entry)
+
+            gzurl = urllib.parse.urljoin(self.baseurl, \
+                'WebForm/GazetteReport.aspx?ApplNo=%s&ApplId=%s' % (entry['applno'], entry['applid']))
+
+            relpath  = os.path.join(self.name, entry['date'].__str__())
+            filename, n = re.subn(r'[\s/]+', '_', entry['gznum'] or entry['applid'])
+            relurl   = os.path.join(relpath, filename)
+
+            if self.save_gazette(relurl, gzurl, metainfo):
+                dls.append(relurl)
+
+        return dls
+
+
+class WBTetsd(BaseGazette):
+    def __init__(self, name, storage):
+        BaseGazette.__init__(self, name, storage)
+        self.baseurl  = 'https://tetsd.wb.gov.in/tetsd/notices'
+        self.hostname = 'tetsd.wb.gov.in'
+
+    def get_max_page(self, webpage):
+        d = utils.parse_webpage(webpage, self.parser)
+        if d is None:
+            return 1
+
+        max_page = 1
+        for link in d.find_all('a', href=True):
+            reobj = re.search(r'page=(\d+)', link['href'])
+            if reobj:
+                max_page = max(max_page, int(reobj.group(1)))
+
+        return max_page
+
+    def parse_table(self, webpage):
+        entries = []
+
+        d = utils.parse_webpage(webpage, self.parser)
+        if d is None:
+            return entries
+
+        for tr in d.find_all('tr'):
+            tds = tr.find_all('td')
+            if len(tds) != 4:
+                continue
+
+            datestr = utils.get_tag_contents(tds[1]).strip()
+            try:
+                dateobj = datetime.datetime.strptime(datestr, '%Y-%m-%d').date()
+            except ValueError:
+                continue
+
+            link = tds[3].find('a')
+            if link is None or not link.get('href'):
+                continue
+
+            entries.append({
+                'date'   : dateobj,
+                'subject': utils.get_tag_contents(tds[2]).strip(),
+                'url'    : link.get('href'),
+            })
+
+        return entries
+
+    def sync(self, fromdate, todate, event):
+        dls = []
+
+        fromdate = fromdate.date()
+        todate   = todate.date()
+
+        response = self.download_url(self.baseurl, legacy_ssl_context = True)
+        if not response or not response.webpage:
+            self.logger.warning('Could not download %s', self.baseurl)
+            return dls
+
+        entries  = self.parse_table(response.webpage)
+        max_page = self.get_max_page(response.webpage)
+        self.logger.info('Found %d pages', max_page)
+
+        for page in range(2, max_page + 1):
+            if event.is_set():
+                self.logger.warning('Exiting prematurely as timer event is set')
+                break
+
+            url = '%s?page=%d' % (self.baseurl, page)
+            response = self.download_url(url, legacy_ssl_context = True)
+            if not response or not response.webpage:
+                self.logger.warning('Could not download %s', url)
+                continue
+
+            entries.extend(self.parse_table(response.webpage))
+
+        self.logger.info('Found %d entries in total', len(entries))
+
+        for entry in entries:
+            if event.is_set():
+                self.logger.warning('Exiting prematurely as timer event is set')
+                break
+
+            if entry['date'] < fromdate or entry['date'] > todate:
+                continue
+
+            metainfo = utils.MetaInfo()
+            metainfo.set_date(entry['date'])
+            if entry['subject']:
+                metainfo.set_subject(entry['subject'])
+
+            relpath  = os.path.join(self.name, entry['date'].__str__())
+            filename = os.path.basename(urllib.parse.urlparse(entry['url']).path)
+            filename, n = os.path.splitext(filename)
+            relurl   = os.path.join(relpath, filename)
+
+            if self.save_gazette(relurl, entry['url'], metainfo):
+                dls.append(relurl)
 
         return dls

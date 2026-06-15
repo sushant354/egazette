@@ -112,8 +112,10 @@ srcdict = { \
 'sikkim'                    : sikkim.Sikkim, \
 'rajasthan_extraordinary'   : rajasthan.RajasthanExtraOrdinary, \
 'rajasthan_ordinary'        : rajasthan.RajasthanOrdinaryCitizen, \
-'westbengal'                : westbengal.KolkataWBSL, \
-'wbsl'                      : wbsl.WBSL, \
+#'westbengal'                : westbengal.KolkataWBSL, \
+'westbengal_part2'          : westbengal.WBGazettePart2, \
+'westbengal_tetsd'          : westbengal.WBTetsd, \
+#'wbsl'                      : wbsl.WBSL, \
 'odisha_egaz'               : odisha.OdishaEGazette, \
 'odisha_govpress'          : odisha.OdishaGovPress, \
 }

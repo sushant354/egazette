@@ -495,6 +495,18 @@ srcinfos = {
         'category'  : 'The Kolkata Gazette',
         'start_date': datetime(1832, 1, 1),
     },
+    'westbengal_part2' : {
+        'languages' : ['eng'],
+        'source'    : 'Government of West Bengal',
+        'category'  : 'The Kolkata Gazette, Part II',
+        'start_date': datetime(2022, 9, 1),
+    },
+    'westbengal_tetsd' : {
+        'languages' : ['eng'],
+        'source'    : 'Government of West Bengal',
+        'category'  : 'Technical Education, Training and Skill Development Department',
+        'start_date': datetime(2015, 7, 1),
+    },
     'wbsl' : {
         'languages' : ['eng', 'ben', 'urd', 'fre', 'ita'],
         'category'  : 'West Bengal Secretariat Library Archive',
