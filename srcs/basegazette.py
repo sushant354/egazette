@@ -6,6 +6,7 @@ import time
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+import ssl
 
 from ..utils import utils
 
@@ -47,6 +48,12 @@ class Downloader:
         self.logger      = logging.getLogger('crawler.%s' % self.name)
 
         self.useragent   = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0'
+
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode    = ssl.CERT_NONE
+        ctx.options       |= 0x4  # OP_LEGACY_SERVER_CONNECT
+        self._ssl_ctx      = ctx
 
     def all_downloads(self, event):
         start_date = get_start_date(self.name)
@@ -135,13 +142,13 @@ class Downloader:
 
     def download_url(self, url, loadcookies = None, savecookies = None, \
                      postdata = None, referer = None, \
-                     encodepost= True, headers = {}, fixurl = True, method = None):
+                     encodepost= True, headers = {}, fixurl = True, method = None, legacy_ssl_context = False):
         for i in range(0, self.num_http_retries):
             if i > 0:
                 time.sleep(i * self.retry_delay_base_secs)
             response = self.download_url_onetime(url, loadcookies, savecookies,\
                                                  postdata, referer, \
-                                                 encodepost, headers, fixurl, method)
+                                                 encodepost, headers, fixurl, method, legacy_ssl_context)
             if response.error == None:
                 return response
             elif isinstance(response.error, urllib.error.HTTPError) and \
@@ -153,7 +160,7 @@ class Downloader:
         return None
 
     def download_url_onetime(self, url, loadcookies, savecookies, \
-                             postdata, referer, encodepost, headers , fixurl, method):
+                             postdata, referer, encodepost, headers , fixurl, method, legacy_ssl_context):
 
         webresponse = WebResponse()
 
@@ -188,6 +195,37 @@ class Downloader:
                 request.headers['Cookie'] = request.unredirected_hdrs.pop('Cookie')
         self.logger.debug('Request url: %s headers: %s data: %s', \
                             request.full_url, request.headers, request.data)
+        
+        # If legacy ssl context required, send custom built https_handler
+        if legacy_ssl_context:
+            try:
+                https_handler = urllib.request.HTTPSHandler(context=self._ssl_ctx)
+                opener        = urllib.request.build_opener(https_handler)
+                response_obj  = opener.open(request, timeout=self.request_timeout_secs)
+                response      = response_obj.info()
+                webpage       = response_obj.read()
+
+                webresponse.set_webpage(webpage)
+                webresponse.set_srvresponse(response)
+                webresponse.set_response_url(response_obj.geturl())
+
+                self.logger.info('Url: %s response_url: %s Status: %s', \
+                                fixed_url, response_obj.geturl(), response_obj.getcode())
+            except Exception as e:
+                webresponse.set_error(e)
+                self.logger.warning('Could not fetch: %s error: %s', url, e)
+                return webresponse
+
+            self.logger.debug('Server response: %s', response)
+
+            if 'Set-Cookie' in response:
+                cookie = response['Set-Cookie']
+                if savecookies is not None and cookie:
+                    savecookies.extract_cookies(response_obj, request)
+
+            return webresponse
+
+        # Default ssl context
         try:
             opener  = urllib.request.urlopen(request, timeout = self.request_timeout_secs)
             response = opener.info()
@@ -246,16 +284,18 @@ class BaseGazette(Downloader):
     
     def pull_gazette(self, gurl, referer = None, postdata = None,
                      cookiefile = None, headers = {}, \
-                     encodepost = True):
+                     encodepost = True, legacy_ssl_context = False):
         if cookiefile:
             response = self.download_url(gurl, referer = referer, \
                                          postdata = postdata, loadcookies = cookiefile,\
-                                         headers = headers, encodepost = encodepost)
+                                         headers = headers, encodepost = encodepost, \
+                                         legacy_ssl_context = legacy_ssl_context)
         else:
             response = self.download_url(gurl, postdata = postdata, \
                                          encodepost = encodepost, \
                                          headers = headers, \
-                                         referer = referer)
+                                         referer = referer, \
+                                         legacy_ssl_context = legacy_ssl_context)
 
         return response
 

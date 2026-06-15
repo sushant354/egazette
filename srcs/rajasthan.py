@@ -9,20 +9,10 @@ from http.cookiejar import CookieJar
 
 import requests
 import urllib3
-import ssl
 
 from ..utils import utils
 from .basegazette import BaseGazette
 
-default_ssl_context_creator = ssl._create_default_https_context
-
-def legacy_negotiation_enabled_context_creator(*args, **kwargs):
-    ctx = default_ssl_context_creator(*args, **kwargs)
-    ctx.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
-    return ctx
-
-ssl._create_default_https_context = legacy_negotiation_enabled_context_creator
-    
 class CustomHttpAdapter(requests.adapters.HTTPAdapter):
     # "Transport adapter" that allows us to use custom ssl_context.
 
@@ -44,7 +34,6 @@ class RajasthanBase(BaseGazette):
         self.baseurl = 'https://reams.rajasthan.gov.in'
         self.hostname = 'reams.rajasthan.gov.in'
         self.gztype  = ''
-
 
     def get_post_data(self, tags, dateobj):
         postdata = []
@@ -290,7 +279,7 @@ class RajasthanBase(BaseGazette):
 
         response = self.download_url(post_url, loadcookies = cookiejar, savecookies = cookiejar, \
                                      postdata = newpost_encoded, headers = headers, \
-                                     encodepost = False, referer = search_url)
+                                     encodepost = False, referer = search_url, legacy_ssl_context = True)
 
         return response
 
@@ -301,7 +290,7 @@ class RajasthanBase(BaseGazette):
         response = self.download_url(url, postdata = postdata_encoded, \
                                      encodepost = False, headers = headers, \
                                      loadcookies = cookiejar, savecookies = cookiejar,
-                                     referer = referer)
+                                     referer = referer, legacy_ssl_context = True)
         if not response or not response.webpage:
             self.logger.warning('Could not get response for %s', url)
             return None
@@ -541,11 +530,9 @@ class RajasthanBase(BaseGazette):
         return query_params, postdata
     
     def get_session(self):
-        ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        ctx.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
         session = requests.session()
         retry = self.get_session_retry()
-        session.mount('https://', CustomHttpAdapter(ctx, max_retries=retry))
+        session.mount('https://', CustomHttpAdapter(self._ssl_ctx, max_retries=retry))
         return session
 
     def download_metainfo_wrapped(self, relpath, metainfo, gztype): 
@@ -645,7 +632,8 @@ class RajasthanBase(BaseGazette):
 
         return BaseGazette.pull_gazette(self, download_url, postdata = download_postdata, \
                                         cookiefile = cookiejar, referer = redirect_url_base, \
-                                        encodepost = encodepost, headers = headers)
+                                        encodepost = encodepost, headers = headers, \
+                                        legacy_ssl_context = True)
 
 
     def download_metainfo(self, relpath, metainfo, gztype): 
