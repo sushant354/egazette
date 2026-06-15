@@ -281,18 +281,16 @@ class BaseGazette(Downloader):
     
     def pull_gazette(self, gurl, referer = None, postdata = None,
                      cookiefile = None, headers = {}, \
-                     encodepost = True, legacy_ssl_context = False):
+                     encodepost = True):
         if cookiefile:
             response = self.download_url(gurl, referer = referer, \
                                          postdata = postdata, loadcookies = cookiefile,\
-                                         headers = headers, encodepost = encodepost, \
-                                         legacy_ssl_context = legacy_ssl_context)
+                                         headers = headers, encodepost = encodepost)
         else:
             response = self.download_url(gurl, postdata = postdata, \
                                          encodepost = encodepost, \
                                          headers = headers, \
-                                         referer = referer, \
-                                         legacy_ssl_context = legacy_ssl_context)
+                                         referer = referer)
 
         return response
 
