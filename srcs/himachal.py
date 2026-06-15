@@ -13,9 +13,9 @@ from .basegazette import BaseGazette
 class Himachal(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl  = 'https://rajpatrahimachal.nic.in/SearchG.aspx'
-        self.hostname = 'rajpatrahimachal.nic.in'
-        self.search_endp = './SearchG.aspx'
+        self.baseurl  = 'https://rajpatra.hp.gov.in/searchG.aspx'
+        self.hostname = 'rajpatra.hp.gov.in'
+        self.search_endp = './searchG.aspx'
         self.result_table = 'ContentPlaceHolder1_GVNotification'
         self.captcha_key = 'ctl00$ContentPlaceHolder1$txtCaptcha'
 
