@@ -217,31 +217,24 @@ class Downloader:
                 return webresponse
 
             self.logger.debug('Server response: %s', response)
-
-            if 'Set-Cookie' in response:
-                cookie = response['Set-Cookie']
-                if savecookies is not None and cookie:
-                    savecookies.extract_cookies(response_obj, request)
-
-            return webresponse
-
+        else:
         # Default ssl context
-        try:
-            opener  = urllib.request.urlopen(request, timeout = self.request_timeout_secs)
-            response = opener.info()
-            webpage  = opener.read()
-            
-            webresponse.set_webpage(webpage)
-            webresponse.set_srvresponse(response)
-            webresponse.set_response_url(opener.geturl())
+            try:
+                opener  = urllib.request.urlopen(request, timeout = self.request_timeout_secs)
+                response = opener.info()
+                webpage  = opener.read()
+                
+                webresponse.set_webpage(webpage)
+                webresponse.set_srvresponse(response)
+                webresponse.set_response_url(opener.geturl())
 
-            self.logger.info('Url: %s response_url: %s Status: %s' % (fixed_url, opener.geturl(), opener.getcode()))
-        except Exception as e:
-            webresponse.set_error(e)
-            self.logger.warning('Could not fetch: %s error: %s' % (url, e))
-            return webresponse 
+                self.logger.info('Url: %s response_url: %s Status: %s' % (fixed_url, opener.geturl(), opener.getcode()))
+            except Exception as e:
+                webresponse.set_error(e)
+                self.logger.warning('Could not fetch: %s error: %s' % (url, e))
+                return webresponse 
 
-        self.logger.debug('Server response: %s', response)
+            self.logger.debug('Server response: %s', response)
 
         if 'Set-Cookie' in response: 
             cookie = response['Set-Cookie']
