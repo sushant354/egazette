@@ -92,7 +92,7 @@ class Uttarakhand(BaseGazette):
         dls = []
 
         cookiejar  = CookieJar()
-        response   = self.download_url(self.searchurl, savecookies = cookiejar)
+        response   = self.download_url(self.searchurl, savecookies = cookiejar, legacy_ssl_context = True)
         if not response or not response.webpage:
             self.logger.warning('Could not get base page for date %s', \
                               dateobj)
@@ -119,7 +119,7 @@ class Uttarakhand(BaseGazette):
 
             response = self.download_url(self.searchurl, savecookies = cookiejar, \
                                        loadcookies = cookiejar, postdata = formdata, \
-                                       referer = self.searchurl)
+                                       referer = self.searchurl, legacy_ssl_context = True)
             if not response or not response.webpage:
                 self.logger.warning('Could not make call to update field %s for date %s', \
                                     field_to_update, dateobj)
@@ -129,7 +129,7 @@ class Uttarakhand(BaseGazette):
         formdata.append(('Button2', 'Search'))
         response = self.download_url(self.searchurl, savecookies = cookiejar, \
                                    loadcookies = cookiejar, postdata = formdata, \
-                                   referer = self.baseurl)
+                                   referer = self.baseurl, legacy_ssl_context = True)
         if not response or not response.webpage:
             self.logger.warning('Could not download search result for date %s', \
                               dateobj)
@@ -240,78 +240,11 @@ class UttarakhandBase(BaseGazette):
         self.cookiejar   = CookieJar()
         self.lookback    = 15
 
-        # gazettes.uk.gov.in requires legacy TLS renegotiation.
-        # Build a dedicated SSL context so this doesn't affect other crawlers.
-        # Making this global would be overriden by other crawler imports in datasrcs
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ctx.check_hostname = False
-        ctx.verify_mode    = ssl.CERT_NONE
-        ctx.options       |= 0x4  # OP_LEGACY_SERVER_CONNECT
-        self._ssl_ctx      = ctx
 
-    def download_url_onetime(self, url, loadcookies, savecookies,
-                             postdata, referer, encodepost, headers, fixurl, method):
-        from .basegazette import WebResponse
-        webresponse = WebResponse()
-
-        if self.backoff > 0:
-            time.sleep(self.backoff)
-
-        headers['User-agent'] = self.useragent
-        if referer:
-            headers['Referer'] = referer
-
-        encodedData = None
-        if postdata:
-            if encodepost:
-                encodedData = urllib.parse.urlencode(postdata).encode('utf-8')
-            else:
-                encodedData = postdata
-
-        fixed_url = self.url_fix(url) if fixurl else url
-
-        if method is None:
-            request = urllib.request.Request(fixed_url, encodedData, headers)
-        else:
-            request = urllib.request.Request(fixed_url, encodedData, headers, method=method)
-
-        if loadcookies is not None:
-            loadcookies.add_cookie_header(request)
-            if 'Cookie' in request.unredirected_hdrs:
-                request.headers['Cookie'] = request.unredirected_hdrs.pop('Cookie')
-
-        self.logger.debug('Request url: %s headers: %s data: %s',
-                          request.full_url, request.headers, request.data)
-        try:
-            https_handler = urllib.request.HTTPSHandler(context=self._ssl_ctx)
-            opener        = urllib.request.build_opener(https_handler)
-            response_obj  = opener.open(request, timeout=self.request_timeout_secs)
-            response      = response_obj.info()
-            webpage       = response_obj.read()
-
-            webresponse.set_webpage(webpage)
-            webresponse.set_srvresponse(response)
-            webresponse.set_response_url(response_obj.geturl())
-
-            self.logger.info('Url: %s response_url: %s Status: %s',
-                             fixed_url, response_obj.geturl(), response_obj.getcode())
-        except Exception as e:
-            webresponse.set_error(e)
-            self.logger.warning('Could not fetch: %s error: %s', url, e)
-            return webresponse
-
-        self.logger.debug('Server response: %s', response)
-
-        if 'Set-Cookie' in response:
-            cookie = response['Set-Cookie']
-            if savecookies is not None and cookie:
-                savecookies.extract_cookies(response_obj, request)
-
-        return webresponse
     
     def get_cookies(self):
         url = urllib.parse.urljoin(self.baseurl, 'en/Search/index')
-        self.download_url(url, savecookies = self.cookiejar)
+        self.download_url(url, savecookies = self.cookiejar, legacy_ssl_context = True)
     
     def get_payload(self, dateobj):
         date_to_str = dateobj.strftime("%Y-%m-%d")
@@ -334,7 +267,7 @@ class UttarakhandBase(BaseGazette):
 
         response   = self.download_url(search_url, postdata = payload,\
                                        loadcookies = self.cookiejar, 
-                                       savecookies = self.cookiejar)
+                                       savecookies = self.cookiejar, legacy_ssl_context = True)
         
         if (not response) or (not response.webpage):
             return None
