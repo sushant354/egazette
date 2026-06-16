@@ -103,7 +103,8 @@ srcdict = { \
 'arunachal'                 : arunachal.Arunachal, \
 'assam_extraordinary'       : assam.AssamExtraOrdinary, \
 'assam_weekly'              : assam.AssamWeekly, \
-'meghalaya'                 : meghalaya.Meghalaya, \
+#'meghalaya'                 : meghalaya.Meghalaya, \
+'meghalaya'                 : meghalaya.MeghalayaNew, \
 'tripura_ordinary'          : tripura.TripuraOrdinary, \
 'tripura_extraordinary'     : tripura.TripuraExtraOrdinary, \
 'lakshadweep'               : lakshadweep.Lakshadweep, \
