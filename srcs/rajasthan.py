@@ -632,8 +632,7 @@ class RajasthanBase(BaseGazette):
 
         return BaseGazette.pull_gazette(self, download_url, postdata = download_postdata, \
                                         cookiefile = cookiejar, referer = redirect_url_base, \
-                                        encodepost = encodepost, headers = headers, \
-                                        legacy_ssl_context = True)
+                                        encodepost = encodepost, headers = headers)
 
 
     def download_metainfo(self, relpath, metainfo, gztype): 
