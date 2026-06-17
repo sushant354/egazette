@@ -175,7 +175,7 @@ class MeghalayaNew(BaseGazette):
         dls = []
         url = self.baseurl.format(dateobj.year)
 
-        response = self.download_url(url)
+        response = self.download_url(url, legacy_ssl_context = True)
         if response is None or response.webpage is None:
             self.logger.warning('Unable to get page %s for date %s', url, dateobj)
             return dls
