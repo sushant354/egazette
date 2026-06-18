@@ -64,7 +64,7 @@ class Meghalaya(BaseGazette):
                 metainfo.set_gztype('Ordinary')
 
             gzurl  = urllib.parse.urljoin(url, href)
-            relurl = os.path.join(relpath, os.path.splitext(fname)[0])
+            relurl = os.path.join(relpath, partnum.lower())
 
             if self.save_gazette(relurl, gzurl, metainfo):
                 relurls.append(relurl)
