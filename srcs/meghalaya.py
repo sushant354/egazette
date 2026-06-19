@@ -4,62 +4,51 @@ import urllib.parse
 
 from ..utils import utils
 from .basegazette import BaseGazette
+import datetime
 
 class Meghalaya(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
-        self.baseurl = 'https://megpns.gov.in/gazette/archive.asp?wdate={}&wmonth={}&datepub={}'
+        self.baseurl  = 'https://megpns.gov.in/gazette/gazette_{}.html'
         self.hostname = 'megpns.gov.in'
 
-    def parse_results(self, webpage, dateobj):
-        metainfos = []
-
+    def parse_index(self, webpage):
+        """Parse the year index page and return list of (dateobj, href) for all available PDFs."""
+        results = []
         d = utils.parse_webpage(webpage, self.parser)
         if d is None:
-            self.logger.warning('Unable to parse result page for %s', dateobj)
-            return metainfos
+            self.logger.warning('Unable to parse index page')
+            return results
 
-        article = d.find('article')
-        if article is None:
-            return metainfos
-
-        for li in article.find_all('li'):
-            link = li.find('a')
-            if not link:
-                continue
-
+        for link in d.find_all('a'):
             href = link.get('href')
-            if href is None:
+            if href is None or not href.lower().endswith('.pdf'):
                 continue
 
-            subject = utils.get_tag_contents(link)
-            subject = subject.strip()
+            fname = href.split('/')[-1]
+            reobj = re.match(r'(?P<day>\d{2})-(?P<month>\d{2})-(?P<year>\d{2})-(?P<part>\w+)\.pdf$', fname, re.IGNORECASE)
+            if reobj is None:
+                continue
 
-            metainfo = utils.MetaInfo()
-            metainfo.set_date(dateobj)
-            metainfo['subject']  = subject
-            metainfo['download'] = href
-            metainfos.append(metainfo)
+            g = reobj.groupdict()
+            try:
+                filedate = datetime.date(2000 + int(g['year']), int(g['month']), int(g['day']))
+            except ValueError:
+                self.logger.warning('Invalid date in filename: %s', fname)
+                continue
 
-        return metainfos
+            results.append((filedate, href))
+
+        return results
 
     def download_metainfos(self, relpath, metainfos, url):
         relurls = []
 
         for metainfo in metainfos:
-            js = metainfo.pop('download')
-
-            reobj = re.search(r'javascript:openwin\("(?P<href>[^\"]+)"\)', js)
-            if reobj is None:
-                self.logger.warning('Unable to get gazette url from url %s', js)
-                continue
-
-            g = reobj.groupdict()
-
-            href  = g['href']
+            href  = metainfo.pop('download')
             fname = href.split('/')[-1]
 
-            reobj = re.search(r'\d+-\d+-\d+-(?P<part>\w+).pdf', fname)
+            reobj = re.search(r'\d+-\d+-\d+-(?P<part>\w+)\.pdf', fname, re.IGNORECASE)
             if reobj is None:
                 self.logger.warning('Unable to get part number from url %s', href)
                 continue
@@ -69,12 +58,12 @@ class Meghalaya(BaseGazette):
             partnum = g['part']
             metainfo['partnum'] = partnum
 
-            if metainfo['subject'].startswith('Extraordinary'):
+            if partnum.upper() == 'X':
                 metainfo.set_gztype('Extraordinary')
             else:
                 metainfo.set_gztype('Ordinary')
-            metainfo.pop('subject')
-            gzurl = urllib.parse.urljoin(url, href)
+
+            gzurl  = urllib.parse.urljoin(url, href)
             relurl = os.path.join(relpath, partnum.lower())
 
             if self.save_gazette(relurl, gzurl, metainfo):
@@ -82,17 +71,40 @@ class Meghalaya(BaseGazette):
 
         return relurls
 
-    def download_oneday(self, relpath, dateobj):
-        dls = []
-        url = self.baseurl.format(dateobj.year, dateobj.month, dateobj.day)
+    def sync(self, fromdate, todate, event):
+        newdownloads = []
 
-        response = self.download_url(url)
-        if response is None or response.webpage is None:
-            self.logger.warning('Unable to get page %s for date %s', url, dateobj)
-            return dls
+        # Fetch each year's index page once and collect available dated PDFs
+        date_to_entries = {}  # dateobj -> (page_url, [href, ...])
+        for year in range(fromdate.year, todate.year + 1):
+            url = self.baseurl.format(year)
+            response = self.download_url(url, legacy_ssl_context=True)
+            if response is None or response.webpage is None:
+                self.logger.warning('Unable to get index page %s', url)
+                continue
 
-        metainfos = self.parse_results(response.webpage, dateobj)
-        
-        relurls = self.download_metainfos(relpath, metainfos, url)
-        dls.extend(relurls)
-        return dls
+            for filedate, href in self.parse_index(response.webpage):
+                if fromdate.date() <= filedate <= todate.date():
+                    entry = date_to_entries.setdefault(filedate, (url, []))
+                    entry[1].append(href)
+
+        for dateobj in sorted(date_to_entries.keys()):
+            if event.is_set():
+                self.logger.warning('Exiting prematurely as timer event is set')
+                break
+
+            page_url, hrefs = date_to_entries[dateobj]
+            tmprel = os.path.join(self.name, dateobj.__str__())
+
+            metainfos = []
+            for href in hrefs:
+                metainfo = utils.MetaInfo()
+                metainfo.set_date(dateobj)
+                metainfo['download'] = href
+                metainfos.append(metainfo)
+
+            relurls = self.download_metainfos(tmprel, metainfos, page_url)
+            self.logger.info('Got %d gazettes for day %s', len(relurls), dateobj)
+            newdownloads.extend(relurls)
+
+        return newdownloads
