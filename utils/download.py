@@ -6,6 +6,12 @@ import re
 
 from . import proxylist
 
+# Python 3.14 changed the default start method on Linux from 'fork' to
+# 'forkserver', which pickles the target and its args. The source objects hold
+# an ssl.SSLContext that can't be pickled, so use a fork context explicitly to
+# preserve the inherit-by-fork behavior.
+mpctx = multiprocessing.get_context('fork')
+
 def sync(hostname, gazetteobjs, fromdate, todate, event):
     if hostname in proxylist.hostdict:
         proxy = urllib.request.ProxyHandler(proxylist.hostdict[hostname])
@@ -33,9 +39,9 @@ def agg_host_processes(gazetteobjs, all_dls, fromdate, todate, event):
     tlist = []
     for hostname, srclist in srcdict.items():
         if all_dls:
-            t = multiprocessing.Process(target = all_downloads, args = (hostname, srclist, event))
+            t = mpctx.Process(target = all_downloads, args = (hostname, srclist, event))
         else:
-            t = multiprocessing.Process(target = sync, args = \
+            t = mpctx.Process(target = sync, args = \
                                 (hostname, srclist, fromdate, todate, event))
         t.start()
         tlist.append(t)
@@ -46,9 +52,9 @@ def noagg_host_processes(gazetteobjs, all_dls, fromdate, todate, event):
     tlist = []
     for src in gazetteobjs:
         if all_dls:
-            t = multiprocessing.Process(target = all_downloads, args = (src.hostname, [src], event))
+            t = mpctx.Process(target = all_downloads, args = (src.hostname, [src], event))
         else:
-            t = multiprocessing.Process(target = sync, args = \
+            t = mpctx.Process(target = sync, args = \
                                 (src.hostname, [src], fromdate, todate, event))
         t.start()
         tlist.append(t)
@@ -56,7 +62,7 @@ def noagg_host_processes(gazetteobjs, all_dls, fromdate, todate, event):
     return tlist
 
 def parallel_download(gazetteobjs, agghosts, fromdate, todate, max_wait, all_dls):
-    event = multiprocessing.Event()
+    event = mpctx.Event()
     if agghosts:
         tlist = agg_host_processes(gazetteobjs, all_dls, fromdate, todate, event)
     else:
