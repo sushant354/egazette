@@ -248,23 +248,22 @@ class Downloader:
         return webresponse
 
     def url_fix(self, s, charset='utf-8'):
-        """Sometimes you get an URL by a user that just isn't a real
-        URL because it contains unsafe characters like ' ' and so on.  This
+        """Sometimes you get a URL by a user that just isn't a real
+        URL because it contains unsafe characters like ' ' and so on. This
         function can fix some of the problems in a similar way browsers
-        handle data entered by the user:
+        handle data entered by the user.
 
-        >>> url_fix(u'http://de.wikipedia.org/wiki/Elf (Begriffsklrung)')
+        >>> url_fix(u'http://de.wikipedia.org/wiki/Elf (Begriffsklärung)')
         'http://de.wikipedia.org/wiki/Elf%20%28Begriffskl%C3%A4rung%29'
 
-        :param charset: The target charset for the URL if the url was
-                        given as unicode string.
+        :param s: the URL to fix
+        :param charset: the target charset for the URL if the URL was
+                        given as a unicode string
         """
         purl = urllib.parse.urlsplit(s)
         path = urllib.parse.quote(purl.path, '/%')
         qs = urllib.parse.quote_plus(purl.query, ':&=')
-
-        return urllib.parse.urlunsplit((purl.scheme, purl.netloc, path, \
-                                        qs, purl.fragment))
+        return urllib.parse.urlunsplit((purl.scheme, purl.netloc, path, qs, purl.fragment))
 
 class BaseGazette(Downloader):
     def __init__(self, name, storage_manager):
