@@ -45,6 +45,11 @@ except ValueError:
 
 DEFAULT_LEGALLAYOUT_DIR = '/home/sushant/legallayout'
 
+# legallayout Main() behavioural defaults for generic gazette conversion:
+# no footnote continuation across pages, and no minimum image-size filtering.
+LEGALLAYOUT_IS_FOOTNOTE_CONTINUATION = False
+LEGALLAYOUT_MIN_IMG_SIZE = 50
+
 # output subdirectory (under datadir) for each engine's HTML
 OUTPUT_SUBDIR = {
     'pymupdf': 'pymupdf',
@@ -152,7 +157,8 @@ def convert_legallayout(pdf_path, out_path, legallayout_dir):
     out_dir = os.path.dirname(out_path)
 
     # pdf_type=None -> generic gazette HTMLBuilder; no amendments / sidenotes.
-    main = Main(pdf_path, False, out_dir, None, False, False)
+    main = Main(pdf_path, False, out_dir, None, False, False,
+                LEGALLAYOUT_IS_FOOTNOTE_CONTINUATION, LEGALLAYOUT_MIN_IMG_SIZE)
     ok = main.parsePDF(None, None, None, None, None, None)
     if ok:
         main.buildHTML(None, None)
