@@ -178,7 +178,7 @@ def convert_legallayout(pdf_path, out_path, legallayout_dir):
     return os.path.exists(out_path)
 
 
-def convert_one(storage, htmldir, engine, legallayout_dir, relurl, pdf_path,
+def convert_one(htmldir, engine, legallayout_dir, relurl, pdf_path,
                 overwrite):
     """Convert a single PDF. Returns 'converted', 'skipped' or 'failed'."""
     out_path = os.path.join(htmldir, '%s.html' % relurl)
@@ -187,8 +187,10 @@ def convert_one(storage, htmldir, engine, legallayout_dir, relurl, pdf_path,
         logger.info('Skipping %s, html already exists', relurl)
         return 'skipped'
 
-    # create <htmldir>/<src>/<date>/ for the output file
-    storage.create_dirs(htmldir, relurl)
+    # create <htmldir>/<src>/<date>/ for the output file. Use makedirs with
+    # exist_ok (rather than storage.create_dirs) so concurrent workers don't
+    # race on os.mkdir for a shared date directory.
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
     logger.info('Converting %s -> %s', pdf_path, out_path)
     try:
@@ -234,7 +236,7 @@ def _worker_task(relurl_pdf):
         logger.error('No raw PDF found for relurl %s', relurl)
         return 'failed'
 
-    return convert_one(storage, _worker['htmldir'], _worker['engine'],
+    return convert_one(_worker['htmldir'], _worker['engine'],
                        _worker['legallayout_dir'], relurl, pdf_path,
                        _worker['overwrite'])
 
@@ -261,7 +263,7 @@ def convert(storage, datadir, htmldir, engine, legallayout_dir, relurl_pdfs,
                 counts['failed'] += 1
                 continue
 
-            result = convert_one(storage, htmldir, engine, legallayout_dir,
+            result = convert_one(htmldir, engine, legallayout_dir,
                                  relurl, pdf_path, overwrite)
             counts[result] += 1
 
