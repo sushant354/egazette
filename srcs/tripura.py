@@ -245,6 +245,9 @@ class TripuraBase(BaseGazette):
             elif txt and re.search('Policy', txt):
                 order.append('policy')
 
+            elif txt and re.search('Organization', txt):
+                order.append('organization')
+
             elif txt and (re.search('Download', txt) or re.search('Action', txt) or re.search('View', txt)):
                 order.append('download')
 
