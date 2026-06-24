@@ -316,6 +316,9 @@ PUBLISHER  = 'publisher'
 SUBDEPARTMENT = 'subdepartment'
 DOCTYPE    = 'doctype'
 CATEGORY   = 'category'
+POLICY     = 'policy'
+SECTOR     = 'sector'
+ORGANIZATION = 'organization'
 
 _illegal_xml_chars_RE = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1F\uD800-\uDFFF\uFFFE\uFFFF]')
 
@@ -422,6 +425,15 @@ class MetaInfo(dict):
     def set_category(self, value):
         self.set_field(CATEGORY, value)
 
+    def set_policy(self, value):
+        self.set_field(POLICY, value)
+
+    def set_sector(self, value):
+        self.set_field(SECTOR, value)
+
+    def set_organization(self, value):
+        self.set_field(ORGANIZATION, value)
+
     def get_url(self):
         return self.get_field(URL)
 
@@ -499,6 +511,15 @@ class MetaInfo(dict):
     
     def get_category(self):
         return self.get_field(CATEGORY)
+
+    def get_policy(self):
+        return self.get_field(POLICY)
+
+    def get_sector(self):
+        return self.get_field(SECTOR)
+
+    def get_organization(self):
+        return self.get_field(ORGANIZATION)
 
 def stats_to_message(stats):
     rawstats  = stats[0]
