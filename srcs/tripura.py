@@ -198,11 +198,11 @@ class TripuraBase(BaseGazette):
                     issuedate = datetime.datetime.strptime(txt, '%d/%m/%Y').date()
                     metainfo.set_date(issuedate)
 
-                elif col == 'gztype':
-                    if txt == 'Extra-Ordinary':
-                        metainfo.set_gztype('Extraordinary')
-                    else:
-                        metainfo.set_gztype('Ordinary')
+                #elif col == 'gztype':
+                #    if txt == 'Extra-Ordinary':
+                #        metainfo.set_gztype('Extraordinary')
+                #    else:
+                #        metainfo.set_gztype('Ordinary')
 
                 elif col == 'download':
                     btn = td.find('button', {'name': 'viewDeptRouteDocument'})
@@ -212,6 +212,14 @@ class TripuraBase(BaseGazette):
                 elif col != '':
                     metainfo[col] = txt
             i += 1
+
+            # Tripura website does not provide gazette type column, we need to set by observing the API call
+            # Tripura server only returns extraordinary gazette, reject captcha when a gazette type is set in browser, even when the captcha is correct
+            if self.gztype:
+                if self.gztype == '2':
+                    metainfo.set_gztype('Extraordinary')
+                else:
+                    metainfo.set_gztype('Ordinary')
 
         if 'doc_id' in metainfo:
             metainfos.append(metainfo)
