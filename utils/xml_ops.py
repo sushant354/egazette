@@ -99,6 +99,8 @@ def get_xml_tag(tagName, tagValue, escape = True):
         xmltag = '<%s>%f</%s>' % (tagName, tagValue, tagName)
     else:
         if escape:
+            if tagValue == None:
+                tagValue = str(tagValue)
             tagValue = escape_xml(tagValue)
 
         xmltag = '<%s>%s</%s>' % (tagName, tagValue, tagName)

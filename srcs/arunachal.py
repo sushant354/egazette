@@ -50,7 +50,9 @@ class Arunachal(BaseGazette):
         self.hostname = 'printing.arunachal.gov.in'
 
     def enhance_metainfo_ng(self, metainfo):
-        title = metainfo.get('title')
+        title = metainfo.get('title') or metainfo.get('subject')
+        if title is None:
+            return
 
         parsed = parse_ng_subject(title)
         if parsed is None:
@@ -70,7 +72,7 @@ class Arunachal(BaseGazette):
         if gztype == 'Ordinary':
             self.enhance_metainfo_ng(metainfo)
         else:
-            title = metainfo.get('title', '')
+            title = metainfo.get('title') or metainfo.get('subject', '')
             m = re.search(r'\b(20\d{2})\b', title)
             if m:
                 metainfo['year'] = m.group(1)
@@ -93,6 +95,7 @@ class Arunachal(BaseGazette):
 
             filename = download_url.split('/')[-1].rsplit('.', 1)[0].lower()
 
+        # Some gazettes in Arunachal does not have a year or date to create relurl, we store them as unknown
             year_str = str(year) if year is not None else 'unknown'
             relpath = os.path.join(self.name, year_str)
             relurl = os.path.join(relpath, filename)
@@ -132,7 +135,8 @@ class Arunachal(BaseGazette):
                 if col == 'title':
                     metainfo['title'] = txt
                 elif col == 'subject':
-                    metainfo['title'] = txt
+                    # title and subject are same we're storing them as duplicates
+                    #metainfo['title'] = txt
                     metainfo.set_subject(txt)
                 elif col == 'action':
                     a = td.find('a')
