@@ -50,7 +50,9 @@ class Arunachal(BaseGazette):
         self.hostname = 'printing.arunachal.gov.in'
 
     def enhance_metainfo_ng(self, metainfo):
-        title = metainfo.get('title')
+        title = metainfo.get('title') or metainfo.get('subject')
+        if title is None:
+            return
 
         parsed = parse_ng_subject(title)
         if parsed is None:
@@ -58,8 +60,6 @@ class Arunachal(BaseGazette):
 
         if 'year' in parsed:
             metainfo['year'] = parsed['year']
-        else:
-            metainfo['year'] = metainfo.get_date().year
 
         if 'num' in parsed:
             metainfo['gznum'] = parsed['num']
@@ -71,21 +71,33 @@ class Arunachal(BaseGazette):
         gztype = metainfo.get_gztype()
         if gztype == 'Ordinary':
             self.enhance_metainfo_ng(metainfo)
+        else:
+            title = metainfo.get('title') or metainfo.get('subject', '')
+            m = re.search(r'\b(20\d{2})\b', title)
+            if m:
+                metainfo['year'] = m.group(1)
 
 
-    def download_metainfos(self, metainfos, fromdate, todate):
+    def download_metainfos(self, metainfos, from_year, to_year):
         relurls = []
         for metainfo in metainfos:
-            issuedate = metainfo.get_date() 
-            if issuedate < fromdate.date() or issuedate > todate.date():
-                continue
+            year = metainfo.get('year')
+            if year is not None:
+                try:
+                    year_int = int(year)
+                    if year_int < from_year or year_int > to_year:
+                        continue
+                except (ValueError, TypeError):
+                    pass
 
             download_url = metainfo.pop('download_url')
             download_url = urljoin(self.baseurl, download_url)
 
             filename = download_url.split('/')[-1].rsplit('.', 1)[0].lower()
 
-            relpath = os.path.join(self.name, issuedate.__str__())
+        # Some gazettes in Arunachal does not have a year or date to create relurl, we store them as unknown
+            year_str = str(year) if year is not None else 'unknown'
+            relpath = os.path.join(self.name, year_str)
             relurl = os.path.join(relpath, filename)
             if self.save_gazette(relurl, download_url, metainfo):
                 relurls.append(relurl)
@@ -123,6 +135,8 @@ class Arunachal(BaseGazette):
                 if col == 'title':
                     metainfo['title'] = txt
                 elif col == 'subject':
+                    # title and subject are same we're storing them as duplicates
+                    #metainfo['title'] = txt
                     metainfo.set_subject(txt)
                 elif col == 'action':
                     a = td.find('a')
@@ -135,7 +149,7 @@ class Arunachal(BaseGazette):
                         metainfo.set_date(pubdate)
             i += 1
 
-        if 'download_url' in metainfo and 'date' in metainfo:
+        if 'download_url' in metainfo:
             metainfos.append(metainfo)
 
 
@@ -195,7 +209,7 @@ class Arunachal(BaseGazette):
                 metainfo.set_gztype(gztype)
                 self.enhance_metainfo(metainfo)
 
-            relurls = self.download_metainfos(metainfos, fromdate, todate)
+            relurls = self.download_metainfos(metainfos, fromdate.year, todate.year)
 
             self.logger.info('Got %d gazettes for pagenum %s', len(relurls), pagenum)
             dls.extend(relurls)

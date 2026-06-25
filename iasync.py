@@ -495,6 +495,9 @@ class GazetteIA:
          ('division',         'Division'), \
          ('notification_for', 'Notification For'), \
          ('section',          'Section'), \
+         ('policy',           'Policy'), \
+         ('sector',           'Sector'), \
+         ('organization',     'Organization'), \
        ]
        for k, kdesc in keys:
            if k in metainfo:

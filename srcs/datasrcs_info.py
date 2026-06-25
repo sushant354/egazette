@@ -444,14 +444,14 @@ srcinfos = {
         'source'    : 'Government of Tripura',
         'category'  : 'Tripura Ordinary Gazette',
         # 'start_date': datetime(2018, 1, 1), for the previous verison of the source
-        'start_date': datetime(2025, 8, 30)
+        'start_date': datetime(2025, 12, 4)
     },
     'tripura_extraordinary' : {
         'languages' : ['eng'],
         'source'    : 'Government of Tripura',
         'category'  : 'Tripura Extraordinary Gazette',
         # 'start_date': datetime(2018, 1, 1), for the previous verison of the source
-        'start_date': datetime(2025, 8, 30)
+        'start_date': datetime(2026, 1, 8)
     },
     'lakshadweep' : {
         'languages' : ['eng', 'hin'],
