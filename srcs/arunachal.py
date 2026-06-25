@@ -80,6 +80,7 @@ class Arunachal(BaseGazette):
 
     def download_metainfos(self, metainfos, from_year, to_year):
         relurls = []
+        seen_relurls = {}
         for metainfo in metainfos:
             year = metainfo.get('year')
             if year is not None:
@@ -104,6 +105,11 @@ class Arunachal(BaseGazette):
             year_str = str(year) if year is not None else 'unknown'
             relpath = os.path.join(self.name, year_str)
             relurl = os.path.join(relpath, filename)
+            if relurl in seen_relurls:
+                seen_relurls[relurl] += 1
+                relurl = f'{relurl}_{seen_relurls[relurl]}'
+            else:
+                seen_relurls[relurl] = 0
             if self.save_gazette(relurl, download_url, metainfo):
                 relurls.append(relurl)
 
