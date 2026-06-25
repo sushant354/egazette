@@ -94,8 +94,6 @@ class Arunachal(BaseGazette):
             download_url = metainfo.pop('download_url')
             download_url = urljoin(self.baseurl, download_url)
 
-            # Remove any brackets, special charecters
-            # Replace spaces with "-"
             title = metainfo.get('title') or metainfo.get('subject')
             if title:
                 filename = re.sub(r'[^\w\s-]', '', title).strip()
@@ -107,7 +105,6 @@ class Arunachal(BaseGazette):
             year_str = str(year) if year is not None else 'unknown'
             relpath = os.path.join(self.name, year_str)
             relurl = os.path.join(relpath, filename)
-        # Track relurl name for duplicates if found add _1, _2... to maintain uniqueness and avoid file overwrites
             if relurl in seen_relurls:
                 seen_relurls[relurl] += 1
                 relurl = f'{relurl}_{seen_relurls[relurl]}'
