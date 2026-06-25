@@ -93,7 +93,12 @@ class Arunachal(BaseGazette):
             download_url = metainfo.pop('download_url')
             download_url = urljoin(self.baseurl, download_url)
 
-            filename = download_url.split('/')[-1].rsplit('.', 1)[0].lower()
+            title = metainfo.get('title') or metainfo.get('subject')
+            if title:
+                filename = re.sub(r'[^\w\s-]', '', title).strip()
+                filename = re.sub(r'\s+', '-', filename).lower()
+            else:
+                filename = download_url.split('/')[-1].rsplit('.', 1)[0].lower()
 
         # Some gazettes in Arunachal does not have a year or date to create relurl, we store them as unknown
             year_str = str(year) if year is not None else 'unknown'
