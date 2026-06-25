@@ -12,7 +12,7 @@ class Andhra(BaseGazette):
     def __init__(self, name, storage):
         BaseGazette.__init__(self, name, storage)
 
-        self.baseurl   = 'https://apegazette.cgg.gov.in/eGazetteSearch.do'
+        self.baseurl   = 'https://apegazette.cgg.gov.in/searchAllGazettes'
         self.searchurl = self.baseurl
         self.hostname  = 'apegazette.cgg.gov.in'
         self.result_table= 'gvGazette'
@@ -361,6 +361,7 @@ class AndhraWeekly(AndhraBase):
         AndhraBase.__init__(self, name, storage)
         self.gazette_id = '2' # weekly's id
 
+#  No fixes for AndhraArchive, since the url is not known
 class AndhraArchive(CentralBase):
     def __init__(self, name, storage):
         CentralBase.__init__(self, name, storage)
