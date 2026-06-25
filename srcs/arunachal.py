@@ -81,14 +81,15 @@ class Arunachal(BaseGazette):
     def download_metainfos(self, metainfos, from_year, to_year):
         relurls = []
         for metainfo in metainfos:
-            year = metainfo.get('year')
-            if year is not None:
-                try:
-                    year_int = int(year)
-                    if year_int < from_year or year_int > to_year:
-                        continue
-                except (ValueError, TypeError):
-                    pass
+            #Do not check for year or date, download all the pdfs from the table since arunachal has less number of pdfs
+            #year = metainfo.get('year')
+            #if year is not None:
+            #    try:
+            #        year_int = int(year)
+            #        if year_int < from_year or year_int > to_year:
+            #            continue
+            #    except (ValueError, TypeError):
+            #        pass
 
             download_url = metainfo.pop('download_url')
             download_url = urljoin(self.baseurl, download_url)
@@ -96,9 +97,13 @@ class Arunachal(BaseGazette):
             filename = download_url.split('/')[-1].rsplit('.', 1)[0].lower()
 
         # Some gazettes in Arunachal does not have a year or date to create relurl, we store them as unknown
-            year_str = str(year) if year is not None else 'unknown'
-            relpath = os.path.join(self.name, year_str)
-            relurl = os.path.join(relpath, filename)
+        #    year_str = str(year) if year is not None else 'unknown'
+        #    relpath = os.path.join(self.name, year_str)
+        #    relurl = os.path.join(relpath, filename)
+
+        # PDF section/tags have different year then the actual pdf date, store them with their hash
+
+            relurl = os.path.join(self.name, filename)
             if self.save_gazette(relurl, download_url, metainfo):
                 relurls.append(relurl)
 
