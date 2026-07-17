@@ -351,7 +351,7 @@ srcinfos = {
         'source'    : 'Government of Manipur',
         'category'  : 'Manipur Gazette',
         'prefix'    : 'in.gazette.manipur.',
-        'start_date': datetime(2026,5,5)
+        'start_date': datetime(2010,4,1)
     },
     'ladakh' : {
         'languages' : ['eng', 'hin'],
