@@ -11,7 +11,7 @@ class Maharashtra(BaseGazette):
         BaseGazette.__init__(self, name, storage)
         self.baseurl      = 'https://egazzete.mahaonline.gov.in/Forms/GazetteSearch.aspx'
         self.hostname     = 'egazzete.mahaonline.gov.in'
-        self.search_endp  = 'GazetteSearch.aspx'
+        self.search_endp  = './GazetteSearch.aspx'
         self.result_table = 'CPH_GridView2'
         self.section_input_field_name = 'ctl00$CPH$ddlSection'
 
