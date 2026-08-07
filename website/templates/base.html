@@ -1,0 +1,113 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{{ site_tagline }}{% endblock %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+<header class="masthead">
+  <div class="masthead-bar">
+    <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <span class="masthead-bar-note">Public record &middot; Gazettes of the Union and State Governments of India</span>
+      <a class="masthead-bar-link" href="{% url 'gazettes:about' %}">About this archive</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="masthead-main">
+      <a class="masthead-brand" href="{% url 'gazettes:home' %}">
+        <span class="masthead-seal" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="presentation" focusable="false">
+            <circle cx="24" cy="24" r="22.2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="24" cy="24" r="18.6" fill="none" stroke="currentColor" stroke-width="0.7"/>
+            <path d="M16 14.5h12.5L34 20v14.5a1.6 1.6 0 0 1-1.6 1.6H16a1.6 1.6 0 0 1-1.6-1.6V16.1A1.6 1.6 0 0 1 16 14.5Z"
+                  fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M28.3 14.6V20H34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M18.4 24.2h11M18.4 27.7h11M18.4 31.2h7.2"
+                  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="masthead-titles">
+          <span class="masthead-title">{{ site_name }}</span>
+          <span class="masthead-tagline">{{ site_tagline }}</span>
+        </span>
+      </a>
+
+      <form class="masthead-search" action="{% url 'gazettes:search' %}" method="get" role="search">
+        <label class="visually-hidden" for="masthead-q">Search the archive</label>
+        <div class="input-group">
+          <input type="search" class="form-control" id="masthead-q" name="q"
+                 value="{{ request.GET.q|default:'' }}"
+                 placeholder="Search gazette text, subjects, ministries…"
+                 autocomplete="off" spellcheck="false">
+          <button class="btn btn-search" type="submit">Search</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <nav class="masthead-nav" aria-label="Primary">
+    <div class="container">
+      <ul class="nav">
+        <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}" href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'search' %} active{% endif %}" href="{% url 'gazettes:search' %}">Search</a></li>
+        <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'source_list' or request.resolver_match.url_name == 'source_detail' %} active{% endif %}" href="{% url 'gazettes:source_list' %}">Gazette series</a></li>
+        <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'about' %} active{% endif %}" href="{% url 'gazettes:about' %}">About</a></li>
+      </ul>
+    </div>
+  </nav>
+</header>
+
+{% block breadcrumbs %}{% endblock %}
+
+{# Full-bleed sections (the home page hero and stat strip) go here, outside
+   the centred container that ordinary page content lives in. #}
+{% block prelude %}{% endblock %}
+
+<main class="flex-grow-1 py-4">
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<footer class="site-footer mt-auto">
+  <div class="container">
+    <div class="row gy-4">
+      <div class="col-lg-6">
+        <p class="footer-title">{{ site_name }}</p>
+        <p class="footer-text">
+          {{ site_tagline }}. Gazette texts reproduced here are the public
+          record as published by the issuing government press. This archive is
+          an independent reference service and is not an official publication
+          of any government; for legal purposes, consult the gazette as issued.
+        </p>
+      </div>
+      <div class="col-lg-3 col-sm-6">
+        <p class="footer-title">Browse</p>
+        <ul class="footer-links">
+          <li><a href="{% url 'gazettes:search' %}">Search the archive</a></li>
+          <li><a href="{% url 'gazettes:source_list' %}">All gazette series</a></li>
+          <li><a href="{% url 'gazettes:about' %}">About &amp; coverage</a></li>
+        </ul>
+      </div>
+      <div class="col-lg-3 col-sm-6">
+        <p class="footer-title">Citing a gazette</p>
+        <p class="footer-text">
+          Every issue has a stable address at <code>/details/&lt;identifier&gt;/</code>.
+          The identifier is shared with the corresponding Internet Archive item.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

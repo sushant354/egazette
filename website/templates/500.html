@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Server error · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-lg-7 text-center">
+    <h1 class="section-title">Something went wrong at our end</h1>
+    <p class="text-muted">
+      The request could not be completed. The problem has been logged; please
+      try again shortly.
+    </p>
+    <a class="btn btn-search rounded-0 mt-3" href="{% url 'gazettes:home' %}">Back to the archive</a>
+  </div>
+</div>
+{% endblock %}

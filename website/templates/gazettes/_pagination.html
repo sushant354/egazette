@@ -1,0 +1,36 @@
+{% load gazette_extras %}
+{% if page.paginator.num_pages > 1 %}
+{% elided_page_range page as page_range %}
+<nav aria-label="Result pages" class="mt-4">
+  <ul class="pagination justify-content-center flex-wrap">
+    <li class="page-item{% if not page.has_previous %} disabled{% endif %}">
+      {% if page.has_previous %}
+        <a class="page-link" href="{% querystring page=page.previous_page_number %}" rel="prev">Previous</a>
+      {% else %}
+        <span class="page-link">Previous</span>
+      {% endif %}
+    </li>
+
+    {% for num in page_range %}
+      {% if num|is_ellipsis %}
+        <li class="page-item disabled"><span class="page-link">{{ num }}</span></li>
+      {% elif num == page.number %}
+        <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
+      {% else %}
+        <li class="page-item"><a class="page-link" href="{% querystring page=num %}">{{ num }}</a></li>
+      {% endif %}
+    {% endfor %}
+
+    <li class="page-item{% if not page.has_next %} disabled{% endif %}">
+      {% if page.has_next %}
+        <a class="page-link" href="{% querystring page=page.next_page_number %}" rel="next">Next</a>
+      {% else %}
+        <span class="page-link">Next</span>
+      {% endif %}
+    </li>
+  </ul>
+  <p class="text-center small text-muted mb-0">
+    Page {{ page.number }} of {{ page.paginator.num_pages }}
+  </p>
+</nav>
+{% endif %}

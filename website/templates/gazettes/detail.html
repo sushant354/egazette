@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ gazette.title|truncatechars:110 }} · {{ site_name }}{% endblock %}
+{% block meta_description %}{{ source.title }}{% if gazette.display_date %}, {{ gazette.display_date }}{% endif %}. {{ gazette.subject|default:gazette.title|truncatechars:180 }}{% endblock %}
+
+{% block head_extra %}
+<link rel="canonical" href="{{ request.build_absolute_uri }}">
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb-bar">
+  <div class="container">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:source_list' %}">Series</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:source_detail' source.name %}">{{ source.title }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ gazette.identifier|truncatechars:44 }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% include 'gazettes/_doc_header.html' %}
+{% include 'gazettes/_view_tabs.html' %}
+
+{% if body_missing %}
+  <div class="gazette-document">
+    <div class="notice">
+      The text of this gazette is not available on this server right now. Its
+      record is indexed, and the issue as published can still be read from the
+      links above.
+    </div>
+  </div>
+{% else %}
+  {% if gazette.text_truncated %}
+    <div class="doc-truncated">
+      This is a long issue. The text shown below is complete, but full-text
+      search covers its opening section only.
+    </div>
+  {% endif %}
+  <article class="gazette-document" lang="en">
+    {{ body }}
+  </article>
+{% endif %}
+
+<div class="citation mt-4">
+  <strong>Cite this issue.</strong>
+  {{ source.title }}{% if source.authority %}, {{ source.authority }}{% endif %}{% if gazette.display_date %}, {{ gazette.display_date }}{% endif %}.
+  {{ site_name }}, <code>{{ request.build_absolute_uri }}</code>.
+  Archive identifier <code>{{ gazette.identifier }}</code>.
+</div>
+{% endblock %}

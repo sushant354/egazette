@@ -1,0 +1,12 @@
+# Indian Gazettes — the gazette record is public and meant to be indexed.
+# Only the write API and the alternate PDF renderings are held back: the
+# latter duplicate the canonical /details/<identifier>/ pages.
+
+User-agent: *
+Disallow: /api/
+Disallow: /admin/
+Allow: /
+
+# Crawling every facet permutation of the search page is a lot of work for
+# nothing; the series pages already link to every gazette.
+Disallow: /search/

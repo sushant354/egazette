@@ -1,0 +1,40 @@
+[Unit]
+Description=Indian Gazettes website (uwsgi)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=notify
+User=egazette
+Group=www-data
+
+EnvironmentFile=/etc/egazette-web.env
+WorkingDirectory=/home/sushant/egazette/website
+
+RuntimeDirectory=egazette
+RuntimeDirectoryMode=0755
+
+ExecStart=/usr/bin/uwsgi --ini /home/sushant/egazette/website/deploy/uwsgi.ini
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGINT
+NotifyAccess=all
+
+Restart=on-failure
+RestartSec=5
+
+# The site only ever reads gazette data and writes uploads into its write
+# root; nothing else on the filesystem needs to be reachable.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# Grant write access to the upload root (EGAZETTE_WRITE_ROOT) and nothing
+# else. Adjust if the write root is elsewhere.
+ReadWritePaths=/srv/egazette/data
+
+[Install]
+WantedBy=multi-user.target

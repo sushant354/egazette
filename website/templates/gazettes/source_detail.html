@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load gazette_extras %}
+
+{% block title %}{{ source.title }} · {{ site_name }}{% endblock %}
+{% block meta_description %}{{ source.title }}{% if source.authority %}, published by {{ source.authority }}{% endif %}. {{ source.gazette_count }} issues, searchable in full text.{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb-bar">
+  <div class="container">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:source_list' %}">Series</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ source.title }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="doc-header mb-4">
+  {% if source.authority %}<div class="doc-series">{{ source.authority }}</div>{% endif %}
+  <h1 class="doc-title">{{ source.title }}</h1>
+
+  <div class="row g-3 mt-1">
+    <div class="col-sm-3">
+      <div class="stat-label">Issues held</div>
+      <div class="stat-value" style="font-size:1.4rem">{{ source.gazette_count|intcomma_in }}</div>
+    </div>
+    <div class="col-sm-3">
+      <div class="stat-label">Coverage</div>
+      <div class="stat-value" style="font-size:1.4rem">
+        {% if source.earliest_date and source.latest_date %}
+          {{ source.earliest_date|date:"Y" }}–{{ source.latest_date|date:"Y" }}
+        {% else %}—{% endif %}
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="stat-label">Languages</div>
+      <div class="stat-value" style="font-size:1.1rem;padding-top:.3rem">{{ languages|join:", "|default:"—" }}</div>
+    </div>
+    <div class="col-sm-3">
+      <div class="stat-label">Archive prefix</div>
+      <div style="padding-top:.45rem"><code class="small">{{ source.ia_prefix }}</code></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-9">
+    <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3">
+      <h2 class="section-title mb-0">
+        Issues{% if selected_year %} from {{ selected_year }}{% endif %}
+      </h2>
+      <span class="text-muted small">{{ paginator.count|intcomma_in }} issue{{ paginator.count|pluralize }}</span>
+    </div>
+
+    {% if page.object_list %}
+      <ul class="result-list">
+        {% for gazette in page.object_list %}
+          {% include 'gazettes/_result.html' with gazette=gazette headline=None %}
+        {% endfor %}
+      </ul>
+      {% include 'gazettes/_pagination.html' %}
+    {% else %}
+      <div class="empty-state">No issues of this series have been ingested yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-3">
+    <div class="panel mb-3">
+      <div class="panel-head">Search within this series</div>
+      <div class="panel-body">
+        <form method="get" action="{% url 'gazettes:search' %}">
+          <input type="hidden" name="source" value="{{ source.name }}">
+          <label class="visually-hidden" for="series-q">Search {{ source.title }}</label>
+          <input type="search" class="form-control" id="series-q" name="q"
+                 placeholder="Search this series…" autocomplete="off">
+          <button class="btn btn-search w-100 mt-2 rounded-0" type="submit">Search</button>
+        </form>
+      </div>
+    </div>
+
+    {% if years %}
+      <div class="panel">
+        <div class="panel-head">By year</div>
+        <div class="panel-body pt-2 pb-2" style="max-height:26rem;overflow-y:auto">
+          <ul class="facet-list">
+            {% if selected_year %}
+              <li><a href="{% url 'gazettes:source_detail' source.name %}">All years</a></li>
+            {% endif %}
+            {% for row in years %}
+              <li{% if row.year == selected_year %} class="selected"{% endif %}>
+                <span class="count">{{ row.total|intcomma_in }}</span>
+                <a href="{% querystring year=row.year page=None %}">{{ row.year }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

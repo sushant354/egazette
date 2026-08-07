@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load gazette_extras %}
+
+{% block title %}About this archive · {{ site_name }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb-bar">
+  <div class="container">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">About</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-8">
+    <h1 class="section-title">About this archive</h1>
+
+    <p>
+      A gazette is the instrument by which a government makes a decision
+      public: appointments, land acquisitions, rules, tariffs, corrigenda. Each
+      one is published by a government press on its own schedule, in its own
+      series, and — for most of the country's history — on paper. This site
+      collects those issues as they are published, and makes their text
+      searchable.
+    </p>
+
+    <h2 class="section-title mt-4" style="font-size:1.15rem">What is here</h2>
+    <p>
+      {{ stats.total|intcomma_in }} issue{{ stats.total|pluralize }} across
+      {{ source_count|intcomma_in }} series{% if stats.earliest and stats.latest %},
+      spanning {{ stats.earliest|date:"Y" }} to {{ stats.latest|date:"Y" }}{% endif %}.
+      Coverage grows as issues are collected and converted; the
+      <a href="{% url 'gazettes:source_list' %}">series index</a> shows exactly
+      what each collection currently holds.
+    </p>
+
+    <h2 class="section-title mt-4" style="font-size:1.15rem">How a gazette gets here</h2>
+    <p>
+      Issues are downloaded from the publishing site of each government press,
+      along with the metadata that press records for them — date, gazette
+      number, part, ministry, department, subject. The PDF is then converted
+      into structured HTML, and it is that HTML which is displayed and indexed.
+      Where the structural conversion loses something, a second, page-faithful
+      rendering of the same PDF is offered alongside it as an
+      <em>alternate rendering</em>; it is not indexed, and the structured text
+      is the version to read and cite.
+    </p>
+
+    <h2 class="section-title mt-4" style="font-size:1.15rem">Searching</h2>
+    <p>
+      The search box queries the full text of every gazette held here, together
+      with its subject, ministry and department. A hit in the title of an issue
+      outranks one buried in its body.
+    </p>
+    <ul>
+      <li><code>"inter cadre transfer"</code> — an exact phrase</li>
+      <li><code>railways OR highways</code> — either term</li>
+      <li><code>acquisition -corrigendum</code> — exclude a term</li>
+    </ul>
+    <p>
+      Very long issues are indexed by their opening section rather than in
+      full; where that applies, the gazette's own page says so.
+    </p>
+
+    <h2 class="section-title mt-4" style="font-size:1.15rem">Citing an issue</h2>
+    <p>
+      Every gazette has a permanent address of the form
+      <code>/details/&lt;identifier&gt;/</code>. That identifier is the same one
+      used for the corresponding item at the Internet Archive, so a citation of
+      either resolves in the other, and it does not change when this site is
+      reorganised.
+    </p>
+
+    <div class="notice mt-4">
+      <strong>Status of these texts.</strong> The gazettes reproduced here are
+      the public record as issued by the government presses that published
+      them. This archive is an independent reference service and is not an
+      official publication of any government. Conversion from print and PDF is
+      automated and can introduce errors; where a matter turns on the exact
+      wording, consult the gazette as issued.
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="panel">
+      <div class="panel-head">At a glance</div>
+      <div class="panel-body">
+        <dl class="doc-meta row mb-0">
+          <dt class="col-6">Issues</dt><dd class="col-6">{{ stats.total|intcomma_in }}</dd>
+          <dt class="col-6">Series</dt><dd class="col-6">{{ source_count|intcomma_in }}</dd>
+          <dt class="col-6">Earliest</dt><dd class="col-6">{% if stats.earliest %}{{ stats.earliest|date:"d M Y" }}{% else %}—{% endif %}</dd>
+          <dt class="col-6">Latest</dt><dd class="col-6">{% if stats.latest %}{{ stats.latest|date:"d M Y" }}{% else %}—{% endif %}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

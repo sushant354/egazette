@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ gazette.title|truncatechars:100 }} — alternate rendering · {{ site_name }}{% endblock %}
+
+{% block head_extra %}
+{# The canonical view is the structured HTML; this rendering should not
+   compete with it in search results. #}
+<meta name="robots" content="noindex,follow">
+<link rel="canonical" href="{% url 'gazettes:detail' gazette.identifier %}">
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb-bar">
+  <div class="container">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:source_detail' source.name %}">{{ source.title }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:detail' gazette.identifier %}">{{ gazette.identifier|truncatechars:44 }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Alternate rendering</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% include 'gazettes/_doc_header.html' %}
+{% include 'gazettes/_view_tabs.html' %}
+
+<div class="notice mt-0" style="border-radius:0;border-top:0">
+  <strong>Alternate rendering.</strong> This is a direct page-by-page
+  conversion of the PDF. It preserves the printed layout but not the
+  document's structure, and it is not part of the search index — the
+  <a href="{% url 'gazettes:detail' gazette.identifier %}">gazette text view</a>
+  is the one to read and cite.
+</div>
+
+<iframe class="doc-frame"
+        src="{% url 'gazettes:pymupdf_frame' gazette.identifier %}"
+        title="Alternate rendering of {{ gazette.title|truncatechars:80 }}"
+        sandbox
+        loading="lazy"
+        referrerpolicy="no-referrer"></iframe>
+{% endblock %}

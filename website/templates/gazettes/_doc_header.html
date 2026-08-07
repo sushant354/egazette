@@ -1,0 +1,84 @@
+{% comment %}
+The masthead of a single gazette: series, title, and the metadata the source
+actually recorded. Shared by the HTML and pymupdf views so the two renderings
+sit under an identical record.
+{% endcomment %}
+<div class="doc-header">
+  <div class="doc-series">
+    <a href="{% url 'gazettes:source_detail' source.name %}" class="text-decoration-none" style="color:inherit">{{ source.title }}</a>
+    {% if source.authority %} · {{ source.authority }}{% endif %}
+  </div>
+
+  <h1 class="doc-title">{{ gazette.title }}</h1>
+
+  {% if gazette.display_date %}
+    <p class="doc-subtitle mb-3">Published {{ gazette.display_date }}</p>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-md-7">
+      <dl class="doc-meta row mb-0">
+        {% if gazette.subject and gazette.subject != gazette.title %}
+          <dt class="col-sm-4">Subject</dt><dd class="col-sm-8">{{ gazette.subject }}</dd>
+        {% endif %}
+        {% if gazette.ministry %}
+          <dt class="col-sm-4">Ministry</dt><dd class="col-sm-8">{{ gazette.ministry }}</dd>
+        {% endif %}
+        {% if gazette.department %}
+          <dt class="col-sm-4">Department</dt><dd class="col-sm-8">{{ gazette.department }}</dd>
+        {% endif %}
+        {% if gazette.office %}
+          <dt class="col-sm-4">Office</dt><dd class="col-sm-8">{{ gazette.office }}</dd>
+        {% endif %}
+        {% if gazette.gztype %}
+          <dt class="col-sm-4">Type</dt><dd class="col-sm-8">{{ gazette.gztype }}</dd>
+        {% endif %}
+        {% if gazette.gznum %}
+          <dt class="col-sm-4">Gazette no.</dt><dd class="col-sm-8">{{ gazette.gznum }}</dd>
+        {% endif %}
+        {% if gazette.partnum %}
+          <dt class="col-sm-4">Part</dt><dd class="col-sm-8">{{ gazette.partnum }}</dd>
+        {% endif %}
+        {% if gazette.notification_num %}
+          <dt class="col-sm-4">Notification no.</dt><dd class="col-sm-8">{{ gazette.notification_num }}</dd>
+        {% endif %}
+        {% if gazette.refnum %}
+          <dt class="col-sm-4">Reference</dt><dd class="col-sm-8">{{ gazette.refnum }}</dd>
+        {% endif %}
+        {% for label, value in gazette.metadata_items %}
+          <dt class="col-sm-4">{{ label }}</dt><dd class="col-sm-8">{{ value|truncatechars:400 }}</dd>
+        {% endfor %}
+      </dl>
+    </div>
+
+    <div class="col-md-5">
+      <dl class="doc-meta row mb-3">
+        <dt class="col-sm-5">Identifier</dt>
+        <dd class="col-sm-7"><code>{{ gazette.identifier }}</code></dd>
+        {% if languages %}
+          <dt class="col-sm-5">Languages</dt>
+          <dd class="col-sm-7">{{ languages|join:", " }}</dd>
+        {% endif %}
+        {% if gazette.source_url %}
+          <dt class="col-sm-5">Published at</dt>
+          <dd class="col-sm-7"><a href="{{ gazette.source_url }}" rel="nofollow noopener external">Original source ↗</a></dd>
+        {% endif %}
+      </dl>
+
+      <div class="d-grid gap-2 doc-actions">
+        {% if has_pdf %}
+          <a class="btn btn-search rounded-0" href="{% url 'gazettes:gazette_pdf' gazette.identifier %}">
+            Gazette as published (PDF)
+          </a>
+        {% else %}
+          <a class="btn btn-outline-dark rounded-0" href="{{ ia_url }}" rel="noopener external">
+            PDF at the Internet Archive ↗
+          </a>
+        {% endif %}
+        <a class="btn btn-outline-secondary btn-sm rounded-0" href="{{ ia_url }}" rel="noopener external">
+          Archive item ↗
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

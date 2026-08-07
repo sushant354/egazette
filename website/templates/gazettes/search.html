@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% load gazette_extras %}
+
+{% block title %}
+  {% if criteria.q %}{{ criteria.q }} — search{% else %}Search{% endif %} · {{ site_name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb-bar">
+  <div class="container">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Search</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <div class="col-lg-3 order-lg-1">
+    <div class="panel mb-3">
+      <div class="panel-head">Refine</div>
+      <div class="panel-body">
+        <form method="get" action="{% url 'gazettes:search' %}">
+          <input type="hidden" name="q" value="{{ criteria.q }}">
+
+          <label class="form-label small fw-semibold" for="id_from_date">From date</label>
+          {{ form.from_date }}
+
+          <label class="form-label small fw-semibold mt-3" for="id_to_date">To date</label>
+          {{ form.to_date }}
+
+          <label class="form-label small fw-semibold mt-3" for="id_source">Gazette series</label>
+          {{ form.source }}
+          <div class="form-text small">Hold Ctrl (or ⌘) to pick more than one.</div>
+
+          <label class="form-label small fw-semibold mt-3" for="id_order">Sort by</label>
+          {{ form.order }}
+
+          <button class="btn btn-search w-100 mt-3 rounded-0" type="submit">Apply</button>
+          <a class="btn btn-link btn-sm w-100 mt-1" href="{% url 'gazettes:search' %}?q={{ criteria.q|urlencode }}">Clear filters</a>
+        </form>
+      </div>
+    </div>
+
+    {% if source_facets %}
+      <div class="panel mb-3">
+        <div class="panel-head">Series in these results</div>
+        <div class="panel-body pt-2 pb-2">
+          <ul class="facet-list">
+            {% for facet in source_facets %}
+              <li{% if facet.selected %} class="selected"{% endif %}>
+                <span class="count">{{ facet.total|intcomma_in }}</span>
+                <a href="{% querystring source=facet.name page=None %}">{{ facet.title }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if year_facets %}
+      <div class="panel">
+        <div class="panel-head">By year</div>
+        <div class="panel-body pt-2 pb-2">
+          <ul class="facet-list">
+            {% for facet in year_facets %}
+              <li{% if facet.year == criteria.year %} class="selected"{% endif %}>
+                <span class="count">{{ facet.total|intcomma_in }}</span>
+                <a href="{% querystring year=facet.year page=None %}">{{ facet.year }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-9 order-lg-0">
+    <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
+      <h1 class="section-title mb-0">
+        {% if criteria.q %}
+          Results for “{{ criteria.q }}”
+        {% elif criteria.is_empty %}
+          The whole archive
+        {% else %}
+          Filtered gazettes
+        {% endif %}
+      </h1>
+      <span class="text-muted small">
+        {{ paginator.count|intcomma_in }} gazette{{ paginator.count|pluralize }}
+      </span>
+    </div>
+
+    {% if criteria.sources or criteria.from_date or criteria.to_date or criteria.year %}
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        {% for name in criteria.sources %}
+          {# Drop just this series, keeping any others the reader picked. #}
+          <a class="chip" href="{% querystring source=criteria.sources|without:name page=None %}">{{ name }} <span class="x">×</span></a>
+        {% endfor %}
+        {% if criteria.from_date %}
+          <a class="chip" href="{% querystring from_date=None page=None %}">from {{ criteria.from_date|date:"d M Y" }} <span class="x">×</span></a>
+        {% endif %}
+        {% if criteria.to_date %}
+          <a class="chip" href="{% querystring to_date=None page=None %}">to {{ criteria.to_date|date:"d M Y" }} <span class="x">×</span></a>
+        {% endif %}
+        {% if criteria.year %}
+          <a class="chip" href="{% querystring year=None page=None %}">year {{ criteria.year }} <span class="x">×</span></a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if form.errors %}
+      <div class="alert alert-warning rounded-0 small">
+        {% for field, errors in form.errors.items %}
+          <div><strong>{{ field }}:</strong> {{ errors|join:", " }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if results %}
+      <ul class="result-list">
+        {% for row in results %}
+          {% include 'gazettes/_result.html' with gazette=row.gazette headline=row.headline %}
+        {% endfor %}
+      </ul>
+
+      {% include 'gazettes/_pagination.html' %}
+    {% else %}
+      <div class="empty-state">
+        <p class="mb-2"><strong>No gazettes matched.</strong></p>
+        {% if criteria.q %}
+          <p class="mb-0 small">
+            Try fewer words, or drop a filter. Phrases go in
+            <code>"quotes"</code>; <code>OR</code> broadens a search and a
+            leading <code>-</code> excludes a term.
+          </p>
+        {% else %}
+          <p class="mb-0 small">Nothing in the archive matches these filters.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

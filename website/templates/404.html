@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Not found · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-lg-7 text-center">
+    <h1 class="section-title">This page is not in the archive</h1>
+    <p class="text-muted">
+      The gazette you asked for may not have been ingested yet, or the
+      identifier in the address may be incomplete.
+    </p>
+    <div class="d-flex gap-2 justify-content-center mt-4">
+      <a class="btn btn-search rounded-0" href="{% url 'gazettes:search' %}">Search the archive</a>
+      <a class="btn btn-outline-dark rounded-0" href="{% url 'gazettes:source_list' %}">Browse by series</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

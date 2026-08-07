@@ -1,0 +1,14 @@
+# Website dependencies, on top of the scraper's own requirements.
+#
+# The site shares the scraper's virtualenv so that it can import
+# egazette.srcs.datasrcs_info and egazette.utils directly:
+#
+#     /home/sushant/.egazette312/bin/pip install -r requirements.website.in
+#
+# beautifulsoup4 is already pulled in by requirements.in; it is repeated here
+# because the site's HTML sanitiser depends on it directly.
+
+django>=5.2
+psycopg[binary]>=3.1
+beautifulsoup4
+uwsgi

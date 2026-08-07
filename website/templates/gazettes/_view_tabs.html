@@ -1,0 +1,14 @@
+{% comment %}
+The rendering picker. The legallayout HTML is the canonical view and is what
+the search index is built from; the pymupdf rendering is offered as a fallback
+for issues whose layout the structural converter did not recover, and is only
+shown when that file exists.
+{% endcomment %}
+<div class="view-tabs mt-4">
+  <a class="view-tab{% if view == 'html' %} active{% endif %}"
+     href="{% url 'gazettes:detail' gazette.identifier %}">Gazette text</a>
+  {% if has_pymupdf %}
+    <a class="view-tab{% if view == 'pymupdf' %} active{% endif %}"
+       href="{% url 'gazettes:detail_pymupdf' gazette.identifier %}">Alternate rendering</a>
+  {% endif %}
+</div>

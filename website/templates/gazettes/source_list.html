@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load gazette_extras %}
+
+{% block title %}Gazette series · {{ site_name }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb-bar">
+  <div class="container">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Gazette series</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Gazette series</h1>
+
+<p class="text-muted" style="max-width:70ch">
+  Each government press publishes on its own schedule and in its own series —
+  weekly and extraordinary issues, part-wise supplements, departmental
+  notifications. The archive keeps them separate so that a citation stays
+  precise.
+</p>
+
+{% if sources %}
+  <div class="table-responsive panel mt-4">
+    <table class="table table-hover series-table mb-0">
+      <thead>
+        <tr>
+          <th scope="col">Series</th>
+          <th scope="col">Published by</th>
+          <th scope="col">Languages</th>
+          <th scope="col" class="text-end">Issues</th>
+          <th scope="col">Coverage</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for source in sources %}
+          <tr>
+            <td class="series-name"><a href="{{ source.get_absolute_url }}">{{ source.title }}</a></td>
+            <td class="text-muted small">{{ source.authority|default:"—" }}</td>
+            <td class="text-muted small">{{ source.languages|join:", "|upper }}</td>
+            <td class="text-end">{{ source.gazette_count|intcomma_in }}</td>
+            <td class="text-muted small">
+              {% if source.earliest_date and source.latest_date %}
+                {{ source.earliest_date|date:"Y" }}–{{ source.latest_date|date:"Y" }}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th scope="row" colspan="3" class="text-end">Total</th>
+          <td class="text-end fw-semibold">{{ total|intcomma_in }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+{% else %}
+  <div class="empty-state">No series hold gazettes yet.</div>
+{% endif %}
+
+{% if empty_sources %}
+  <h2 class="section-title mt-5">Known but not yet loaded</h2>
+  <p class="text-muted small" style="max-width:70ch">
+    The scraper tracks these series, but none of their issues have been
+    ingested into this site yet.
+  </p>
+  <div class="d-flex flex-wrap gap-2">
+    {% for source in empty_sources %}
+      <span class="badge-series">{{ source.title }}</span>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

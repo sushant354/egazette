@@ -1,3 +1,15 @@
 __pycache__/
 data/
 .secrets
+
+# website
+website/staticfiles/
+website/data/
+
+# Local configuration: holds the secret key, database password and ingest
+# tokens. deploy/env.example is the committed template; the real files never
+# are.
+.env
+.env.*
+*.env
+!deploy/env.example

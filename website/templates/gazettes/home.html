@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load gazette_extras %}
+
+{% block title %}{{ site_name }} — Search the gazettes of India{% endblock %}
+
+{% block prelude %}
+<section class="hero">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-9">
+        <h1>The published record of the Union and the States, in one place</h1>
+        <p class="lead mt-3">
+          Every gazette in this archive is reproduced from the issue put out by
+          the government press that published it, and is searchable in full
+          text down to the wording of an individual notification.
+        </p>
+
+        <form class="mt-4" action="{% url 'gazettes:search' %}" method="get" role="search">
+          <div class="input-group input-group-lg">
+            <label class="visually-hidden" for="hero-q">Search the archive</label>
+            <input type="search" class="form-control" id="hero-q" name="q"
+                   placeholder="e.g. land acquisition railways, or &quot;inter cadre transfer&quot;"
+                   autocomplete="off" spellcheck="false" autofocus>
+            <button class="btn btn-warning fw-semibold" type="submit">Search</button>
+          </div>
+        </form>
+
+        <p class="hero-hint mt-3 mb-0">
+          Put a phrase in <code>"quotes"</code>, join alternatives with
+          <code>OR</code>, and drop a term with a leading <code>-</code>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="stat-strip">
+  <div class="container">
+    <div class="row">
+      <div class="col-6 col-md-3">
+        <div class="stat">
+          <div class="stat-value">{{ stats.total|intcomma_in }}</div>
+          <div class="stat-label">Gazettes indexed</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat">
+          <div class="stat-value">{{ source_total|intcomma_in }}</div>
+          <div class="stat-label">Gazette series</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat">
+          <div class="stat-value">{% if stats.earliest %}{{ stats.earliest|date:"Y" }}{% else %}—{% endif %}</div>
+          <div class="stat-label">Earliest issue</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat">
+          <div class="stat-value">{% if stats.latest %}{{ stats.latest|date:"Y" }}{% else %}—{% endif %}</div>
+          <div class="stat-label">Latest issue</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 py-3">
+  <div class="col-lg-7">
+    <h2 class="section-title">Recently published</h2>
+
+    {% if recent %}
+      <ul class="result-list">
+        {% for gazette in recent %}
+          {% include 'gazettes/_result.html' with gazette=gazette headline=None %}
+        {% endfor %}
+      </ul>
+      <a class="btn btn-outline-dark btn-sm rounded-0" href="{% url 'gazettes:search' %}">Browse the whole archive</a>
+    {% else %}
+      <div class="empty-state">
+        <p class="mb-1"><strong>The archive is empty.</strong></p>
+        <p class="mb-0 small">
+          Run <code>manage.py ingest_gazettes</code> against a gazette data
+          directory, or push gazettes to <code>/api/ingest/</code>.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-5">
+    <h2 class="section-title">Browse by series</h2>
+
+    {% if top_sources %}
+      <div class="panel">
+        <div class="panel-head">Largest collections</div>
+        <div class="panel-body pt-2 pb-2">
+          <ul class="facet-list">
+            {% for source in top_sources %}
+              <li>
+                <span class="count">{{ source.gazette_count|intcomma_in }}</span>
+                <a href="{{ source.get_absolute_url }}">{{ source.title }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <a class="btn btn-outline-dark btn-sm rounded-0 mt-3" href="{% url 'gazettes:source_list' %}">All gazette series</a>
+    {% else %}
+      <div class="empty-state">No series hold gazettes yet.</div>
+    {% endif %}
+
+    <div class="notice mt-4">
+      <strong>Citing an issue.</strong> Each gazette has a permanent address at
+      <code>/details/&lt;identifier&gt;/</code>, using the same identifier as
+      the matching Internet Archive item.
+    </div>
+  </div>
+</div>
+{% endblock %}
