@@ -33,6 +33,7 @@ import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 
 from egazette.utils.file_storage import FileManager
+from egazette.srcs.datasrcs_info import srcinfos
 
 logger = logging.getLogger('pdf2html')
 
@@ -49,6 +50,39 @@ DEFAULT_LEGALLAYOUT_DIR = '/home/sushant/legallayout'
 # no footnote continuation across pages, and no minimum image-size filtering.
 LEGALLAYOUT_IS_FOOTNOTE_CONTINUATION = False
 LEGALLAYOUT_MIN_IMG_SIZE = 50
+LEGALLAYOUT_DEFAULT_OCR_LANGUAGE = 'en'
+LEGALLAYOUT_IS_SCANNED_COPY = False
+LEGALLAYOUT_TABLE_EXTRACT = False
+
+# datasrcs_info.py lists each src's languages as ISO 639-2 codes (with 'eng'
+# first, since nearly every gazette is bilingual English + a regional
+# language). legallayout's OCR only ships models for these ISO 639-1 codes;
+# map the ISO 639-2 codes we can, and fall back to English for the rest.
+LEGALLAYOUT_LANG_MAP = {
+    'eng': 'en',
+    'hin': 'hi',
+    'mar': 'mr',
+    'tel': 'te',
+    'tam': 'ta',
+}
+
+
+def get_ocr_language(srcname):
+    """Return the legallayout OCR language code for a gazette src.
+
+    Prefers the src's regional language (datasrcs_info lists 'eng' first for
+    almost every src, so OCR on scanned regional-language content needs the
+    other entry) and falls back to English when the regional language has no
+    legallayout OCR model.
+    """
+    languages = srcinfos.get(srcname, {}).get('languages', [])
+    for lang in languages:
+        if lang == 'eng':
+            continue
+        mapped = LEGALLAYOUT_LANG_MAP.get(lang)
+        if mapped:
+            return mapped
+    return LEGALLAYOUT_DEFAULT_OCR_LANGUAGE
 
 # output subdirectory (under datadir) for each engine's HTML
 OUTPUT_SUBDIR = {
@@ -141,7 +175,7 @@ def convert_pymupdf(pdf_path, out_path):
     return True
 
 
-def convert_legallayout(pdf_path, out_path, legallayout_dir):
+def convert_legallayout(pdf_path, out_path, legallayout_dir, ocr_language):
     """Convert a PDF to HTML using the legallayout Main pipeline.
 
     legallayout writes ``<pdf_basename>.html`` into the output directory (and an
@@ -158,7 +192,9 @@ def convert_legallayout(pdf_path, out_path, legallayout_dir):
 
     # pdf_type=None -> generic gazette HTMLBuilder; no amendments / sidenotes.
     main = Main(pdf_path, False, out_dir, None, False, False,
-                LEGALLAYOUT_IS_FOOTNOTE_CONTINUATION, LEGALLAYOUT_MIN_IMG_SIZE)
+                LEGALLAYOUT_IS_FOOTNOTE_CONTINUATION, LEGALLAYOUT_MIN_IMG_SIZE,
+                ocr_language, LEGALLAYOUT_IS_SCANNED_COPY,
+                LEGALLAYOUT_TABLE_EXTRACT)
     ok = main.parsePDF(None, None, None, None, None, None)
     if ok:
         main.buildHTML(None, None)
@@ -197,7 +233,9 @@ def convert_one(htmldir, engine, legallayout_dir, relurl, pdf_path,
         if engine == 'pymupdf':
             ok = convert_pymupdf(pdf_path, out_path)
         else:
-            ok = convert_legallayout(pdf_path, out_path, legallayout_dir)
+            srcname = relurl.split('/')[0]
+            ok = convert_legallayout(pdf_path, out_path, legallayout_dir,
+                                     get_ocr_language(srcname))
     except Exception:
         logger.exception('Failed to convert %s', relurl)
         ok = False
