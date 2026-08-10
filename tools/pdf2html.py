@@ -53,6 +53,10 @@ LEGALLAYOUT_MIN_IMG_SIZE = 50
 LEGALLAYOUT_DEFAULT_OCR_LANGUAGE = 'en'
 LEGALLAYOUT_IS_SCANNED_COPY = False
 LEGALLAYOUT_TABLE_EXTRACT = False
+# legallayout keys several gazette-specific behaviours off pdf_type, notably
+# IIIF manifest.json generation - with pdf_type=None only the extracted images
+# get written under manifest/<basename>/ and no manifest.json is produced.
+LEGALLAYOUT_PDF_TYPE = 'egazette'
 
 # datasrcs_info.py lists each src's languages as ISO 639-2 codes (with 'eng'
 # first, since nearly every gazette is bilingual English + a regional
@@ -175,13 +179,20 @@ def convert_pymupdf(pdf_path, out_path):
     return True
 
 
-def convert_legallayout(pdf_path, out_path, legallayout_dir, ocr_language):
+def convert_legallayout(pdf_path, out_path, legallayout_dir, ocr_language,
+                        public_base_url=None, server_root=None):
     """Convert a PDF to HTML using the legallayout Main pipeline.
 
-    legallayout writes ``<pdf_basename>.html`` into the output directory (and an
-    ``images/`` subdir for figures). Since the raw file is stored as
-    ``<relurl>.pdf`` the produced filename already matches ``<relurl>.html``; we
-    point the output directory at the target's parent and rename defensively.
+    legallayout writes ``<pdf_basename>.html`` into the output directory (and a
+    ``manifest/<basename>/`` subdir holding the extracted figures plus the IIIF
+    manifest.json). Since the raw file is stored as ``<relurl>.pdf`` the
+    produced filename already matches ``<relurl>.html``; we point the output
+    directory at the target's parent and rename defensively.
+
+    pdf_type must be 'egazette': legallayout gates IIIF manifest generation
+    (Main.parsePDF) and the manifest link it injects into the HTML
+    (Main.add_manifest_link_to_html) on that value, and it is checked both as
+    the constructor argument and as the parsePDF argument.
     """
     if legallayout_dir not in sys.path:
         sys.path.insert(0, legallayout_dir)
@@ -190,16 +201,16 @@ def convert_legallayout(pdf_path, out_path, legallayout_dir, ocr_language):
 
     out_dir = os.path.dirname(out_path)
 
-    # pdf_type=None -> generic gazette HTMLBuilder; no amendments / sidenotes.
-    main = Main(pdf_path, False, out_dir, None, False, False,
+    main = Main(pdf_path, False, out_dir, LEGALLAYOUT_PDF_TYPE, False, False,
                 LEGALLAYOUT_IS_FOOTNOTE_CONTINUATION, LEGALLAYOUT_MIN_IMG_SIZE,
                 ocr_language, LEGALLAYOUT_IS_SCANNED_COPY,
-                LEGALLAYOUT_TABLE_EXTRACT)
-    ok = main.parsePDF(None, None, None, None, None, None)
+                LEGALLAYOUT_TABLE_EXTRACT, public_base_url=public_base_url,
+                server_root=server_root)
+    ok = main.parsePDF(LEGALLAYOUT_PDF_TYPE, None, None, None, None, None)
     if ok:
         main.buildHTML(None, None)
     main.clear_cache_pdf()
-    main.clear_cache()
+    main.clear_xml_cache()
 
     if not ok:
         return False
@@ -215,7 +226,7 @@ def convert_legallayout(pdf_path, out_path, legallayout_dir, ocr_language):
 
 
 def convert_one(htmldir, engine, legallayout_dir, relurl, pdf_path,
-                overwrite):
+                overwrite, public_base_url=None, server_root=None):
     """Convert a single PDF. Returns 'converted', 'skipped' or 'failed'."""
     out_path = os.path.join(htmldir, '%s.html' % relurl)
 
@@ -235,7 +246,8 @@ def convert_one(htmldir, engine, legallayout_dir, relurl, pdf_path,
         else:
             srcname = relurl.split('/')[0]
             ok = convert_legallayout(pdf_path, out_path, legallayout_dir,
-                                     get_ocr_language(srcname))
+                                     get_ocr_language(srcname),
+                                     public_base_url, server_root)
     except Exception:
         logger.exception('Failed to convert %s', relurl)
         ok = False
@@ -257,12 +269,15 @@ def resolve_pdf(storage, relurl, pdf_path):
 _worker = {}
 
 
-def _worker_init(datadir, htmldir, engine, legallayout_dir, overwrite):
+def _worker_init(datadir, htmldir, engine, legallayout_dir, overwrite,
+                 public_base_url, server_root):
     _worker['storage'] = FileManager(datadir, False, False)
     _worker['htmldir'] = htmldir
     _worker['engine'] = engine
     _worker['legallayout_dir'] = legallayout_dir
     _worker['overwrite'] = overwrite
+    _worker['public_base_url'] = public_base_url
+    _worker['server_root'] = server_root
 
 
 def _worker_task(relurl_pdf):
@@ -276,11 +291,12 @@ def _worker_task(relurl_pdf):
 
     return convert_one(_worker['htmldir'], _worker['engine'],
                        _worker['legallayout_dir'], relurl, pdf_path,
-                       _worker['overwrite'])
+                       _worker['overwrite'], _worker['public_base_url'],
+                       _worker['server_root'])
 
 
 def convert(storage, datadir, htmldir, engine, legallayout_dir, relurl_pdfs,
-            overwrite, workers=1):
+            overwrite, workers=1, public_base_url=None, server_root=None):
     counts = {'converted': 0, 'failed': 0, 'skipped': 0}
 
     if workers and workers > 1:
@@ -290,7 +306,8 @@ def convert(storage, datadir, htmldir, engine, legallayout_dir, relurl_pdfs,
                 max_workers=workers, mp_context=mpctx,
                 initializer=_worker_init,
                 initargs=(datadir, htmldir, engine, legallayout_dir,
-                          overwrite)) as executor:
+                          overwrite, public_base_url,
+                          server_root)) as executor:
             for result in executor.map(_worker_task, relurl_pdfs):
                 counts[result] += 1
     else:
@@ -302,7 +319,8 @@ def convert(storage, datadir, htmldir, engine, legallayout_dir, relurl_pdfs,
                 continue
 
             result = convert_one(htmldir, engine, legallayout_dir,
-                                 relurl, pdf_path, overwrite)
+                                 relurl, pdf_path, overwrite,
+                                 public_base_url, server_root)
             counts[result] += 1
 
     logger.info('Done. converted=%d failed=%d skipped=%d',
@@ -347,6 +365,16 @@ def get_arg_parser():
                         default=DEFAULT_LEGALLAYOUT_DIR,
                         help='path to the legallayout checkout (parent of '
                              'the source/ package)')
+    parser.add_argument('--public-base-url', dest='public_base_url',
+                        default=None,
+                        help='public base URL the IIIF manifest and its image '
+                             'URIs are built from (legallayout only). Defaults '
+                             'to legallayout\'s http://localhost:8000')
+    parser.add_argument('--server-root', dest='server_root', default=None,
+                        help='local directory served as the web root, used to '
+                             'turn the output path into the URL path under '
+                             '--public-base-url (legallayout only). Must '
+                             'contain datadir.')
     parser.add_argument('-l', '--loglevel', dest='loglevel', default='info',
                         help='log level (critical|error|warning|info|debug)')
     parser.add_argument('-f', '--logfile', dest='logfile', default=None,
@@ -380,7 +408,8 @@ def main():
                                        args.fromdate, args.todate)
 
     convert(storage, args.datadir, htmldir, args.engine, args.legallayout_dir,
-            relurl_pdfs, args.overwrite, args.workers)
+            relurl_pdfs, args.overwrite, args.workers,
+            args.public_base_url, args.server_root)
 
 
 if __name__ == '__main__':
