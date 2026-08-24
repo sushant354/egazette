@@ -1,0 +1,47 @@
+[Unit]
+Description=Indian Gazettes website (uwsgi)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=notify
+User=egazette
+# www-data as the primary group is what makes `chown-socket = egazette:www-data`
+# in uwsgi.ini work: a non-root process can only chgrp to a group it belongs to.
+Group=www-data
+
+EnvironmentFile=/etc/egazette-web.env
+WorkingDirectory=/home/sushant/egazette/website
+
+# Creates /run/egazette (owned egazette:www-data) on every start and cleans it
+# up on stop. /run is a tmpfs, so without this the socket directory vanishes on
+# each reboot and uwsgi fails with "bind(): No such file or directory".
+RuntimeDirectory=egazette
+RuntimeDirectoryMode=0750
+
+ExecStart=/usr/bin/uwsgi --ini /home/sushant/egazette/website/deploy/uwsgi.ini
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGINT
+NotifyAccess=all
+
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+# The data roots, the checkout and the virtualenv all live under /home on this
+# host, so /home must stay readable; ReadWritePaths below punches through this
+# for the one directory that needs writing.
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+# EGAZETTE_WRITE_ROOT -- where ingest/upload writes land. Must match the env
+# file, or the service starts but uploads fail with permission errors.
+ReadWritePaths=/home/sushant/egazette/website/data
+
+[Install]
+WantedBy=multi-user.target
