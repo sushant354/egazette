@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load gazette_extras %}
+
+{% block title %}Your bookmarks · {{ site_name }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb-bar">
+  <div class="container">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:account' %}">Your account</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Bookmarks</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
+  <h1 class="section-title mb-0">Your bookmarks</h1>
+  {% if total %}
+    <p class="text-muted mb-0">{{ total|intcomma_in }} gazette{{ total|pluralize }} saved, newest first</p>
+  {% endif %}
+</div>
+
+{% if page.object_list %}
+  <ul class="result-list">
+    {% for bookmark in page.object_list %}
+      {% include 'gazettes/_result.html' with gazette=bookmark.gazette headline=None saved_on=bookmark.created_at %}
+    {% endfor %}
+  </ul>
+
+  {% include 'gazettes/_pagination.html' %}
+{% else %}
+  <div class="empty-state">
+    <p class="mb-3">You have not bookmarked any gazettes yet.</p>
+    <p class="mb-4">
+      Open any issue and use the <strong>Bookmark</strong> button on it; saved
+      issues appear here and in the account menu at the top of every page.
+    </p>
+    <a class="btn btn-search rounded-0" href="{% url 'gazettes:search' %}">Search the archive</a>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,68 @@
+{% load gazette_extras %}{% comment %}
+The account control in the utility bar. Signed out it is two links; signed in
+it is a dropdown holding the reader's profile, their most recent bookmarks and
+the sign-out form.
+
+Bookmarks are listed here rather than only on their own page because saving an
+issue and coming back to it is the whole reason an account exists on this site.
+{% endcomment %}
+{% if user.is_authenticated %}
+  <div class="dropdown account-menu">
+    <button class="account-toggle" type="button" id="account-menu-toggle"
+            data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+      <span class="account-initial" aria-hidden="true">{{ user.username|slice:":1"|upper }}</span>
+      <span class="account-name">{{ user.username }}</span>
+      <span class="account-caret" aria-hidden="true">▾</span>
+    </button>
+
+    <div class="dropdown-menu dropdown-menu-end account-dropdown" aria-labelledby="account-menu-toggle">
+      <div class="account-card">
+        <p class="account-card-name">{{ user.get_full_name|default:user.username }}</p>
+        <p class="account-card-sub">{{ user.email|default:"No email on file" }}</p>
+        <a class="account-card-link" href="{% url 'gazettes:account' %}">Your account</a>
+      </div>
+
+      <div class="account-section">
+        <div class="account-section-head">
+          <span>Bookmarks</span>
+          <span class="account-count">{{ account_nav.count|intcomma_in }}</span>
+        </div>
+
+        {% if account_nav.bookmarks %}
+          <ul class="account-bookmarks">
+            {% for bookmark in account_nav.bookmarks %}
+              <li>
+                <a href="{{ bookmark.gazette.get_absolute_url }}">
+                  <span class="account-bookmark-title">{{ bookmark.gazette.title|truncatechars:70 }}</span>
+                  <span class="account-bookmark-meta">
+                    {{ bookmark.gazette.source.title|truncatechars:38 }}{% if bookmark.gazette.display_date %} &middot; {{ bookmark.gazette.display_date }}{% endif %}
+                  </span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+          {% if account_nav.count > account_nav.limit %}
+            <a class="account-more" href="{% url 'gazettes:bookmarks' %}">
+              All {{ account_nav.count|intcomma_in }} bookmarks &rarr;
+            </a>
+          {% else %}
+            <a class="account-more" href="{% url 'gazettes:bookmarks' %}">Manage bookmarks &rarr;</a>
+          {% endif %}
+        {% else %}
+          <p class="account-empty">
+            Nothing saved yet. Open any gazette and use <strong>Bookmark</strong>
+            to keep it here.
+          </p>
+        {% endif %}
+      </div>
+
+      <form class="account-signout" method="post" action="{% url 'gazettes:logout' %}">
+        {% csrf_token %}
+        <button type="submit">Sign out</button>
+      </form>
+    </div>
+  </div>
+{% else %}
+  <a class="btn-signin" href="{% signin_url %}">Sign in</a>
+  <a class="masthead-bar-link" href="{% signin_url 'gazettes:signup' %}">Create account</a>
+{% endif %}

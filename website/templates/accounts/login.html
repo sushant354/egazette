@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign in · {{ site_name }}{% endblock %}
+{% block meta_description %}Sign in to keep bookmarks of gazettes in the archive.{% endblock %}
+
+{% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-5 col-md-7">
+    <div class="auth-panel">
+      <h1 class="auth-title">Sign in</h1>
+      <p class="auth-lead">
+        An account keeps your bookmarked gazettes together. Searching and
+        reading the archive never needs one.
+      </p>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include 'accounts/_auth_form.html' %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <button class="btn btn-search rounded-0 w-100 mt-2" type="submit">Sign in</button>
+      </form>
+
+      <p class="auth-alt">
+        No account yet?
+        <a href="{% url 'gazettes:signup' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Create one</a>.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

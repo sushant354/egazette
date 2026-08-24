@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static gazette_extras %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -15,7 +15,10 @@
   <div class="masthead-bar">
     <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
       <span class="masthead-bar-note">Public record &middot; Gazettes of the Union and State Governments of India</span>
-      <a class="masthead-bar-link" href="{% url 'gazettes:about' %}">About this archive</a>
+      <div class="masthead-bar-actions">
+        <a class="masthead-bar-link" href="{% url 'gazettes:about' %}">About this archive</a>
+        {% include 'accounts/_account_menu.html' %}
+      </div>
     </div>
   </div>
 
@@ -70,6 +73,13 @@
 
 <main class="flex-grow-1 py-4">
   <div class="container">
+    {% if messages %}
+      <ul class="message-list">
+        {% for message in messages %}
+          <li class="message message-{{ message.level_tag }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
     {% block content %}{% endblock %}
   </div>
 </main>
@@ -92,6 +102,11 @@
           <li><a href="{% url 'gazettes:search' %}">Search the archive</a></li>
           <li><a href="{% url 'gazettes:source_list' %}">All gazette series</a></li>
           <li><a href="{% url 'gazettes:about' %}">About &amp; coverage</a></li>
+          {% if user.is_authenticated %}
+            <li><a href="{% url 'gazettes:bookmarks' %}">Your bookmarks</a></li>
+          {% else %}
+            <li><a href="{% signin_url %}">Sign in</a></li>
+          {% endif %}
         </ul>
       </div>
       <div class="col-lg-3 col-sm-6">

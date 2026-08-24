@@ -5,6 +5,8 @@ Two tables carry the site. ``Source`` mirrors an entry of
 Extraordinary Gazette of India) and is rebuilt from that dict rather than
 edited by hand. ``Gazette`` is one published issue, keyed by the same
 identifier the scraper uses when it uploads to the Internet Archive.
+``Bookmark`` is the one reader-written table: an issue a signed-in reader
+saved.
 
 Gazette metadata is deeply heterogeneous across the ~55 sources -- West Bengal
 archive scans carry a ``bookid`` and no date at all, while the central gazette
@@ -13,6 +15,7 @@ worth querying and faceting on; everything the scraper recorded is preserved
 verbatim in ``metadata`` so nothing is lost in translation.
 """
 
+from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
@@ -175,3 +178,61 @@ class Gazette(models.Model):
                 continue
             items.append((key.replace('_', ' ').title(), value))
         return items
+
+
+class Bookmark(models.Model):
+    """One gazette a reader has saved for later.
+
+    Bookmarks are the only rows on this site written by readers rather than by
+    the ingest pipeline, so they are deliberately thin: a user, an issue, and
+    when it was saved. Everything shown about a bookmark is read through the
+    gazette it points at, which keeps a re-ingested issue's bookmarks correct
+    without any migration of their own.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='bookmarks',
+    )
+    gazette = models.ForeignKey(
+        Gazette, on_delete=models.CASCADE, related_name='bookmarks'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        constraints = [
+            # Bookmarking is a toggle, so the same issue can only be held
+            # once per reader; a double submit must not make a second row.
+            models.UniqueConstraint(
+                fields=['user', 'gazette'], name='bookmark_unique_per_user'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user', '-created_at'],
+                         name='bookmark_user_recent'),
+        ]
+
+    def __str__(self):
+        return '%s -> %s' % (self.user, self.gazette_id)
+
+
+def bookmarked_pks(user, gazettes):
+    """Which of ``gazettes`` this user has bookmarked, as a set of gazette pks.
+
+    One query for a whole listing, so a results page can show the state of
+    every bookmark button without a query per row. Anonymous readers get an
+    empty set and no query at all.
+    """
+    if not getattr(user, 'is_authenticated', False):
+        return set()
+
+    pks = [gazette.pk for gazette in gazettes]
+    if not pks:
+        return set()
+
+    return set(
+        Bookmark.objects.filter(user=user, gazette_id__in=pks)
+        .values_list('gazette_id', flat=True)
+    )

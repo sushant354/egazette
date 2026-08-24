@@ -125,6 +125,296 @@ h1, h2, h3, h4, h5, .serif { font-family: var(--serif); }
   border-bottom-color: var(--gold-bright);
 }
 
+/* ---------- account menu ---------- */
+
+.masthead-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-signin {
+  color: #0d1a2e;
+  background: #e3c489;
+  border: 1px solid #e3c489;
+  border-radius: 2px;
+  padding: 0.12rem 0.7rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-signin:hover, .btn-signin:focus {
+  background: #f0d9ac;
+  border-color: #f0d9ac;
+  color: #0d1a2e;
+}
+
+.account-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: transparent;
+  border: 1px solid rgba(227, 196, 137, 0.4);
+  border-radius: 2px;
+  color: #e3c489;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.55rem 0.1rem 0.25rem;
+  max-width: 14rem;
+}
+.account-toggle:hover, .account-toggle[aria-expanded="true"] {
+  border-color: #e3c489;
+  color: #fff;
+}
+
+.account-initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #0d1a2e;
+  font-weight: 700;
+  font-size: 0.72rem;
+  flex: 0 0 auto;
+}
+
+.account-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-caret { font-size: 0.6rem; opacity: 0.8; }
+
+/* The menu itself is a light panel: it holds gazette titles, which have to be
+ * read, not glanced at. */
+.account-dropdown {
+  width: min(23rem, calc(100vw - 1.5rem));
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--gold);
+  border-radius: 0;
+  box-shadow: 0 12px 28px rgba(13, 26, 46, 0.22);
+  font-size: 0.85rem;
+  color: #1d2735;
+}
+
+.account-card {
+  padding: 0.85rem 1rem 0.75rem;
+  background: #fbfaf7;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.account-card-name {
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  color: var(--ink);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.account-card-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0.1rem 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+.account-card-link { font-size: 0.82rem; text-decoration: none; }
+.account-card-link:hover { text-decoration: underline; }
+
+.account-section { padding: 0.7rem 1rem 0.5rem; }
+
+.account-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.account-count { color: var(--ink); letter-spacing: 0; }
+
+.account-bookmarks { list-style: none; padding: 0; margin: 0; }
+.account-bookmarks li { border-bottom: 1px dotted var(--rule-soft); }
+.account-bookmarks li:last-child { border-bottom: 0; }
+.account-bookmarks a {
+  display: block;
+  padding: 0.4rem 0;
+  text-decoration: none;
+  color: var(--ink);
+}
+.account-bookmarks a:hover { color: #1a4480; }
+.account-bookmarks a:hover .account-bookmark-title { text-decoration: underline; }
+
+.account-bookmark-title {
+  display: block;
+  font-family: var(--serif);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+.account-bookmark-meta {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+.account-more {
+  display: block;
+  padding: 0.55rem 0 0.15rem;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+.account-more:hover { text-decoration: underline; }
+
+.account-empty {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.account-signout {
+  border-top: 1px solid var(--rule-soft);
+  padding: 0.55rem 1rem 0.65rem;
+  background: #fbfaf7;
+}
+.account-signout button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: #1a4480;
+  font-size: 0.83rem;
+}
+.account-signout button:hover { text-decoration: underline; }
+
+/* ---------- bookmark control ---------- */
+
+.bookmark-form { display: inline-flex; margin: 0; }
+
+.bookmark-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.bookmark-btn:hover, .bookmark-btn:focus {
+  border-color: var(--gold);
+  color: var(--ink);
+}
+.bookmark-btn.is-saved {
+  color: #7a5c1d;
+  border-color: var(--gold);
+  background: #fdf6e3;
+}
+
+.bookmark-icon { width: 0.78rem; height: 0.78rem; flex: 0 0 auto; }
+
+/* On a gazette page the control closes the record card, bottom right. */
+.doc-bookmark {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.1rem;
+}
+
+/* ---------- account pages ---------- */
+
+.auth-panel {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-top: 4px solid var(--ink);
+  padding: 1.7rem 1.7rem 1.5rem;
+}
+
+.auth-title {
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  color: var(--ink);
+  margin-bottom: 0.5rem;
+}
+
+.auth-lead {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 1.4rem;
+}
+
+.auth-field { margin-bottom: 1rem; }
+
+.auth-label {
+  display: block;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.auth-field .form-control { border-color: var(--rule); border-radius: 2px; }
+.auth-field .form-control:focus {
+  border-color: var(--ink-soft);
+  box-shadow: 0 0 0 0.2rem rgba(20, 36, 61, 0.12);
+}
+
+.auth-help {
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin: 0.3rem 0 0;
+  line-height: 1.5;
+}
+.auth-help ul { padding-left: 1.1rem; margin: 0.2rem 0 0; }
+
+.auth-error { font-size: 0.8rem; color: #9b2226; margin: 0.3rem 0 0; }
+
+.auth-errors {
+  background: #fdecec;
+  border-left: 3px solid #9b2226;
+  color: #7f1d1d;
+  font-size: 0.85rem;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1.1rem;
+}
+
+.auth-alt {
+  border-top: 1px solid var(--rule-soft);
+  margin: 1.3rem 0 0;
+  padding-top: 0.9rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+/* ---------- flash messages ---------- */
+
+.message-list { list-style: none; padding: 0; margin: 0 0 1.2rem; }
+
+.message {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--ink-soft);
+  padding: 0.7rem 1rem;
+  font-size: 0.88rem;
+  color: #24405f;
+  margin-bottom: 0.5rem;
+}
+.message-success { border-left-color: var(--gold); background: #fdf6e3; color: #6b5518; }
+.message-error { border-left-color: #9b2226; background: #fdecec; color: #7f1d1d; }
+
 /* ---------- shared blocks ---------- */
 
 .breadcrumb-bar {

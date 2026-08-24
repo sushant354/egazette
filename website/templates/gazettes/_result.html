@@ -1,6 +1,8 @@
 {% comment %}
 One gazette in a listing. `headline` is an already-escaped, <mark>-annotated
 snippet from ts_headline; when there is no query we fall back to the subject.
+`saved_on` is set only by the bookmarks page, which lists issues by when they
+were saved rather than by when they were published.
 {% endcomment %}
 <li class="result">
   <h3 class="result-title">
@@ -14,6 +16,7 @@ snippet from ts_headline; when there is no query we fall back to the subject.
     {% if gazette.partnum %}<span class="sep">|</span><span>Part {{ gazette.partnum|truncatechars:30 }}</span>{% endif %}
     {% if gazette.ministry %}<span class="sep">|</span><span>{{ gazette.ministry|truncatechars:70 }}</span>{% endif %}
     {% if gazette.department and not gazette.ministry %}<span class="sep">|</span><span>{{ gazette.department|truncatechars:70 }}</span>{% endif %}
+    {% if saved_on %}<span class="sep">|</span><span>Saved {{ saved_on|date:"d M Y" }}</span>{% endif %}
   </div>
 
   {% if headline %}
@@ -26,6 +29,7 @@ snippet from ts_headline; when there is no query we fall back to the subject.
     <span class="badge-format">HTML</span>
     {% if gazette.has_pymupdf %}<span class="badge-format">Alt. rendering</span>{% endif %}
     {% if gazette.has_pdf %}<span class="badge-format">PDF</span>{% endif %}
-    <code class="ms-auto small text-muted">{{ gazette.identifier }}</code>
+    <code class="small text-muted">{{ gazette.identifier }}</code>
+    <span class="ms-auto">{% include 'gazettes/_bookmark_button.html' %}</span>
   </div>
 </li>

@@ -21,9 +21,10 @@ egazette/
   website/
     egazette_site/          settings, urls, wsgi
     gazettes/
-      models.py             Source, Gazette
+      models.py             Source, Gazette, Bookmark
       services/             the reusable layer (see below)
       views.py  api.py      reader pages, ingest endpoint
+      accounts.py           sign-in, signup, bookmarks
       management/commands/  ingest_gazettes, sync_sources, reindex_gazettes
     templates/  static/
     deploy/                 uwsgi, nginx, systemd, env
@@ -57,6 +58,11 @@ is skipped rather than half-recorded, and picked up on a later run once
 `pdf2html -e legallayout` has converted it. The raw PDF and the pymupdf
 rendering are optional.
 
+`Bookmark` is the only table readers write to: one row per (user, gazette),
+unique on the pair so the button is a true toggle. Everything a bookmark
+displays is read through the gazette it points at, so a re-ingested issue needs
+no bookmark maintenance, and deleting a gazette takes its bookmarks with it.
+
 Full text is indexed into a weighted `tsvector`:
 
 | weight | field |
@@ -81,6 +87,38 @@ The **pymupdf** rendering is a stack of absolutely positioned divs that only
 holds together as a standalone document. It is offered as a non-default
 alternate view in a sandboxed frame with a restrictive CSP, is marked
 `noindex`, and is never part of the search index.
+
+## Accounts
+
+Reading the archive never needs an account. Search, browse, every gazette page
+and the PDFs stay open to anyone, and should: it is a public record.
+
+An account buys exactly one thing — bookmarks that follow the reader between
+devices. The header carries a **Sign in** button, or, once signed in, an
+account menu holding the reader's profile, their six most recent bookmarks and
+sign-out. Every gazette page and every result row has a bookmark control; for a
+signed-out reader it is a link to sign in that returns to the page they were
+on, one click from saving it.
+
+| URL | page |
+| --- | --- |
+| `/accounts/login/` | sign in |
+| `/accounts/signup/` | create an account |
+| `/accounts/logout/` | sign out (POST only) |
+| `/account/` | the reader's profile |
+| `/bookmarks/` | everything they have saved |
+| `/details/<identifier>/bookmark/` | save or drop one issue (POST only) |
+
+Authentication is Django's own — `django.contrib.auth`, its password
+validators, its session cookie — with the site's forms and templates over it.
+Sessions last 30 days (`EGAZETTE_SESSION_COOKIE_AGE`). Signup asks for a
+username, an email address and a password. The address is required and unique
+(compared case-insensitively) — Django's own `User` leaves it blank-able and
+unconstrained, but it is the only way back into an account whose password has
+been forgotten.
+
+The account pages are `noindex`, and a listing reads every row's bookmark state
+in one query, so a results page costs no query per row.
 
 ## Configuration
 
@@ -200,10 +238,11 @@ python manage.py reindex_gazettes --all       # after changing EGAZETTE_TS_CONFI
 python manage.py test gazettes
 ```
 
-122 tests covering path-traversal defences on the upload endpoint, HTML
+173 tests covering path-traversal defences on the upload endpoint, HTML
 sanitisation, byte-accurate index truncation for Indic scripts, identifier
-agreement with the scraper, undated sources, and the escaping that keeps
-`ts_headline` output safe.
+agreement with the scraper, undated sources, the escaping that keeps
+`ts_headline` output safe, and the account and bookmark flows including their
+open-redirect and cross-reader defences.
 
 ## Deployment
 
