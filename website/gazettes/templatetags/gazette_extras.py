@@ -1,7 +1,15 @@
+from urllib.parse import urlencode
+
 from django import template
 from django.core.paginator import Paginator
+from django.urls import reverse
 
 register = template.Library()
+
+# Sending a reader back to one of these after signing in would either bounce
+# them straight out again or, for the login page itself, trip Django's
+# redirect-loop guard.
+NO_RETURN_TO = {'login', 'logout', 'signup'}
 
 ELLIPSIS = Paginator.ELLIPSIS
 
@@ -67,3 +75,37 @@ def intcomma_in(value):
         groups.insert(0, rest)
 
     return sign + ','.join(groups + [last3])
+
+
+@register.filter
+def in_set(value, container):
+    """True when ``value`` is in ``container``.
+
+    The bookmark button needs that answer in a ``{% with %}`` so the markup is
+    written once for both states, and the ``in`` operator of ``{% if %}``
+    cannot be assigned to a variable.
+    """
+    try:
+        return value in (container or ())
+    except TypeError:
+        return False
+
+
+@register.simple_tag(takes_context=True)
+def signin_url(context, name='gazettes:login'):
+    """The sign-in (or signup) URL, carrying the current page as ``next``.
+
+    A reader who signs in from a gazette page should land back on it, ready to
+    bookmark it. The account pages themselves are excluded: returning to them
+    is either pointless or, for login, a redirect loop.
+    """
+    url = reverse(name)
+    request = context.get('request')
+    if request is None:
+        return url
+
+    match = getattr(request, 'resolver_match', None)
+    if match is not None and match.url_name in NO_RETURN_TO:
+        return url
+
+    return '%s?%s' % (url, urlencode({'next': request.get_full_path()}))

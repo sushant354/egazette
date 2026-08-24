@@ -1,0 +1,18 @@
+{% comment %}
+The field rendering shared by sign-in and signup: label, widget, help text and
+errors, in the site's own type rather than Bootstrap's defaults.
+{% endcomment %}
+{% if form.non_field_errors %}
+  <div class="auth-errors">
+    {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
+  </div>
+{% endif %}
+
+{% for field in form %}
+  <div class="auth-field">
+    <label class="auth-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}<p class="auth-help">{{ field.help_text|safe }}</p>{% endif %}
+    {% for error in field.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
+  </div>
+{% endfor %}

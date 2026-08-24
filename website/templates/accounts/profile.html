@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load gazette_extras %}
+
+{% block title %}Your account · {{ site_name }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb-bar">
+  <div class="container">
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Your account</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Your account</h1>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="panel">
+      <div class="panel-head">Profile</div>
+      <div class="panel-body">
+        <dl class="doc-meta row mb-0">
+          <dt class="col-sm-4">Username</dt>
+          <dd class="col-sm-8">{{ user.username }}</dd>
+          {% if user.get_full_name %}
+            <dt class="col-sm-4">Name</dt>
+            <dd class="col-sm-8">{{ user.get_full_name }}</dd>
+          {% endif %}
+          <dt class="col-sm-4">Email</dt>
+          <dd class="col-sm-8">{{ user.email|default:"—" }}</dd>
+          <dt class="col-sm-4">Member since</dt>
+          <dd class="col-sm-8">{{ user.date_joined|date:"d F Y" }}</dd>
+          <dt class="col-sm-4">Bookmarks</dt>
+          <dd class="col-sm-8">{{ bookmark_count|intcomma_in }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="panel">
+      <div class="panel-head">What an account is for</div>
+      <div class="panel-body">
+        <p class="mb-3">
+          Bookmarks, and nothing else. Every gazette, search and series page on
+          this archive is open to anyone, signed in or not.
+        </p>
+        <div class="d-grid gap-2">
+          <a class="btn btn-search rounded-0" href="{% url 'gazettes:bookmarks' %}">Your bookmarks</a>
+          <form method="post" action="{% url 'gazettes:logout' %}">
+            {% csrf_token %}
+            <button class="btn btn-outline-dark rounded-0 w-100" type="submit">Sign out</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

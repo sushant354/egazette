@@ -1,0 +1,37 @@
+{% load gazette_extras %}{% comment %}
+The bookmark control for one gazette, on the detail page and on every listing.
+`bookmarked_pks` is the set of gazette ids this reader has saved, fetched once
+per page by the view, so a listing costs no query per row.
+
+Signed out, the control is a link to sign in that comes back to this page --
+the reader lands where they were, one click from saving the issue.
+{% endcomment %}
+{% if user.is_authenticated %}
+  {% with saved=gazette.pk|in_set:bookmarked_pks %}
+    <form class="bookmark-form" method="post"
+          action="{% url 'gazettes:bookmark' gazette.identifier %}">
+      {% csrf_token %}
+      {# Say which way to move rather than "toggle", so a resubmitted page lands on the state the reader asked for. #}
+      <input type="hidden" name="action" value="{% if saved %}remove{% else %}add{% endif %}">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="bookmark-btn{% if saved %} is-saved{% endif %}"
+              type="submit" aria-pressed="{% if saved %}true{% else %}false{% endif %}"
+              title="{% if saved %}Remove this bookmark{% else %}Save this gazette to your bookmarks{% endif %}">
+        <svg class="bookmark-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M3.6 1.6h8.8a1 1 0 0 1 1 1v11.6L8 11.4l-5.4 2.8V2.6a1 1 0 0 1 1-1Z"
+                fill="{% if saved %}currentColor{% else %}none{% endif %}"
+                stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+        </svg>
+        <span>{% if saved %}Bookmarked{% else %}Bookmark{% endif %}</span>
+      </button>
+    </form>
+  {% endwith %}
+{% else %}
+  <a class="bookmark-btn" href="{% signin_url %}" title="Sign in to bookmark this gazette">
+    <svg class="bookmark-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path d="M3.6 1.6h8.8a1 1 0 0 1 1 1v11.6L8 11.4l-5.4 2.8V2.6a1 1 0 0 1 1-1Z"
+            fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+    </svg>
+    <span>Bookmark</span>
+  </a>
+{% endif %}

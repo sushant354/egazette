@@ -29,7 +29,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_safe
 
 from gazettes.forms import SearchForm
-from gazettes.models import Gazette, Source
+from gazettes.models import Gazette, Source, bookmarked_pks
 from gazettes.services import render as render_service
 from gazettes.services import sources as sources_service
 from gazettes.services import storage as storage_service
@@ -85,6 +85,7 @@ def home(request):
         'form': SearchForm(),
         'stats': stats,
         'recent': recent,
+        'bookmarked_pks': bookmarked_pks(request.user, recent),
         'top_sources': top_sources,
         'source_total': Source.objects.filter(gazette_count__gt=0).count(),
     })
@@ -113,6 +114,7 @@ def search(request):
     return render(request, 'gazettes/search.html', {
         'form': form,
         'criteria': criteria,
+        'bookmarked_pks': bookmarked_pks(request.user, page.object_list),
         'page': page,
         'paginator': paginator,
         'results': results,
@@ -151,6 +153,9 @@ def _detail_context(request, gazette, storage):
     ia_url = settings.GAZETTE_IA_DETAILS_URL.rstrip('/') + '/' + gazette.identifier
     return {
         'gazette': gazette,
+        # A one-element set, so the bookmark control is the same partial here
+        # as in a listing.
+        'bookmarked_pks': bookmarked_pks(request.user, [gazette]),
         'source': gazette.source,
         'languages': sources_service.language_names(gazette.source.languages),
         'ia_url': ia_url,
@@ -297,6 +302,7 @@ def source_detail(request, name):
 
     return render(request, 'gazettes/source_detail.html', {
         'source': source,
+        'bookmarked_pks': bookmarked_pks(request.user, page.object_list),
         'languages': sources_service.language_names(source.languages),
         'page': page,
         'paginator': paginator,

@@ -165,6 +165,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'gazettes.context_processors.site',
+                'gazettes.context_processors.account',
             ],
         },
     },
@@ -185,6 +186,30 @@ DATABASES = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- accounts -------------------------------------------------------------
+
+# An account exists only so a reader can keep bookmarks; nothing else on the
+# site is gated. @login_required therefore sends people to the site's own
+# sign-in page rather than the admin's.
+LOGIN_URL = 'gazettes:login'
+LOGIN_REDIRECT_URL = 'gazettes:home'
+LOGOUT_REDIRECT_URL = 'gazettes:home'
+
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.'
+             'UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.'
+             'CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.'
+             'NumericPasswordValidator'},
+]
+
+# Readers stay signed in across browser restarts; a session that ended with
+# the window would make bookmarks pointless on a shared reading machine.
+SESSION_COOKIE_AGE = env_int('EGAZETTE_SESSION_COOKIE_AGE', 60 * 60 * 24 * 30)
+SESSION_SAVE_EVERY_REQUEST = True
 
 # --- i18n / tz ------------------------------------------------------------
 

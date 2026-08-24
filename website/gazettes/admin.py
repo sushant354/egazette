@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from gazettes.models import Gazette, Source
+from gazettes.models import Bookmark, Gazette, Source
 
 
 @admin.register(Source)
@@ -34,3 +34,13 @@ class GazetteAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(Bookmark)
+class BookmarkAdmin(admin.ModelAdmin):
+    list_display = ('user', 'gazette', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('user__username', 'gazette__identifier', 'gazette__title')
+    raw_id_fields = ('user', 'gazette')
+    date_hierarchy = 'created_at'
+    ordering = ('-created_at',)

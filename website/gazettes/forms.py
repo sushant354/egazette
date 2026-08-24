@@ -1,10 +1,17 @@
-"""The search form.
+"""Forms for the site: search, and the two account forms.
 
-A GET form so that a result page is a shareable, bookmarkable URL. All fields
-are optional; an empty form browses the whole archive newest first.
+The search form is a GET form so that a result page is a shareable,
+bookmarkable URL. All its fields are optional; an empty form browses the whole
+archive newest first.
+
+The account forms are Django's own, restyled: an account here only exists so a
+reader can keep bookmarks, so signup asks for a username, an address to reach
+them at and a password, and the validation stays Django's.
 """
 
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.models import User
 
 from gazettes.models import Source
 from gazettes.services.search import ORDER_CHOICES, SearchCriteria
@@ -82,3 +89,63 @@ class SearchForm(forms.Form):
             year=data.get('year'),
             order=data.get('order') or '',
         )
+
+
+class LoginForm(AuthenticationForm):
+    """Django's login form, wearing the site's input styling."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].widget.attrs.update({
+            'class': 'form-control',
+            'autocomplete': 'username',
+            'autofocus': True,
+        })
+        self.fields['password'].widget.attrs.update({
+            'class': 'form-control',
+            'autocomplete': 'current-password',
+        })
+
+
+class SignupForm(UserCreationForm):
+    """Username, email and the password pair.
+
+    Django's User model leaves email blank-able and unconstrained; here it is
+    required and unique, because it is the only way back into an account whose
+    password has been forgotten.
+    """
+
+    email = forms.EmailField(
+        required=True,
+        label='Email',
+        help_text='Used to reach you about your account, and nothing else.',
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ('username', 'email')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+        self.fields['username'].widget.attrs.update({
+            'autocomplete': 'username',
+            'autofocus': True,
+        })
+        self.fields['password1'].widget.attrs['autocomplete'] = 'new-password'
+        self.fields['password2'].widget.attrs['autocomplete'] = 'new-password'
+
+    def clean_email(self):
+        """One account per address.
+
+        Compared case-insensitively: addresses are not case-sensitive in
+        practice, and two accounts differing only in case would make a
+        password reset ambiguous.
+        """
+        email = (self.cleaned_data.get('email') or '').strip()
+        if email and User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError(
+                'An account with this email address already exists.'
+            )
+        return email
