@@ -3,8 +3,7 @@
 {% block title %}{{ gazette.title|truncatechars:100 }} — alternate rendering · {{ site_name }}{% endblock %}
 
 {% block head_extra %}
-{# The canonical view is the structured HTML; this rendering should not
-   compete with it in search results. #}
+{# The canonical view is the structured HTML; this rendering should not compete with it in search results. #}
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="{% url 'gazettes:detail' gazette.identifier %}">
 {% endblock %}
