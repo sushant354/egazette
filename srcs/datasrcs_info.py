@@ -53,7 +53,7 @@ srcinfos = {
     'central_extraordinary' : {
         'languages' : ['eng', 'hin'], 
         'source'    : 'Government of India',
-        'category'  : 'Extrordinary Gazette of India', 
+        'category'  : 'Extraordinary Gazette of India', 
         'prefix'    : 'in.gazette.central.e.' 
     },
     # 'in.gazette.bihar.<year>-<month>-<day>.<id>' start_date: 2017-11-24 end_date: 2018-06-22 count: 724
@@ -80,7 +80,7 @@ srcinfos = {
     'delhi_extraordinary' : { 
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of NCT of Delhi',
-        'category'  : 'Delhi Gazette - Extrordinary',
+        'category'  : 'Delhi Gazette - Extraordinary',
         'prefix'    : 'in.gazette.delhi.e.'
     },
     # 'in.gazette.chhattisgarh.weekly.<year>-<month>-<day>.<id>' start_date: 2001-07-06 end_date: 2024-08-09 count: 6094
@@ -95,7 +95,7 @@ srcinfos = {
     'cgextraordinary' : {
         'languages' : ['eng', 'hin'],
         'source'    : 'Government of Chattisgarh',
-        'category'  : 'Chattisgarh Gazette - Extrordinary',
+        'category'  : 'Chattisgarh Gazette - Extraordinary',
         'prefix'    : 'in.gazette.chhattisgarh.eo.'
     },
     # 'in.gazette.andhra.<year>-<month>-<day>.<id>' start_date: 2008-05-22 end_date: 2023-05-03 count: 19184
@@ -335,7 +335,7 @@ srcinfos = {
     'csl_extraordinary' : {
         'languages' : ['eng', 'hin'], 
         'source'    : 'Government of India',
-        'category'  : 'Extrordinary Gazette of India',
+        'category'  : 'Extraordinary Gazette of India',
         'enabled'   : False
     },
     
