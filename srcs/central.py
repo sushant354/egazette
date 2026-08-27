@@ -410,7 +410,7 @@ class CentralWeekly(CentralBase):
         curr_url = response.response_url
         postdata = self.get_form_data(response.webpage, dateobj, 'SearchMenu.aspx')
         if postdata == None:
-            return None
+            return dls 
 
         postdata = self.remove_fields(postdata, set(['btnGazetteID', 'btnContentID', 'btnMinistry', 'btnBill', 'btnNotification', 'btnPublish', 'btneSearch']))
 
