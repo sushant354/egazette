@@ -262,9 +262,12 @@ python manage.py delete_gazettes --relurl andhra/2018-05-04/2758 --dry-run
 ```
 
 `-t/-T` select on the **gazette's own date**, `-l/--added-since/--added-before`
-on **when the row was added**, and the filters combine with AND. Running with
-no filter at all is refused unless `--all` is passed, and a delete asks for
-confirmation unless `--noinput` is given. Bookmarks pointing at a deleted
+on **when the row was added**, and the filters combine with AND. `-s` takes any
+source name present in the index, including a series `srcinfos` no longer
+lists, so a renamed or retired source can still be cleared out; a name with no
+rows is reported on stderr rather than refused. Running with no filter at all
+is refused unless `--all` is passed, and a delete asks for confirmation unless
+`--noinput` is given. Bookmarks pointing at a deleted
 gazette go with it, and the browse-page counters are refreshed afterwards.
 
 Only the database rows go: the files under `raw/`, `metatags/`, `html/` and
