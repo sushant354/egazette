@@ -50,7 +50,7 @@ DEFAULT_LEGALLAYOUT_DIR = '/home/sushant/legallayout'
 # no footnote continuation across pages, and no minimum image-size filtering.
 LEGALLAYOUT_IS_FOOTNOTE_CONTINUATION = False
 LEGALLAYOUT_MIN_IMG_SIZE = 50
-LEGALLAYOUT_DEFAULT_OCR_LANGUAGE = 'en'
+LEGALLAYOUT_DEFAULT_OCR_LANGUAGE = 'eng'
 LEGALLAYOUT_IS_SCANNED_COPY = False
 LEGALLAYOUT_TABLE_EXTRACT = False
 # legallayout keys several gazette-specific behaviours off pdf_type, notably
@@ -60,15 +60,71 @@ LEGALLAYOUT_PDF_TYPE = 'egazette'
 
 # datasrcs_info.py lists each src's languages as ISO 639-2 codes (with 'eng'
 # first, since nearly every gazette is bilingual English + a regional
-# language). legallayout's OCR only ships models for these ISO 639-1 codes;
-# map the ISO 639-2 codes we can, and fall back to English for the rest.
-LEGALLAYOUT_LANG_MAP = {
-    'eng': 'en',
-    'hin': 'hi',
-    'mar': 'mr',
-    'tel': 'te',
-    'tam': 'ta',
+# language), which is the same code set tesseract - the OCR engine legallayout
+# runs by default - names its models with, so a src's code is passed through
+# as-is. These are the ones legallayout ships a model for (its
+# Utils.TESSERACT_LANGUAGES); a src whose language is not among them falls back
+# to English.
+LEGALLAYOUT_OCR_LANGUAGES = frozenset([
+    'eng', 'asm', 'ben', 'guj', 'hin', 'kan', 'mal', 'mar', 'nep', 'ori',
+    'pan', 'san', 'snd', 'tam', 'tel', 'urd',
+])
+
+
+# legallayout's -fl/--font-lang picks the model that decides what a font whose
+# name identifies no encoding is drawing, so it names the script the src's
+# gazettes are set in, not the language of their text. Only 'hin' (devanagari),
+# 'tam' and 'kan' have models, and datasrcs_info's language list cannot pick
+# between them, so the srcs that need one are named here; a src left out gets
+# legallayout's own default.
+SRC_FONT_LANG = {
+    # devanagari
+    'bihar': 'hin',
+    'central_extraordinary': 'hin',
+    'central_weekly': 'hin',
+    'cgextraordinary': 'hin',
+    'cgweekly': 'hin',
+    'chandigarh': 'hin',
+    'csl_extraordinary': 'hin',
+    'csl_weekly': 'hin',
+    'dadranagarhaveli': 'hin',
+    'delhi_extraordinary': 'hin',
+    'delhi_weekly': 'hin',
+    'haryana': 'hin',
+    'haryanaarchive': 'hin',
+    'himachal': 'hin',
+    'jharkhand': 'hin',
+    'ladakh': 'hin',
+    'lakshadweep': 'hin',
+    'madhyapradesh': 'hin',
+    'rajasthan_extraordinary': 'hin',
+    'rajasthan_ordinary': 'hin',
+    'rsa': 'hin',
+    'uttarakhand': 'hin',
+    'uttarakhand_daily': 'hin',
+    'uttarakhand_weekly': 'hin',
+    'uttarpradesh_extraordinary': 'hin',
+    'uttarpradesh_ordinary': 'hin',
+
+    # tamil
+    'puducherry': 'tam',
+    'tamilnadu': 'tam',
+
+    # kannada
+    'karnataka': 'kan',
+    'karnataka_daily': 'kan',
+    'karnataka_extraordinary': 'kan',
+    'karnataka_weekly': 'kan',
 }
+
+
+def get_font_lang(srcname):
+    """Return the legallayout font-lang for a gazette src.
+
+    None for a src SRC_FONT_LANG does not name, which leaves legallayout on its
+    own default model.
+    """
+    return SRC_FONT_LANG.get(srcname)
 
 
 def get_ocr_language(srcname):
@@ -83,9 +139,8 @@ def get_ocr_language(srcname):
     for lang in languages:
         if lang == 'eng':
             continue
-        mapped = LEGALLAYOUT_LANG_MAP.get(lang)
-        if mapped:
-            return mapped
+        if lang in LEGALLAYOUT_OCR_LANGUAGES:
+            return lang
     return LEGALLAYOUT_DEFAULT_OCR_LANGUAGE
 
 # output subdirectory (under datadir) for each engine's HTML
@@ -180,7 +235,8 @@ def convert_pymupdf(pdf_path, out_path):
 
 
 def convert_legallayout(pdf_path, out_path, legallayout_dir, ocr_language,
-                        public_base_url=None, server_root=None):
+                        public_base_url=None, server_root=None,
+                        font_lang=None):
     """Convert a PDF to HTML using the legallayout Main pipeline.
 
     legallayout writes ``<pdf_basename>.html`` into the output directory (and a
@@ -205,7 +261,7 @@ def convert_legallayout(pdf_path, out_path, legallayout_dir, ocr_language,
                 LEGALLAYOUT_IS_FOOTNOTE_CONTINUATION, LEGALLAYOUT_MIN_IMG_SIZE,
                 ocr_language, LEGALLAYOUT_IS_SCANNED_COPY,
                 LEGALLAYOUT_TABLE_EXTRACT, public_base_url=public_base_url,
-                server_root=server_root)
+                server_root=server_root, font_lang=font_lang)
     ok = main.parsePDF(LEGALLAYOUT_PDF_TYPE, None, None, None, None, None)
     if ok:
         main.buildHTML(None, None)
@@ -247,7 +303,8 @@ def convert_one(htmldir, engine, legallayout_dir, relurl, pdf_path,
             srcname = relurl.split('/')[0]
             ok = convert_legallayout(pdf_path, out_path, legallayout_dir,
                                      get_ocr_language(srcname),
-                                     public_base_url, server_root)
+                                     public_base_url, server_root,
+                                     get_font_lang(srcname))
     except Exception:
         logger.exception('Failed to convert %s', relurl)
         ok = False

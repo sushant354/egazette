@@ -414,9 +414,12 @@ class CentralWeekly(CentralBase):
 
         postdata = self.remove_fields(postdata, set(['btnGazetteID', 'btnContentID', 'btnMinistry', 'btnBill', 'btnNotification', 'btnPublish', 'btneSearch']))
 
-        response = self.download_url(curr_url, savecookies = cookiejar, \
-                                     referer = curr_url, \
-                                   loadcookies = cookiejar, postdata = postdata)           
+        response = None
+        while not response or not response.response_url:
+            response = self.download_url(curr_url, savecookies = cookiejar, \
+                                         referer = curr_url, 
+                                         loadcookies = cookiejar, 
+                                         postdata = postdata)
         curr_url = response.response_url
         form_href = curr_url.split('/')[-1]
         postdata = self.get_form_data(response.webpage, dateobj, form_href)

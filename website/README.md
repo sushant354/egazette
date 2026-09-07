@@ -25,7 +25,8 @@ egazette/
       services/             the reusable layer (see below)
       views.py  api.py      reader pages, ingest endpoint
       accounts.py           sign-in, signup, bookmarks
-      management/commands/  ingest_gazettes, sync_sources, reindex_gazettes
+      management/commands/  ingest_gazettes, ingest_raw_gazettes,
+                            delete_gazettes, sync_sources, reindex_gazettes
     templates/  static/
     deploy/                 uwsgi, nginx, systemd, env
 ```
@@ -191,6 +192,30 @@ Re-running is cheap: a gazette whose HTML and metadata hashes are unchanged is
 left alone, though its PDF/pymupdf flags are refreshed in case those appeared
 since. Use `--force` to reindex regardless.
 
+**Straight from the crawler's PDFs** — convert what is missing, then ingest:
+
+```bash
+python manage.py ingest_raw_gazettes -l 1        # downloaded since 2AM yesterday
+python manage.py ingest_raw_gazettes -l 7 -s central_extraordinary
+python manage.py ingest_raw_gazettes --start-ts '2026-01-01 00:00:00' \
+                                     --end-ts '2026-02-01 00:00:00'
+python manage.py ingest_raw_gazettes --relurl central_extraordinary/2026-01-01/269031
+```
+
+`ingest_gazettes` walks `html/` and so can only index what `pdf2html` has
+already converted. This one walks `raw/`: a PDF with no legallayout HTML (or
+no pymupdf rendering) is converted first, through the same
+`egazette.tools.pdf2html` functions the standalone tool uses, and then goes
+through the same `IngestService`. Renderings are written under
+`EGAZETTE_WRITE_ROOT`, so a read-only archive root is never written to.
+
+Selection is by **file** timestamp rather than gazette date, because a gazette
+published in 2019 may only have been downloaded last night. `-l N` is the form
+a nightly cron wants — every raw file written between 2AM N days ago and 2AM
+today — and the end of the window is exclusive, so consecutive daily runs
+neither miss a file nor redo one. `--no-pymupdf` builds only the HTML that
+gets indexed; `--dry-run` lists what would be converted and ingested.
+
 **Separate web host** — push from the machine holding the data:
 
 ```bash
@@ -223,6 +248,30 @@ Responses: `200` with a status of `created` / `updated` / `unchanged` /
 colliding identifier) so the pusher does not retry it; `500` only for genuine
 server faults.
 
+### Deleting gazettes
+
+The mirror image of the ingest commands, for a source that has to be re-done
+from scratch or a nightly run that ingested rubbish:
+
+```bash
+python manage.py delete_gazettes -s andhra
+python manage.py delete_gazettes -s central_extraordinary -t 01-01-2024 -T 31-01-2024
+python manage.py delete_gazettes -l 1        # added in the last 24 hours
+python manage.py delete_gazettes --added-since '2026-02-01 00:00:00'
+python manage.py delete_gazettes --relurl andhra/2018-05-04/2758 --dry-run
+```
+
+`-t/-T` select on the **gazette's own date**, `-l/--added-since/--added-before`
+on **when the row was added**, and the filters combine with AND. Running with
+no filter at all is refused unless `--all` is passed, and a delete asks for
+confirmation unless `--noinput` is given. Bookmarks pointing at a deleted
+gazette go with it, and the browse-page counters are refreshed afterwards.
+
+Only the database rows go: the files under `raw/`, `metatags/`, `html/` and
+`pymupdf/` belong to the crawler's tree and are left alone, so a later
+`ingest_gazettes` over the same data directory will index the gazette again.
+Move or delete the files too when a gazette is meant to stay gone.
+
 ## Other commands
 
 ```bash
@@ -238,7 +287,7 @@ python manage.py reindex_gazettes --all       # after changing EGAZETTE_TS_CONFI
 python manage.py test gazettes
 ```
 
-173 tests covering path-traversal defences on the upload endpoint, HTML
+196 tests covering path-traversal defences on the upload endpoint, HTML
 sanitisation, byte-accurate index truncation for Indic scripts, identifier
 agreement with the scraper, undated sources, the escaping that keeps
 `ts_headline` output safe, and the account and bookmark flows including their

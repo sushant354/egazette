@@ -157,6 +157,13 @@ hash. A nightly cron after the scraper's own run keeps the site current:
 30 4 * * * cd /home/sushant/egazette/website && EGAZETTE_ENV_FILE=/etc/egazette-web.env /home/sushant/.egazette312/bin/python manage.py ingest_gazettes >> /var/log/egazette-ingest.log 2>&1
 ```
 
+If the host also runs the crawler and nothing else converts its PDFs, use
+`ingest_raw_gazettes -l 1` in place of `ingest_gazettes`: it converts
+yesterday's downloads to HTML and pymupdf before indexing them, so the cron
+does not depend on a separate `pdf2html` run. It is far slower per gazette --
+legallayout conversion rather than a hash comparison -- so keep it to the
+day's own window.
+
 ## Operating notes
 
 **Caching.** Sanitised gazette bodies are cached, by default in per-process
