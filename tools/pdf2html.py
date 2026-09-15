@@ -74,9 +74,9 @@ LEGALLAYOUT_OCR_LANGUAGES = frozenset([
 # legallayout's -fl/--font-lang picks the model that decides what a font whose
 # name identifies no encoding is drawing, so it names the script the src's
 # gazettes are set in, not the language of their text. Only 'hin' (devanagari),
-# 'tam' and 'kan' have models, and datasrcs_info's language list cannot pick
-# between them, so the srcs that need one are named here; a src left out gets
-# legallayout's own default.
+# 'tam', 'kan', 'mal', 'tel' and 'mar' have models, and datasrcs_info's language
+# list cannot pick between them, so the srcs that need one are named here; a src
+# left out gets legallayout's own default.
 SRC_FONT_LANG = {
     # devanagari
     'bihar': 'hin',
@@ -115,6 +115,22 @@ SRC_FONT_LANG = {
     'karnataka_daily': 'kan',
     'karnataka_extraordinary': 'kan',
     'karnataka_weekly': 'kan',
+
+    # malayalam
+    'kerala': 'mal',
+    'keralacompose': 'mal',
+    'keralalibrary': 'mal',
+    'stgeorge': 'mal',
+
+    # telugu
+    'andhra': 'tel',
+    'andhra_extraordinary': 'tel',
+    'andhra_weekly': 'tel',
+    'andhraarchive': 'tel',
+    'telangana': 'tel',
+
+    # marathi
+    'maharashtra': 'mar',
 }
 
 
@@ -295,7 +311,7 @@ def convert_one(htmldir, engine, legallayout_dir, relurl, pdf_path,
     # race on os.mkdir for a shared date directory.
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
-    logger.info('Converting %s -> %s', pdf_path, out_path)
+    logger.warning('Started processing %s -> %s', pdf_path, out_path)
     try:
         if engine == 'pymupdf':
             ok = convert_pymupdf(pdf_path, out_path)
@@ -309,7 +325,9 @@ def convert_one(htmldir, engine, legallayout_dir, relurl, pdf_path,
         logger.exception('Failed to convert %s', relurl)
         ok = False
 
-    return 'converted' if ok else 'failed'
+    result = 'converted' if ok else 'failed'
+    logger.warning('Finished processing %s: %s', pdf_path, result)
+    return result
 
 
 def resolve_pdf(storage, relurl, pdf_path):
