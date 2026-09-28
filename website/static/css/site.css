@@ -68,8 +68,15 @@ h1, h2, h3, h4, h5, .serif { font-family: var(--serif); }
 }
 .masthead-brand:hover { color: var(--ink); }
 
-.masthead-seal { color: var(--gold); flex: 0 0 auto; }
-.masthead-seal svg { width: 52px; height: 52px; display: block; }
+.masthead-seal { flex: 0 0 auto; }
+.masthead-seal img {
+  width: 52px;
+  height: 52px;
+  display: block;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--gold);
+}
 
 .masthead-titles { display: flex; flex-direction: column; }
 
