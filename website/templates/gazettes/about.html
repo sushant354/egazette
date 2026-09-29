@@ -21,34 +21,30 @@
   <div class="col-lg-8">
     <h1 class="section-title">About this archive</h1>
 
-    <p>
-      A gazette is the instrument by which a government makes a decision
-      public: appointments, land acquisitions, rules, tariffs, corrigenda. Each
-      one is published by a government press on its own schedule, in its own
-      series, and — for most of the country's history — on paper. This site
-      collects those issues as they are published, and makes their text
-      searchable.
+    <p>Union and State Governments publish gazettes regularly on their websites informing citizens of the bills being considered, the laws that are being promulgated and the amendment to these laws.  Governments also publish various rules, regulations, bye-laws, and statutory orders in the gazettes. Gazettes also contain important notifications like land acquisition, environment classification, town planning etc.
     </p>
+
+    <p>However, gazettes are published in PDFs many of which are scanned. PDFs are hard to read on small devices. Searching across gazette collection is also difficult. Secondaly, Indian Gazettes are published in regional laguages that use proprietory non-unicode fonts in the PDFs. They display correctly on the PDFs but when you extract the text, it is gibberish.</p>
+
+    <p>We convert all gazettes into HTML format with proper layout detection using our <a href="https://github.com/sushant354/legallayout" target="_blank">legallayout</a> tool. It correctly recognizes paragraphs, blockquote, tables and images. It extracts images and makes them easily usable in the IIF manifest. We also convert all non-unicode proprietory fonts to unicode, using <a href="https://github.com/sushant354/indic2unicode/" target="_blank">indic2unicode</a>, making searching of gazettes in regional language possible.</p>
 
     <h2 class="section-title mt-4" style="font-size:1.15rem">What is here</h2>
     <p>
-      {{ stats.total|intcomma_in }} issue{{ stats.total|pluralize }} across
+      Currenly featuring {{ stats.total|intcomma_in }} issues {{ stats.total|pluralize }} across
       {{ source_count|intcomma_in }} series{% if stats.earliest and stats.latest %},
-      spanning {{ stats.earliest|date:"Y" }} to {{ stats.latest|date:"Y" }}{% endif %}.
-      Coverage grows as issues are collected and converted; the
+      from {{ stats.earliest|date:"Y" }} to {{ stats.latest|date:"Y" }}{% endif %}.
+      The
       <a href="{% url 'gazettes:source_list' %}">series index</a> shows exactly
-      what each collection currently holds.
+      what each of the gazette collection contain
     </p>
 
     <h2 class="section-title mt-4" style="font-size:1.15rem">How a gazette gets here</h2>
     <p>
-      Issues are downloaded from the publishing site of each government press,
-      along with the metadata that press records for them — date, gazette
-      number, part, ministry, department, subject. The PDF is then converted
+      Gazettes are downloaded from the  government websites  along with the metadata like number, part, ministry, department, subject. The PDF is then converted
       into structured HTML, and it is that HTML which is displayed and indexed.
-      Where the structural conversion loses something, a second, page-faithful
-      rendering of the same PDF is offered alongside it as an
-      <em>alternate rendering</em>; it is not indexed, and the structured text
+      To see how our structured HTML is different from the current PDF to HTML converters we show the pymupdf 
+      rendering of the same PDF  as an
+      <em>alternate rendering</em>; it is not indexed, and our structured HTML
       is the version to read and cite.
     </p>
 
@@ -56,17 +52,13 @@
     <p>
       The search box queries the full text of every gazette held here, together
       with its subject, ministry and department. A hit in the title of an issue
-      outranks one buried in its body.
+      outranks matches in the rest of the gazettes. The query language can be:
     </p>
     <ul>
       <li><code>"inter cadre transfer"</code> — an exact phrase</li>
       <li><code>railways OR highways</code> — either term</li>
       <li><code>acquisition -corrigendum</code> — exclude a term</li>
     </ul>
-    <p>
-      Very long issues are indexed by their opening section rather than in
-      full; where that applies, the gazette's own page says so.
-    </p>
 
     <h2 class="section-title mt-4" style="font-size:1.15rem">Citing an issue</h2>
     <p>
