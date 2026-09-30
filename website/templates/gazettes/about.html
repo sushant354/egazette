@@ -21,16 +21,16 @@
   <div class="col-lg-8">
     <h1 class="section-title">About this archive</h1>
 
-    <p>Union and State Governments publish gazettes regularly on their websites informing citizens of the bills being considered, the laws that are being promulgated and the amendment to these laws.  Governments also publish various rules, regulations, bye-laws, and statutory orders in the gazettes. Gazettes also contain important notifications like land acquisition, environment classification, town planning etc.
+    <p>Union and State Governments publish gazettes regularly on their websites informing citizens of the bills being considered, the laws that are being promulgated and the amendment to these laws.  Governments also publish various rules, regulations, bye-laws, and statutory orders in the gazettes. They also contain important notifications like land acquisition, environment classification, town planning etc.
     </p>
 
-    <p>However, gazettes are published in PDFs many of which are scanned and they  are also hard to read on small devices. Searching across gazette collection is also difficult. Lastly, Indian Gazettes are published in regional laguages that use proprietory non-unicode fonts in the PDFs. They display correctly on the PDFs but when you extract the text, it is gibberish.</p>
+    <p>However, gazettes are published in PDFs many of which are scanned and are not easily readable on small devices. Searching across gazette collection is also difficult. Lastly, Indian Gazettes are published in regional laguages that use proprietory non-unicode fonts in the PDFs. They display correctly on the PDFs but when you extract the text, it is gibberish.</p>
 
     <p>We convert all gazettes into HTML format with proper layout detection using our <a href="https://github.com/sushant354/legallayout" target="_blank">legallayout</a> tool. It correctly recognizes paragraphs, blockquote, tables and images. It extracts images and makes them easily usable in the IIF manifest. We also convert all non-unicode proprietory fonts to unicode, using <a href="https://github.com/sushant354/indic2unicode/" target="_blank">indic2unicode</a>, making searching of gazettes in regional language possible.</p>
 
     <h2 class="section-title mt-4" style="font-size:1.15rem">What is here</h2>
     <p>
-      Currenly featuring {{ stats.total|intcomma_in }} issues {{ stats.total|pluralize }} across
+      Currenly featuring {{ stats.total|intcomma_in }} issue{{ stats.total|pluralize }} across
       {{ source_count|intcomma_in }} series{% if stats.earliest and stats.latest %},
       from {{ stats.earliest|date:"Y" }} to {{ stats.latest|date:"Y" }}{% endif %}.
       The
@@ -42,15 +42,15 @@
     <p>
       Gazettes are downloaded from the  government websites  along with the metadata like number, part, ministry, department, subject. The PDF is then converted
       into structured HTML, and it is that HTML which is displayed and indexed.
-      To see how our structured HTML is different from the current PDF to HTML converters we show the pymupdf 
+      To see how our structured HTML is different from the current PDF to HTML converters, we show the pymupdf 
       rendering of the same PDF  as an
-      <em>alternate rendering</em>; it is not indexed, and our structured HTML
+      <em>alternate rendering</em>; the alternate rendering is not indexed, and our structured HTML
       is the version to read and cite.
     </p>
 
     <h2 class="section-title mt-4" style="font-size:1.15rem">Searching</h2>
     <p>
-      The search box queries the full text of every gazette held here, together
+      The search box queries the full text of every gazette together
       with its subject, ministry and department. A hit in the title of an issue
       outranks matches in the rest of the gazettes. The query language can be:
     </p>
