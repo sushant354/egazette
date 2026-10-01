@@ -74,9 +74,9 @@ LEGALLAYOUT_OCR_LANGUAGES = frozenset([
 # legallayout's -fl/--font-lang picks the model that decides what a font whose
 # name identifies no encoding is drawing, so it names the script the src's
 # gazettes are set in, not the language of their text. Only 'hin' (devanagari),
-# 'tam', 'kan', 'mal', 'tel' and 'mar' have models, and datasrcs_info's language
-# list cannot pick between them, so the srcs that need one are named here; a src
-# left out gets legallayout's own default.
+# 'tam', 'kan', 'mal', 'tel', 'mar' and 'ori' have models, and datasrcs_info's
+# language list cannot pick between them, so the srcs that need one are named
+# here; a src left out gets legallayout's own default.
 SRC_FONT_LANG = {
     # devanagari
     'bihar': 'hin',
@@ -131,6 +131,11 @@ SRC_FONT_LANG = {
 
     # marathi
     'maharashtra': 'mar',
+
+    # oriya
+    'odisha': 'ori',
+    'odisha_egaz': 'ori',
+    'odisha_govpress': 'ori',
 }
 
 
