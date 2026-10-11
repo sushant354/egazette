@@ -193,6 +193,10 @@ class IngestService:
         if len(identifier) > 255:
             return IngestResult(relurl, SKIPPED,
                                 reason='identifier too long: %s' % identifier[:80])
+        document = sources.get_document(relurl, metainfo)
+        if document is not None and len(document) > 255:
+            return IngestResult(relurl, SKIPPED,
+                                reason='document name too long: %s' % document[:80])
 
         # --- persist uploaded assets ---
         # Assets that arrived over HTTP are written into the site's data root.
@@ -224,6 +228,7 @@ class IngestService:
             and existing.html_sha256 == html_hash
             and existing.metadata_sha256 == metadata_hash
             and existing.identifier == identifier
+            and existing.document == document
         ):
             # Content is byte-identical to what is already indexed. Still
             # refresh the asset flags, since a PDF or pymupdf rendering may
@@ -246,6 +251,7 @@ class IngestService:
         fields.update(asset_fields)
         fields.update({
             'identifier': identifier,
+            'document': document,
             'source': source,
             'text': text,
             'text_truncated': truncated,
@@ -260,16 +266,19 @@ class IngestService:
                 )
         except IntegrityError as exc:
             # The only unique constraint that another relurl can collide on is
-            # the identifier; two relurls mapping to one identifier means the
-            # source's identifier function needs a metadata tag this gazette
-            # is missing.
-            other = Gazette.objects.filter(identifier=identifier).exclude(
-                relurl=relurl
-            ).first()
+            # identifier + document; two relurls mapping to one key means the
+            # source's identifier (or document) function needs a metadata tag
+            # this gazette is missing.
+            other = Gazette.objects.filter(
+                identifier=identifier, document=document
+            ).exclude(relurl=relurl).first()
             if other is not None:
+                key = identifier if document is None else '%s/%s' % (
+                    identifier, document)
                 return IngestResult(
                     relurl, ERROR, identifier=identifier,
-                    reason='identifier already used by %s' % other.relurl,
+                    reason='identifier %s already used by %s' % (
+                        key, other.relurl),
                     client_error=True,
                 )
             return IngestResult(relurl, ERROR, identifier=identifier,

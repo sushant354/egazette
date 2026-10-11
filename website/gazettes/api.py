@@ -187,7 +187,7 @@ def ingest_status(request):
     known = {
         row['relurl']: row
         for row in Gazette.objects.filter(relurl__in=wanted).values(
-            'relurl', 'identifier', 'html_sha256', 'metadata_sha256',
+            'relurl', 'identifier', 'document', 'html_sha256', 'metadata_sha256',
             'has_pdf', 'has_pymupdf',
         )
     }

@@ -4,7 +4,8 @@ Two tables carry the site. ``Source`` mirrors an entry of
 ``egazette.srcs.datasrcs_info.srcinfos`` (one publishing series, e.g. the
 Extraordinary Gazette of India) and is rebuilt from that dict rather than
 edited by hand. ``Gazette`` is one published issue, keyed by the same
-identifier the scraper uses when it uploads to the Internet Archive.
+identifier the scraper uses when it uploads to the Internet Archive, plus the
+document within that item for the sources that put several issues in one.
 ``Bookmark`` is the one reader-written table: an issue a signed-in reader
 saved.
 
@@ -71,8 +72,14 @@ class Gazette(models.Model):
     """One published gazette issue."""
 
     # The Internet Archive identifier, from datasrcs_info.get_identifier().
-    # It is the site's public key: /details/<identifier>/.
-    identifier = models.CharField(max_length=255, unique=True)
+    # Together with document it is the site's public key:
+    # /details/<identifier>/ or /details/<identifier>/<document>/.
+    identifier = models.CharField(max_length=255, db_index=True)
+
+    # The file within the Internet Archive item, from
+    # datasrcs_info.get_document(). Null for the sources that upload one
+    # gazette per item; set for those (Goa) whose item holds several issues.
+    document = models.CharField(max_length=255, null=True, blank=True)
 
     # Path of the gazette within the scraper's data directory, without the
     # file extension, e.g. 'central_extraordinary/2024-04-18/253767'. Assets
@@ -142,12 +149,53 @@ class Gazette(models.Model):
             models.Index(fields=['source', '-date'], name='gazette_source_date'),
             models.Index(fields=['year'], name='gazette_year'),
         ]
+        constraints = [
+            # Two constraints rather than one over both columns, since NULLs
+            # are distinct in a unique index and the one-gazette-per-item
+            # sources would otherwise not be constrained at all.
+            models.UniqueConstraint(
+                fields=['identifier'],
+                condition=models.Q(document__isnull=True),
+                name='gazette_unique_identifier',
+            ),
+            models.UniqueConstraint(
+                fields=['identifier', 'document'],
+                condition=models.Q(document__isnull=False),
+                name='gazette_unique_identifier_document',
+            ),
+        ]
 
     def __str__(self):
+        return self.archive_path
+
+    @property
+    def archive_path(self):
+        """identifier, or identifier/document: the path under /details/ on
+        both this site and the Internet Archive."""
+        if self.document:
+            return '%s/%s' % (self.identifier, self.document)
         return self.identifier
 
+    def _reverse(self, name):
+        args = [self.identifier]
+        if self.document:
+            args.append(self.document)
+        return reverse(name, args=args)
+
     def get_absolute_url(self):
-        return reverse('gazettes:detail', args=[self.identifier])
+        return self._reverse('gazettes:detail')
+
+    def get_pymupdf_url(self):
+        return self._reverse('gazettes:detail_pymupdf')
+
+    def get_pymupdf_frame_url(self):
+        return self._reverse('gazettes:pymupdf_frame')
+
+    def get_pdf_url(self):
+        return self._reverse('gazettes:gazette_pdf')
+
+    def get_bookmark_url(self):
+        return self._reverse('gazettes:bookmark')
 
     @property
     def display_date(self):

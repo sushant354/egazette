@@ -33,6 +33,27 @@ WBSL_XML = """<?xml version="1.0" encoding="utf-8"?>
 </document>
 """
 
+# The Goa shape: several issues (ordinary, extraordinary, supplement) share
+# one gznum and series, and so one Internet Archive item.
+GOA_XML = """<?xml version="1.0" encoding="utf-8"?>
+<document>
+<date>
+<day>13</day>
+<month>10</month>
+<year>2022</year>
+</date>
+<gznum>2223-28</gznum>
+<gztype>%(gztype)s</gztype>
+<num>%(num)s</num>
+<series>SI</series>
+</document>
+"""
+
+
+def goa_xml(gztype='OG', num='0'):
+    return GOA_XML % {'gztype': gztype, 'num': num}
+
+
 # legallayout output: a full document with its own stylesheet and semantic
 # classes, which is what the site sanitises and indexes.
 LEGALLAYOUT_HTML = """<!DOCTYPE HTML>

@@ -130,14 +130,15 @@ def bookmarks(request):
 
 @login_required
 @require_POST
-def bookmark(request, identifier):
+def bookmark(request, identifier, document=None):
     """Save or drop one gazette.
 
     The form says which of the two it means, so that a resubmitted page (or a
     double tap on a slow connection) lands on the state the reader asked for
     instead of flipping it back. Anything else toggles.
     """
-    gazette = get_object_or_404(Gazette, identifier=identifier)
+    gazette = get_object_or_404(Gazette, identifier=identifier,
+                                document=document)
     action = request.POST.get('action', '')
 
     if action == 'remove':

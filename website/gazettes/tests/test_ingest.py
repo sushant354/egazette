@@ -18,6 +18,7 @@ from gazettes.tests.factories import (
     LEGALLAYOUT_HTML,
     PYMUPDF_HTML,
     WBSL_XML,
+    goa_xml,
     write_gazette,
 )
 
@@ -205,6 +206,45 @@ class IdentifierCollisionTests(IngestTestCase):
         self.assertTrue(result.client_error)
         # The first gazette is untouched.
         self.assertEqual(Gazette.objects.count(), 1)
+
+
+class DocumentTests(IngestTestCase):
+    OG = 'goa/2022-10-13/2223-28-SI-OG-0'
+    SUG = 'goa/2022-10-13/2223-28-SI-SUG-1'
+
+    def test_one_per_item_sources_have_no_document(self):
+        write_gazette(self.datadir, RELURL)
+        self.service.ingest(RELURL)
+        self.assertIsNone(Gazette.objects.get(relurl=RELURL).document)
+
+    def test_documents_of_one_item_share_the_identifier(self):
+        # Regression: the supplement used to be rejected with "identifier
+        # already used by" the ordinary issue.
+        write_gazette(self.datadir, self.OG, metatags=goa_xml())
+        write_gazette(self.datadir, self.SUG, metatags=goa_xml('SUG', '1'))
+
+        self.assertEqual(self.service.ingest(self.OG).status, CREATED)
+        self.assertEqual(self.service.ingest(self.SUG).status, CREATED)
+
+        rows = Gazette.objects.order_by('document').values_list(
+            'identifier', 'document')
+        self.assertEqual(list(rows), [
+            ('in.goa.egaz.2223-28.SI', '2223-28-SI-OG-0'),
+            ('in.goa.egaz.2223-28.SI', '2223-28-SI-SUG-1'),
+        ])
+        self.assertEqual(self.service.ingest(self.SUG).status, UNCHANGED)
+
+    def test_same_document_from_two_relurls_is_reported(self):
+        other = 'goa/2022-10-14/2223-28-SI-OG-0'
+        write_gazette(self.datadir, self.OG, metatags=goa_xml())
+        write_gazette(self.datadir, other, metatags=goa_xml())
+
+        self.assertEqual(self.service.ingest(self.OG).status, CREATED)
+        result = self.service.ingest(other)
+
+        self.assertEqual(result.status, ERROR)
+        self.assertIn('in.goa.egaz.2223-28.SI/2223-28-SI-OG-0', result.reason)
+        self.assertIn('already used by %s' % self.OG, result.reason)
 
 
 @override_settings(GAZETTE_MAX_TEXT_CHARS=200, GAZETTE_MAX_INDEX_BYTES=100)

@@ -9,7 +9,7 @@ the reader lands where they were, one click from saving the issue.
 {% if user.is_authenticated %}
   {% with saved=gazette.pk|in_set:bookmarked_pks %}
     <form class="bookmark-form" method="post"
-          action="{% url 'gazettes:bookmark' gazette.identifier %}">
+          action="{{ gazette.get_bookmark_url }}">
       {% csrf_token %}
       {# Say which way to move rather than "toggle", so a resubmitted page lands on the state the reader asked for. #}
       <input type="hidden" name="action" value="{% if saved %}remove{% else %}add{% endif %}">

@@ -106,6 +106,26 @@ def get_identifier(relurl, metainfo):
     return identifier
 
 
+def get_document(relurl, metainfo):
+    """The document within the Internet Archive item, or None.
+
+    Most sources upload one gazette per item, and return None. A few (Goa)
+    upload several gazettes into one item, and the document names which file
+    within the item this gazette is; identifier and document together are
+    then the gazette's key.
+    """
+    try:
+        document = datasrcs_info.get_document(relurl, metainfo)
+    except Exception:
+        logger.warning('Could not build document name for %s', relurl,
+                       exc_info=True)
+        return None
+
+    if not document or not isinstance(document, str):
+        return None
+    return document
+
+
 def sync_sources():
     """Upsert a Source row for every srcinfos entry.
 

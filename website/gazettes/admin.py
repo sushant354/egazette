@@ -21,10 +21,10 @@ class SourceAdmin(admin.ModelAdmin):
 
 @admin.register(Gazette)
 class GazetteAdmin(admin.ModelAdmin):
-    list_display = ('identifier', 'source', 'date', 'has_pdf', 'has_pymupdf',
-                    'updated_at')
+    list_display = ('identifier', 'document', 'source', 'date', 'has_pdf',
+                    'has_pymupdf', 'updated_at')
     list_filter = ('source', 'has_pdf', 'has_pymupdf', 'text_truncated')
-    search_fields = ('identifier', 'relurl', 'title', 'subject')
+    search_fields = ('identifier', 'document', 'relurl', 'title', 'subject')
     date_hierarchy = 'date'
     ordering = ('-date',)
     raw_id_fields = ('source',)

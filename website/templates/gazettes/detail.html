@@ -15,7 +15,7 @@
         <li class="breadcrumb-item"><a href="{% url 'gazettes:home' %}">Home</a></li>
         <li class="breadcrumb-item"><a href="{% url 'gazettes:source_list' %}">Series</a></li>
         <li class="breadcrumb-item"><a href="{% url 'gazettes:source_detail' source.name %}">{{ source.title }}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{{ gazette.identifier|truncatechars:44 }}</li>
+        <li class="breadcrumb-item active" aria-current="page">{{ gazette.archive_path|truncatechars:44 }}</li>
       </ol>
     </nav>
   </div>
@@ -50,6 +50,6 @@
   <strong>Cite this issue.</strong>
   {{ source.title }}{% if source.authority %}, {{ source.authority }}{% endif %}{% if gazette.display_date %}, {{ gazette.display_date }}{% endif %}.
   {{ site_name }}, <code>{{ request.build_absolute_uri }}</code>.
-  Archive identifier <code>{{ gazette.identifier }}</code>.
+  Archive identifier <code>{{ gazette.archive_path }}</code>.
 </div>
 {% endblock %}

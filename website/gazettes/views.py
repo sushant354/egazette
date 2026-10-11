@@ -2,7 +2,9 @@
 
 Every gazette is published at ``/details/<identifier>/`` where the identifier
 is the same one the scraper uses for the Internet Archive, so a citation of
-either resolves in the other.
+either resolves in the other. Sources that put several gazettes into one
+archive item (Goa) add the document, as the archive does:
+``/details/<identifier>/<document>/``.
 
 The legallayout HTML is the canonical rendering: it is what gets indexed and
 what the detail page shows. The pymupdf rendering is offered alongside it as
@@ -123,10 +125,21 @@ def search(request):
     })
 
 
-def _get_gazette(identifier):
-    return get_object_or_404(
-        Gazette.objects.with_source(), identifier=identifier
-    )
+def _get_gazette(identifier, document=None):
+    """The gazette at identifier[/document].
+
+    A bare identifier whose archive item holds several documents (and so has
+    no gazette of its own) falls back to the item's first document, the way
+    the Internet Archive shows an item's first file.
+    """
+    gazettes = Gazette.objects.with_source().filter(identifier=identifier)
+    if document is not None:
+        return get_object_or_404(gazettes, document=document)
+
+    gazette = gazettes.order_by('document').first()
+    if gazette is None:
+        raise Http404('No gazette with this identifier')
+    return gazette
 
 
 def _rendered_body(gazette, storage):
@@ -150,7 +163,6 @@ def _rendered_body(gazette, storage):
 
 
 def _detail_context(request, gazette, storage):
-    ia_url = settings.GAZETTE_IA_DETAILS_URL.rstrip('/') + '/' + gazette.identifier
     return {
         'gazette': gazette,
         # A one-element set, so the bookmark control is the same partial here
@@ -158,16 +170,25 @@ def _detail_context(request, gazette, storage):
         'bookmarked_pks': bookmarked_pks(request.user, [gazette]),
         'source': gazette.source,
         'languages': sources_service.language_names(gazette.source.languages),
-        'ia_url': ia_url,
+        'ia_url': _ia_url(gazette),
         'has_pdf': gazette.has_pdf and storage.find('raw', gazette.relurl),
         'has_pymupdf': gazette.has_pymupdf
         and storage.find('pymupdf', gazette.relurl),
     }
 
 
+def _ia_url(gazette):
+    return (settings.GAZETTE_IA_DETAILS_URL.rstrip('/') + '/'
+            + gazette.archive_path)
+
+
 @require_safe
-def detail(request, identifier):
-    gazette = _get_gazette(identifier)
+def detail(request, identifier, document=None):
+    gazette = _get_gazette(identifier, document)
+    if gazette.document != document:
+        # A bare identifier that fell back to one of its documents.
+        return HttpResponseRedirect(gazette.get_absolute_url())
+
     storage = _storage()
 
     context = _detail_context(request, gazette, storage)
@@ -184,9 +205,9 @@ def detail(request, identifier):
 
 
 @require_safe
-def detail_pymupdf(request, identifier):
+def detail_pymupdf(request, identifier, document=None):
     """The alternate pymupdf rendering, shown only on request."""
-    gazette = _get_gazette(identifier)
+    gazette = _get_gazette(identifier, document)
     storage = _storage()
 
     if not storage.find('pymupdf', gazette.relurl):
@@ -198,14 +219,14 @@ def detail_pymupdf(request, identifier):
 
 
 @require_safe
-def pymupdf_frame(request, identifier):
+def pymupdf_frame(request, identifier, document=None):
     """The raw pymupdf document, for the sandboxed frame to load.
 
     Served with a restrictive CSP in addition to the frame's sandbox
     attribute, because this markup came out of an automated conversion of a
     third-party PDF and is never sanitised.
     """
-    gazette = _get_gazette(identifier)
+    gazette = _get_gazette(identifier, document)
     data = _storage().read('pymupdf', gazette.relurl)
     if data is None:
         raise Http404('No pymupdf rendering for this gazette')
@@ -218,23 +239,22 @@ def pymupdf_frame(request, identifier):
 
 
 @require_safe
-def gazette_pdf(request, identifier):
+def gazette_pdf(request, identifier, document=None):
     """The gazette as published.
 
     The PDF corpus is far larger than the site's own data, so a deployment
     that does not hold it locally sends the reader to the Internet Archive
-    item with the same identifier instead of 404ing.
+    item (and document) with the same identifier instead of 404ing.
     """
-    gazette = _get_gazette(identifier)
+    gazette = _get_gazette(identifier, document)
     storage = _storage()
     path = storage.find('raw', gazette.relurl)
 
     if path is None:
-        return HttpResponseRedirect(
-            settings.GAZETTE_IA_DETAILS_URL.rstrip('/') + '/' + gazette.identifier
-        )
+        return HttpResponseRedirect(_ia_url(gazette))
 
-    filename = '%s%s' % (gazette.identifier, os.path.splitext(path)[1])
+    filename = '%s%s' % (gazette.document or gazette.identifier,
+                         os.path.splitext(path)[1])
 
     if settings.GAZETTE_USE_X_ACCEL:
         # Hand the file off to nginx; see the internal location block in

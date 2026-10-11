@@ -29,7 +29,7 @@ were saved rather than by when they were published.
     <span class="badge-format">HTML</span>
     {% if gazette.has_pymupdf %}<span class="badge-format">Alt. rendering</span>{% endif %}
     {% if gazette.has_pdf %}<span class="badge-format">PDF</span>{% endif %}
-    <code class="small text-muted">{{ gazette.identifier }}</code>
+    <code class="small text-muted">{{ gazette.archive_path }}</code>
     <span class="ms-auto">{% include 'gazettes/_bookmark_button.html' %}</span>
   </div>
 </li>

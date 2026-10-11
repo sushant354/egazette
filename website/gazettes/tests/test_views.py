@@ -1,14 +1,15 @@
 import shutil
 import tempfile
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from gazettes.models import Gazette
+from gazettes.models import Bookmark, Gazette
 from gazettes.services import sources as sources_service
 from gazettes.services.ingest import IngestService
 from gazettes.services.storage import AssetStorage
-from gazettes.tests.factories import PYMUPDF_HTML, write_gazette
+from gazettes.tests.factories import PYMUPDF_HTML, goa_xml, write_gazette
 
 RELURL = 'central_extraordinary/2024-04-18/253767'
 IDENTIFIER = 'in.gazette.central.e.2024-04-18.253767'
@@ -207,3 +208,55 @@ class DetailTests(ViewTestCase):
             '/protected/0/raw/%s.pdf' % RELURL,
         )
         self.assertNotIn('..', response['X-Accel-Redirect'])
+
+
+class DocumentDetailTests(ViewTestCase):
+    """Goa puts several gazettes into one Internet Archive item."""
+
+    ITEM = 'in.goa.egaz.2223-28.SI'
+
+    def setUp(self):
+        super().setUp()
+        self.og = self.ingest('goa/2022-10-13/2223-28-SI-OG-0',
+                              metatags=goa_xml())
+        self.sug = self.ingest('goa/2022-10-13/2223-28-SI-SUG-1',
+                               metatags=goa_xml('SUG', '1'))
+
+    def test_each_document_has_its_own_page(self):
+        url = reverse('gazettes:detail', args=[self.ITEM, '2223-28-SI-SUG-1'])
+        self.assertEqual(self.sug.get_absolute_url(), url)
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['gazette'], self.sug)
+        self.assertContains(
+            response, 'archive.org/details/%s/2223-28-SI-SUG-1' % self.ITEM)
+
+    def test_bare_identifier_redirects_to_the_first_document(self):
+        response = self.client.get(reverse('gazettes:detail', args=[self.ITEM]))
+        self.assertRedirects(response, self.og.get_absolute_url())
+
+    def test_unknown_document_is_404(self):
+        response = self.client.get(
+            reverse('gazettes:detail', args=[self.ITEM, '2223-28-SI-OG-9'])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_pdf_falls_back_to_the_document_in_the_archive_item(self):
+        response = self.client.get(self.sug.get_pdf_url())
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response['Location'].endswith(
+            '/%s/2223-28-SI-SUG-1' % self.ITEM))
+
+    def test_bookmarking_a_document(self):
+        user = get_user_model().objects.create_user('reader', password='x')
+        self.client.force_login(user)
+
+        response = self.client.post(self.sug.get_bookmark_url(),
+                                    {'action': 'add'})
+
+        self.assertRedirects(response, self.sug.get_absolute_url())
+        self.assertEqual(
+            list(Bookmark.objects.values_list('gazette', flat=True)),
+            [self.sug.pk],
+        )

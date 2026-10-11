@@ -30,6 +30,11 @@ def goa_identifier(relurl, metainfo):
     identifier = f'{gznum}.{series}'
     return identifier
 
+def goa_document(relurl, metainfo):
+    # Several issues (OG, EOG, SUG ...) share one gznum.series item on the
+    # Internet Archive, each as its own file named after the relurl.
+    return relurl.split('/')[-1]
+
 def wbsl_identifier(relurl, metainfo):
     bookid = metainfo.get('bookid')
     return bookid
@@ -322,7 +327,8 @@ srcinfos = {
         'category'  : 'Goa Gazette',
         'prefix'    : 'in.goa.egaz.',
         'start_date': datetime(1908, 1, 1),
-        'identifier_fn': goa_identifier
+        'identifier_fn': goa_identifier,
+        'document_fn': goa_document
     },
     # 'in.gazette.csl_weekly.<year>-<month>-<day>.<id>' start_date: 1922-01-28 end_date: 1997-12-29 count: 13855
     'csl_weekly' : { 
@@ -529,5 +535,19 @@ def get_identifier(relurl, metainfo):
 
     prefix = get_prefix(srcname)
     return prefix + identifier
+
+def get_document(relurl, metainfo):
+    # The document within the Internet Archive item, for sources that put
+    # several gazettes into one item. None for everything else.
+    words   = relurl.split('/')
+    srcname = words[0]
+
+    srcinfo = srcinfos[srcname]
+
+    document_fn = srcinfo.get('document_fn')
+    if document_fn is None:
+        return None
+
+    return document_fn('/'.join(words[1:]), metainfo)
 
 

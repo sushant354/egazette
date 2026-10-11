@@ -6,9 +6,9 @@ shown when that file exists.
 {% endcomment %}
 <div class="view-tabs mt-4">
   <a class="view-tab{% if view == 'html' %} active{% endif %}"
-     href="{% url 'gazettes:detail' gazette.identifier %}">Gazette text</a>
+     href="{{ gazette.get_absolute_url }}">Gazette text</a>
   {% if has_pymupdf %}
     <a class="view-tab{% if view == 'pymupdf' %} active{% endif %}"
-       href="{% url 'gazettes:detail_pymupdf' gazette.identifier %}">Alternate rendering</a>
+       href="{{ gazette.get_pymupdf_url }}">Alternate rendering</a>
   {% endif %}
 </div>

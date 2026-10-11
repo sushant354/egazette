@@ -9,6 +9,14 @@ app_name = 'gazettes'
 # occasional underscore. Matching explicitly keeps a stray slash out.
 IDENTIFIER = r'(?P<identifier>[A-Za-z0-9][A-Za-z0-9._+-]*)'
 
+# Documents come from datasrcs_info.get_document, for the sources that put
+# several gazettes into one Internet Archive item. They are scraped filenames,
+# so anything but a slash -- except the names of the per-gazette subpages,
+# which would otherwise be ambiguous.
+DOCUMENT = r'(?P<document>(?!(?:pdf|pymupdf|bookmark)/)[^/]+)'
+
+ITEM = IDENTIFIER + '/(?:' + DOCUMENT + '/)?'
+
 urlpatterns = [
     path('', views.home, name='home'),
     path('search/', views.search, name='search'),
@@ -22,14 +30,14 @@ urlpatterns = [
     path('account/', accounts.profile, name='account'),
     path('bookmarks/', accounts.bookmarks, name='bookmarks'),
 
-    re_path(r'^details/%s/$' % IDENTIFIER, views.detail, name='detail'),
-    re_path(r'^details/%s/pymupdf/$' % IDENTIFIER, views.detail_pymupdf,
+    re_path(r'^details/%s$' % ITEM, views.detail, name='detail'),
+    re_path(r'^details/%spymupdf/$' % ITEM, views.detail_pymupdf,
             name='detail_pymupdf'),
-    re_path(r'^details/%s/pymupdf/frame/$' % IDENTIFIER, views.pymupdf_frame,
+    re_path(r'^details/%spymupdf/frame/$' % ITEM, views.pymupdf_frame,
             name='pymupdf_frame'),
-    re_path(r'^details/%s/pdf/$' % IDENTIFIER, views.gazette_pdf,
+    re_path(r'^details/%spdf/$' % ITEM, views.gazette_pdf,
             name='gazette_pdf'),
-    re_path(r'^details/%s/bookmark/$' % IDENTIFIER, accounts.bookmark,
+    re_path(r'^details/%sbookmark/$' % ITEM, accounts.bookmark,
             name='bookmark'),
 
     path('api/ingest/', api.ingest, name='api_ingest'),
