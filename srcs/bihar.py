@@ -8,7 +8,7 @@ class Bihar(CentralBase):
     def __init__(self, name, storage):
         CentralBase.__init__(self, name, storage)
         self.hostname   = 'egazette.bihar.gov.in'
-        self.baseurl    = 'http://egazette.bihar.gov.in/SearchGazette.aspx'
+        self.baseurl    = 'https://egazette.bihar.gov.in/GazettePrinting/SearchGazette.aspx'
         self.search_endp = 'SearchGazette.aspx'
         self.result_table = 'ctl00_ContentPlaceHolder1_DetailView'
 

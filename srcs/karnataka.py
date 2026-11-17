@@ -2,7 +2,7 @@ import re
 import os
 import urllib.parse
 from http.cookiejar import CookieJar
-from cgi import parse_header
+from email.message import Message
 import datetime
 from io import BytesIO
 
@@ -257,8 +257,9 @@ class KarnatakaBase(BaseGazette):
             return None
         
         cd = response.srvresponse.get("Content-Disposition", "")
-        value, params = parse_header(cd)
-        filename = params.get("filename", "").strip()
+        msg = Message()
+        msg['Content-Disposition'] = cd
+        filename = (msg.get_filename() or "").strip()
         
         if (not filename) or (not filename.endswith('.pdf')):
             return None
