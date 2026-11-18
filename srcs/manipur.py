@@ -5,6 +5,7 @@ import urllib.parse
 
 from ..utils import utils
 from .basegazette import BaseGazette
+from .himachal import Himachal
 
 class Manipur(BaseGazette):
     def __init__(self, name, storage_manager):
@@ -156,3 +157,32 @@ class Manipur(BaseGazette):
                 dls.append(relurl)
         
         return dls
+
+class ManipurNew(Himachal):
+    # egazettemanipur.mn.gov.in runs the same ASP.NET search page as Himachal
+    def __init__(self, name, storage):
+        Himachal.__init__(self, name, storage)
+        self.baseurl  = 'https://egazettemanipur.mn.gov.in/searchG.aspx'
+        self.hostname = 'egazettemanipur.mn.gov.in'
+
+    def parse_departments(self, webpage):
+        # Unlike Himachal, this site filters by department, so search with
+        # the empty "Select Department" value to get every department.
+        return {'': 'All departments'}
+
+    def get_post_data(self, tags, dateobj, gazette=None, dept=None):
+        # a browser posts only the checked radio button (gazette type)
+        tags = [t for t in tags if t.get('type') != 'radio' or t.has_attr('checked')]
+        return Himachal.get_post_data(self, tags, dateobj, gazette, dept)
+
+    def clean_id(self, docid):
+        # file name is the gazette number only (backward compatible with the
+        # old crawler): '279/EG/2026-27/18-11-2026 ' -> '279'
+        return docid.split('/')[0].strip()
+
+    def process_result_row(self, tr, metainfos, order):
+        # the result table has dates like 18-11-2026, Himachal expects 18/11/2026
+        count = len(metainfos)
+        Himachal.process_result_row(self, tr, metainfos, order)
+        if len(metainfos) > count and 'issuedate' in metainfos[-1]:
+            metainfos[-1]['issuedate'] = metainfos[-1]['issuedate'].replace('-', '/')
