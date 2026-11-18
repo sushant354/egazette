@@ -18,6 +18,9 @@ class Himachal(BaseGazette):
         self.search_endp = './searchG.aspx'
         self.result_table = 'ContentPlaceHolder1_GVNotification'
         self.captcha_key = 'ctl00$ContentPlaceHolder1$txtCaptcha'
+        self.gazette_key = 'ctl00$ContentPlaceHolder1$DDlistGazette'
+        self.dept_key    = 'ctl00$ContentPlaceHolder1$ddlDepartment'
+        self.departments = {}   # cache: department id -> name
 
 
     def find_next_page(self, tr, curr_page):
@@ -53,7 +56,7 @@ class Himachal(BaseGazette):
 
 
 
-    def get_form_data(self, webpage, dateobj, form_href):
+    def get_form_data(self, webpage, dateobj, form_href, gazette=None, dept=None):
         search_form = utils.get_search_form(webpage, self.parser, form_href)
         if search_form is None:
             self.logger.warning('Unable to get the search form for day: %s', dateobj)
@@ -61,9 +64,47 @@ class Himachal(BaseGazette):
 
         reobj  = re.compile('^(input|select)$')
         inputs = search_form.find_all(reobj)
-        postdata = self.get_post_data(inputs, dateobj)
+        postdata = self.get_post_data(inputs, dateobj, gazette, dept)
 
         return postdata
+
+    def parse_departments(self, webpage):
+        # department id -> name; the server ignores the department when a
+        # gazette number is selected, so this is only a cache of the values
+        d = utils.parse_webpage(webpage, self.parser)
+        if d is None:
+            return {}
+        sel = d.find('select', {'name': self.dept_key})
+        if sel is None:
+            return {}
+        depts = {}
+        for opt in sel.find_all('option'):
+            val = opt.get('value')
+            if val:
+                depts[val] = utils.get_tag_contents(opt).strip()
+        return depts
+
+    def parse_gazette_options(self, webpage):
+        # returns [(date, option value)], e.g.
+        # (date(2021,12,17), '[17/12/2021] 171/GAZETTE/2021-17/12/2021')
+        d = utils.parse_webpage(webpage, self.parser)
+        if d is None:
+            return []
+        sel = d.find('select', {'name': self.gazette_key})
+        if sel is None:
+            return []
+        gazettes = []
+        for opt in sel.find_all('option'):
+            val = opt.get('value')
+            reobj = re.match(r'\[(\d{2}/\d{2}/\d{4})\]', val or '')
+            if not reobj:
+                continue
+            try:
+                gzdate = datetime.datetime.strptime(reobj.group(1), '%d/%m/%Y').date()
+            except ValueError:
+                continue
+            gazettes.append((gzdate, val))
+        return gazettes
 
     def get_column_order(self, tr):
         order = []
@@ -83,7 +124,7 @@ class Himachal(BaseGazette):
                 order.append('')
         return order
 
-    def get_post_data(self, tags, dateobj):
+    def get_post_data(self, tags, dateobj, gazette=None, dept=None):
         datestr = dateobj.strftime('%d/%m/%Y')
         postdata = []
 
@@ -103,6 +144,10 @@ class Himachal(BaseGazette):
                     value = datestr
             elif tag.name == 'select':
                 name = tag.get('name')
+                if gazette and name == self.gazette_key:
+                    value = gazette
+                elif dept and name == self.dept_key:
+                    value = dept
 
             if name:
                 if value is None:
@@ -227,7 +272,7 @@ class Himachal(BaseGazette):
         time.sleep(5)
         return captcha_val
 
-    def submit_captcha_form(self, search_url, webpage, cookiejar, dateobj):
+    def submit_captcha_form(self, search_url, webpage, cookiejar, dateobj, gazette=None, dept=None):
         captcha = self.download_captcha(search_url, webpage, cookiejar)
         if captcha is None or captcha.webpage is None:
             self.logger.warning('Unable to download captcha')
@@ -237,7 +282,8 @@ class Himachal(BaseGazette):
 
         captcha_val = self.solve_captcha(img)
 
-        postdata = self.get_form_data(webpage, dateobj, self.search_endp)
+        postdata = self.get_form_data(webpage, dateobj, self.search_endp, \
+                                      gazette, dept)
         if postdata is None:
             return None
 
@@ -308,13 +354,13 @@ class Himachal(BaseGazette):
         return metainfos, nextpage
 
 
-    def get_search_results(self, search_url, dateobj, cookiejar):
+    def get_search_results(self, search_url, dateobj, cookiejar, gazette=None, dept=None):
         response = self.download_url(search_url, savecookies = cookiejar, \
                                      referer=search_url)
 
         while response and response.webpage:
             response = self.submit_captcha_form(search_url, response.webpage, \
-                                                cookiejar, dateobj)
+                                                cookiejar, dateobj, gazette, dept)
 
             if not response or not response.webpage:
                 self.logger.warning('Failed to post to search form for %s', \
@@ -395,27 +441,51 @@ class Himachal(BaseGazette):
         return html.encode('utf8'), base_form_data
 
     def sync(self, fromdate, todate, event):
+        # One search per gazette number listed in the dropdown. Only the
+        # gazette number is looped over, not the department: the site ignores
+        # the department once a gazette number is selected and returns the
+        # notifications of all departments for that gazette. Tested on
+        # 171/GAZETTE/2021-17/12/2021 (departments 59, 1, 38, 7) and
+        # 170/GAZETTE/2026-13/11/2026 (departments 59, 1): the rows on the
+        # first page were identical for every department. So the first
+        # department is used for every search, and looping over departments
+        # would only repeat the same rows and the captcha solves.
+        # All pages of 170/GAZETTE/2026-13/11/2026 (2 pages, 15 + 5 rows)
+        # were also compared for departments 59, 1 and 38: identical rows
+        # in the same order.
+        response = self.download_url(self.baseurl, savecookies=CookieJar(), \
+                                     referer=self.baseurl)
+        if response is None or response.webpage is None:
+            self.logger.warning('Unable to get the search page')
+            return []
+
+        self.departments = self.parse_departments(response.webpage)
+        gazettes = self.parse_gazette_options(response.webpage)
+        if not gazettes or not self.departments:
+            self.logger.warning('Unable to parse the gazette number dropdown')
+            return []
+
+        dept = next(iter(self.departments))
         newdownloads = []
-        while fromdate <= todate:
+        for gzdate, gazette in sorted(gazettes):
+            if gzdate < fromdate.date() or gzdate > todate.date():
+                continue
             if event.is_set():
                 self.logger.warning('Exiting prematurely as timer event is set')
                 break
-
-            dateobj   = fromdate.date()
-            self.logger.info('Date %s' % dateobj)
-
-            tmprel    = os.path.join (self.name, dateobj.__str__())
-            dls = self.download_oneday(tmprel, dateobj, event)
-            self.logger.info('Got %d gazettes for day %s' % (len(dls), dateobj))
+            self.logger.info('Gazette %s', gazette)
+            tmprel = os.path.join(self.name, gzdate.__str__())
+            dls = self.download_oneday(tmprel, gzdate, event, gazette, dept)
+            self.logger.info('Got %d gazettes for %s' % (len(dls), gazette))
             newdownloads.extend(dls)
-            fromdate += datetime.timedelta(days=1)
         return newdownloads
 
-    def download_oneday(self, relpath, dateobj, event):
+    def download_oneday(self, relpath, dateobj, event, gazette=None, dept=None):
         dls = []
         cookiejar = CookieJar()
 
-        response = self.get_search_results(self.baseurl, dateobj, cookiejar)
+        response = self.get_search_results(self.baseurl, dateobj, cookiejar, \
+                                           gazette, dept)
 
         pagenum = 1
         all_metainfos = []
@@ -424,7 +494,8 @@ class Himachal(BaseGazette):
 
             if response.webpage.decode('utf8').find('<!DOCTYPE html>') >= 0:
                 webpage  = response.webpage
-                postdata = self.get_form_data(webpage, dateobj, self.search_endp)
+                postdata = self.get_form_data(webpage, dateobj, self.search_endp, \
+                                              gazette, dept)
             else:
                 webpage, hidden_postdata = self.parse_non_html(response.webpage)
                 for k,v in hidden_postdata:
