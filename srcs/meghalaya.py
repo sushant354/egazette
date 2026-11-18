@@ -12,8 +12,8 @@ class Meghalaya(BaseGazette):
         self.baseurl  = 'https://megpns.gov.in/gazette/gazette_{}.html'
         self.hostname = 'megpns.gov.in'
 
-    def parse_index(self, webpage):
-        """Parse the year index page and return list of (dateobj, href) for all available PDFs."""
+    def parse_index(self, webpage, year):
+        """Parse the index page of the given year and return list of (dateobj, href) for all available PDFs."""
         results = []
         d = utils.parse_webpage(webpage, self.parser)
         if d is None:
@@ -26,13 +26,13 @@ class Meghalaya(BaseGazette):
                 continue
 
             fname = href.split('/')[-1]
-            reobj = re.match(r'(?P<day>\d{2})-(?P<month>\d{2})-(?P<year>\d{2})-(?P<part>\w+)\.pdf$', fname, re.IGNORECASE)
+            reobj = re.match(r'(?P<day>\d{2})-(?P<month>\d{2})-\d+-(?P<part>\w+)\.pdf$', fname, re.IGNORECASE)
             if reobj is None:
                 continue
 
             g = reobj.groupdict()
             try:
-                filedate = datetime.date(2000 + int(g['year']), int(g['month']), int(g['day']))
+                filedate = datetime.date(year, int(g['month']), int(g['day']))
             except ValueError:
                 self.logger.warning('Invalid date in filename: %s', fname)
                 continue
@@ -83,7 +83,7 @@ class Meghalaya(BaseGazette):
                 self.logger.warning('Unable to get index page %s', url)
                 continue
 
-            for filedate, href in self.parse_index(response.webpage):
+            for filedate, href in self.parse_index(response.webpage, year):
                 if fromdate.date() <= filedate <= todate.date():
                     entry = date_to_entries.setdefault(filedate, (url, []))
                     entry[1].append(href)
