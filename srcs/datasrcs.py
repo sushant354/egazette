@@ -91,7 +91,7 @@ srcdict = { \
 'bis'                       : bis.BIS, \
 'mizoram'                   : mizoram.Mizoram, \
 'rsa'                       : rsa.RajasthanStateArchive, \
-'manipur'                   : manipur.Manipur, \
+'manipur'                   : manipur.ManipurNew, \
 'ladakh'                    : ladakh.Ladakh, \
 'chandigarh'                : chandigarh.Chandigarh, \
 'nagaland'                  : nagaland.Nagaland, \
