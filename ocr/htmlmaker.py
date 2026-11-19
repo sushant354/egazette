@@ -1,4 +1,3 @@
-import cgi
 import re
 
 from egazette.ocr.annotations import Node, annotate_doc
