@@ -16,9 +16,9 @@ class MadhyaPradesh(BaseGazette):
         self.hostname = 'govtpress.mp.gov.in'
 
 
-    def get_postdata(self, year, pagenum):
+    def get_postdata(self, year, offset):
         postdata = (
-            ('page', f'{(pagenum - 1)*10}'),
+            ('page', f'{offset}'),
             ('sTitle', ''),
             ('ci_csrf_token', ''),
             ('cat_id', ''),
@@ -106,19 +106,19 @@ class MadhyaPradesh(BaseGazette):
         metainfos.append(metainfo)
 
 
-    def parse_results(self, webpage, fromdate, todate, pagenum):
+    def parse_results(self, webpage, fromdate, todate):
         metainfos = []
-        has_nextpage = False
+        nextoffset = None
 
         d = utils.parse_webpage(webpage, self.parser)
         if not d:
             self.logger.warning('Unable to parse gazette list page')
-            return metainfos, has_nextpage
+            return metainfos, nextoffset
 
         table = d.find('table')
         if not table:
             self.logger.warning('Unable to find result table in gazette list page')
-            return metainfos, has_nextpage
+            return metainfos, nextoffset
 
         order = None
         for tr in table.find_all('tr'):
@@ -128,12 +128,14 @@ class MadhyaPradesh(BaseGazette):
             
             self.process_row(metainfos, tr, order)
 
-        pagination_ul = d.find('ul', {'class': 'pagination'})
-        nextpage = utils.find_next_page(pagination_ul, pagenum)
-        if nextpage:
-            has_nextpage = True
+        # The pager only shows a few page numbers around the current page, so
+        # use the "Showing 41 to 55 of 538" line instead: the next page starts
+        # at the offset 55, and there is none once 55 reaches 538.
+        reobj = re.search(r'Showing\s+\d+\s+to\s+(\d+)\s+of\s+(\d+)', d.get_text())
+        if reobj and int(reobj.group(1)) < int(reobj.group(2)):
+            nextoffset = int(reobj.group(1))
 
-        return metainfos, has_nextpage
+        return metainfos, nextoffset
 
     def download_metainfo(self, metainfo, dls):
 
@@ -158,13 +160,13 @@ class MadhyaPradesh(BaseGazette):
             self.logger.warning('Unable to download gazette list page for year %d', year)
             return
 
-        has_nextpage = True
+        offset  = 0
         pagenum = 1
 
-        while has_nextpage and not event.is_set():
+        while offset is not None and not event.is_set():
             self.logger.info('Processing gazette list page %d for year %d', pagenum, year)
-            postdata = self.get_postdata(year, pagenum)
-            pageurl = self.pageurl_tmpl.format((pagenum - 1)*10)
+            postdata = self.get_postdata(year, offset)
+            pageurl = self.pageurl_tmpl.format(offset)
             response = self.download_url(pageurl, postdata = postdata,
                                          loadcookies = cookiejar, savecookies = cookiejar,
                                          headers = {'X-Requested-With': 'XMLHttpRequest'})
@@ -172,7 +174,7 @@ class MadhyaPradesh(BaseGazette):
                 self.logger.warning('Unable to download gazette list page %d for year %d', pagenum, year)
                 return
 
-            metainfos, has_nextpage = self.parse_results(response.webpage, fromdate, todate, pagenum)
+            metainfos, offset = self.parse_results(response.webpage, fromdate, todate)
 
             for metainfo in metainfos:
                 if metainfo.get_date() < fromdate.date() or metainfo.get_date() > todate.date():
